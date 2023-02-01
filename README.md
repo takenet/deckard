@@ -1,2 +1,3 @@
-# deckard
-Deckard - a Cyclic Priority Queue (CPQ)
+# Deckard
+
+A Cyclic Priority Queue (CPQ)
