@@ -47,12 +47,17 @@ go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 ```
 
-First you must generate the files for the gRPC service with the following command:
+Clone the project:
+```shell
+git clone git@github.com:takenet/deckard.git
+```
+
+Generate files for the gRPC service and apis with the following command:
 ```shell
 make gen-proto
 ```
 
-To build the Deckard executable just run the following command:
+Build a Deckard executable:
 ```shell
 make
 ```
@@ -61,16 +66,26 @@ The executable will be generated in the `exec` folder.
 
 ## Running Deckard
 
-The simplest way to run Deckard is by using golang:
+If you built the Deckard executable you can run it directly (`.exe` for Windows):
+```shell
+./exec/deckard
+```
+
+You can also run it directly with the following command:
 ```shell
 make run
 ```
 
+Running Deckard with Docker:
+```shell
+docker run --rm -p 8081:8081 blipai/deckard
+```
+
+You may also download the latest release from the [releases](https://github.com/takenet/deckard/releases) page and execute it.
+
 > By default it will use a memory storage and a memory cache engine.
 >
 > To change the default configuration see the [configuration section](#configuration).
-
-You may also build and execute the executable directly or download the latest release from the [releases](https://github.com/takenet/deckard/releases) page and execute it.
 
 ## Running tests
 
@@ -80,10 +95,11 @@ make gen-mocks
 ```
 
 > You also need to have [mockgen](https://github.com/golang/mock) installed.
-
-> Any modification in any interface must be followed by the generation of the mock files.
-
-> You need to have previously generated the source files from the proto files
+>
+> Considerations:
+> - Any modification in any interface must be followed by the generation of the mock files.
+>
+> - Any modification in the `.proto` file must be followed by the generation of the source files using `make gen-proto`.
 
 Running all unit and integration tests
 ```shell
@@ -100,6 +116,8 @@ Running only integration tests
 make integration-test
 ```
 
+We are currently using the [testify](https://github.com/stretchr/testify) package.
+
 ### Integration tests
 
 To run the integration tests you must have the following services available in `localhost`:
@@ -108,8 +126,6 @@ To run the integration tests you must have the following services available in `
     - MongoDB: `localhost:27017`
 - Cache:
     - Redis: `localhost:6379`
-
-We are currently using the [testify](https://github.com/stretchr/testify) package.
 
 Unit tests and integration tests may be found in the same file, but all integration tests must use the [short](https://golang.org/pkg/testing/#Short) flag.
 
@@ -131,7 +147,7 @@ When creating interfaces with the need to generate mocks, you must add the follo
 //go:generate mockgen -destination=<path_to_mocks>/mock_<file>.go -package=mocks -source=<file>.go
 ```
 
-## Image
+## Docker Image
 
 To generate the Deckard image we use the [ko](https://github.com/google/ko) tool.
 
@@ -151,15 +167,12 @@ To generate a local image just run the following command:
 make build-local-image
 ```
 
-> You may also need to generate the base image yourself.
-> We currently use a grpc base image with the [grpc_health_probe](https://github.com/grpc-ecosystem/grpc-health-probe) to provide health check capabilities.
-> To generate it you must run the following command:
->
-> ```shell
-> cd docker/base
-> wget https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.4.15/grpc_health_probe-linux-amd64 -O grpc_health_probe
-> docker build . -t us.gcr.io/kubernetes-production-220222/alpine:grpc
-> ```
+And then run it:
+```shell
+docker run --rm -p 8081:8081 ko.local/deckard:<build_version>
+```
+
+> Change the `build_version` with the version logged while building the image.
 
 ## Java
 
@@ -206,76 +219,7 @@ deckard
 
 > See the [configurations section](#configuration) to see how to configure any internal component.
 
-### Storage
-
-The storage is responsible for persisting the messages and queues.
-
-Deckard currently supports the following Storage engines:
-- Memory (default)
-- MongoDB
-
-The memory implementation is mainly used in tests and local development and is not recommended for production use.
-
-### Cache
-
-The cache is currently the main component of Deckard. It is used to manage messages priorities and the queues themselves.
-
-Deckard currently supports the following Cache engines:
-- Memory (default)
-- Redis
-
-The memory implementation is mainly used in tests and local development and is not recommended for production use.
-
-### Housekeeper
-
-The housekeeper is responsible for several background tasks that are necessary for the correct functioning of the service.
-
-The following tasks are currently being performed by the housekeeper:
-- Timeout messages that haven't received an acknoledgement for a specific period;
-- Unlock messages that have been locked for any specific reason;
-- Remove expired messages from the queue;
-- Compute metrics from the system and queues;
-- Remove elements from queues that are limited by size;
-
-Running with memory storage/cache engine the housekeeper must run in the same service instance since everything is locally stored.
-
-Running with any other engine we suggest running the housekeeper in a separate instance to avoid any performance issues with the gRPC service managing messages and requests.
-
-### Audit
-
-Deckard provides an audit system that can be used to log all requests and responses to the service.
-
-The audit system is currently implemented with the [ElasticSearch](https://www.elastic.co/pt/elasticsearch/) and a dashboard for [Kibana](https://www.elastic.co/pt/kibana/) is also provided.
-
-The kibana dashboard template is in the [kibana.ndjson](dashboards/kibana.ndjson) file.
-
-Audit dashboard images:
-
-![Audit Dashboard 1](docs/audit/audit1.png)
-
-![Audit Dashboard 2](docs/audit/audit2.png)
-
-### Trace and Metrics
-
-Deckard provides a trace and metrics system that can be used in any observability system. Both systems are implemented with [OpenTelemetry](https://opentelemetry.io/).
-
-Metrics will be exposed in the `/metrics` endpoint and traces must be exported to a OpenTelemetry Collector using their environment variables configurations.
-
-A Grafana dashboard template is also provided in the [grafana.json](dashboards/grafana.json) file.
-
-Grafana dashboard images:
-
-![Grafana Dashboard 1](docs/grafana/grafana1.png)
-
-![Grafana Dashboard 2](docs/grafana/grafana2.png)
-
-![Grafana Dashboard 2](docs/grafana/grafana2.png)
-
-### Logging
-
-We use the [zap](https://github.com/uber-go/zap) project for Logging.
-
-By default the application will log in JSON format. To change this behavior you must set the `DECKARD_LOG_TYPE` environment variable to `text` which will make the application to log in a more human readable format.
+For more details about each component see the [components documentation](docs/components.md).
 
 ## Configuration
 
