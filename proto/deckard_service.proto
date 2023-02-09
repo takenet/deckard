@@ -1,0 +1,321 @@
+syntax = "proto3";
+
+import "google/protobuf/any.proto";
+
+package blipai.deckard;
+
+// Golang configs
+option go_package = "github.com/takenet/deckard";
+
+// Java configs
+option java_multiple_files = true;
+option java_package = "br.com.blipai";
+
+service Deckard {
+  // Adds messages to the queue. If any message already exists (same id and queue) it will be updated
+  rpc Add (AddRequest) returns (AddResponse);
+
+  // Pulls messages from the queue
+  rpc Pull (PullRequest) returns (PullResponse);
+
+  // Acks a message, marking it as successfully processed
+  rpc Ack (AckRequest) returns (AckResponse);
+
+  // Nacks a message, marking it as not processed
+  rpc Nack (AckRequest) returns (AckResponse);
+
+  // Counts number of messages on queue based on a filter request
+  rpc Count (CountRequest) returns (CountResponse);
+
+  // Removes one or many messages from the queue based on its ids
+  rpc Remove (RemoveRequest) returns (RemoveResponse);
+
+  // Discards all deckard data from storage and cache.
+  // This request is only available if deckard instance is configured with MEMORY cache and storage.
+  rpc Flush (FlushRequest) returns (FlushResponse);
+
+  // Gets a message from a specific queue using its id
+  // CAUTION: this should be used mainly for diagnostics and debugging purposes since it will be direct operation on the storage system
+  rpc GetById (GetByIdRequest) returns (GetByIdResponse);
+
+  // Edits a queue configuration
+  rpc EditQueue (EditQueueRequest) returns (EditQueueResponse);
+
+  // Gets the current configuration for a queue
+  rpc GetQueue (GetQueueRequest) returns (GetQueueResponse);
+}
+
+/*
+    Get By ID
+*/
+
+message GetByIdRequest {
+  // Name of the queue to get a message
+  string queue = 1;
+
+  // The message id
+  string id = 2;
+}
+
+message GetByIdResponse {
+  Message message = 1;
+
+  // A human readable string data map when the message is found
+  // This represents the payload map as a JSON string representation
+  // This is useful for debugging and diagnostics
+  map <string, string> human_readable_payload = 3;
+
+  bool found = 2;
+}
+
+/*
+    Remove
+*/
+
+message RemoveRequest {
+  repeated string ids = 1;
+
+  // Name of the queue to remove message
+  // Provide the name of the application as a prefix using colon as the separator. Example: <application_name>:<queue_name>
+  string queue = 2;
+}
+
+message RemoveResponse {
+  int64 cacheRemoved = 1;
+
+  int64 storageRemoved = 2;
+}
+
+/*
+    Pull
+*/
+
+message PullRequest {
+  // Full name of the queue to pull messages (including any prefixes)
+  string queue = 1;
+
+  // Number of messages to fetch.
+  // Caution: as greater the amount, as more time it will take to process the request.
+  int32 amount = 2;
+
+  /*
+  Number to subtract to the current time to filter the max score to return.
+  Useful to not return a message just moments after it was last used.
+
+  For example if in your queue the score is only based on the time (always acking with score_subtract as 0),
+  this parameter will be the number of milliseconds since the message's last usage.
+  */
+  int64 score_filter = 3;
+}
+
+message PullResponse {
+  // List of returned messages
+  repeated Message messages = 1;
+}
+
+message Message {
+  // ID is an unique identifier inside a queue.
+  // Any message with the same id and queue will be considered the same message.
+  string id = 1;
+
+  // Description of the message, this should be used as a human readable string to be used in diagnostics.
+  string description = 2;
+
+  // Full name of the queue this message belongs (including any prefixes)
+  string queue = 3;
+
+  // A payload map with formatted data to be stored and used by clients.
+  map <string, google.protobuf.Any> payload = 8;
+
+  // Metadata is a map of string to be used as a key-value store.
+  // It is a simple way to store data that is not part of the message payload.
+  map <string, string> metadata = 4;
+
+  // Message string payload. Is responsibility of the caller to know how to encode/decode to a useful format for its purpose.
+  // This field can be used to store simple string data instead of using the payload field.
+  string string_payload = 5;
+
+  // Score is the priority this message currently have in the queue.
+  double score = 6;
+
+  // Breakpoint is a field to be used as an auxiliar field for some specific use cases.
+  //
+  // For example if you need to keep a record of the last result processing a message, use this field like iteracting with a pagination system.
+  string breakpoint = 7;
+}
+
+message CountRequest {
+  // Deprecated SearchQueryFilter
+  reserved 2;
+
+  string queue = 1;
+}
+
+message CountResponse {
+  int64 count = 1;
+}
+
+/*
+    Add
+*/
+
+message AddRequest {
+  // List of messages to be added
+  repeated AddMessage messages = 1;
+}
+
+message AddMessage {
+  // 5 - Deprecated CredentialsOption
+  // 2 - Deprecated Data
+  // 9 - Deprecated QueueConfigurations
+  reserved 5, 2, 9;
+
+  // Unique id of this message
+  string id = 1;
+
+  // A payload map with formatted data to be stored and used by clients.
+  map <string, google.protobuf.Any> payload = 10;
+
+  // Non-formatted string payload.
+  // This field can be used to store simple string data instead of using the payload field.
+  string string_payload = 3;
+
+  // Metadata is a map of string to be used as a key-value store.
+  // It is a simple way to store data that is not part of the message payload.
+  map <string, string> metadata = 11;
+
+  /*
+    Name of the queue to add this message
+
+    Suggestion: to better observability, provide the name of the application using colon as the separator. Example: <application_name>:<queue_name>
+
+    You may also add a queue prefix to the queue name using two colons as the separator. Example: <application_name>:<queue_prefix>::<queue_name>
+  */
+  string queue = 4;
+
+  // Indicate this message will never expire and will only be deleted from the queue if explicitly removed.
+  bool timeless = 6;
+
+  // TTL is the amount of time in minutes this message will live in the queue.
+  // TTL is not a exact time, the message may live a little longer than the specified TTL.
+  int64 ttl_minutes = 7;
+
+  // Description of the message, this should be used as a human readable string to be used in diagnostics.
+  string description = 8;
+}
+
+message AddResponse {
+  // Number of created messages
+  int64 created_count = 1;
+
+  // Number of updated messages
+  int64 updated_count = 2;
+}
+
+/*
+  Queue Configuration
+*/
+
+message EditQueueRequest {
+  // Name of the queue to be updated
+  // This includes all prefixes and suffixes
+  string queue = 1;
+
+  // Configuration to apply to the queue. It will always update the queue with the newer configuration.
+  // Only available fields will be updated, meaning that previously configured attributes will not be change unless you explicit set it.
+  // If you want to change a configuration to its default value, manually set it to its default value following each field documentation.
+  QueueConfiguration configuration = 2;
+}
+
+message EditQueueResponse {
+  // Name of the queue
+  string queue = 1;
+
+  bool success = 2;
+}
+
+// The queue configuration does not change instantly and can take up to 10 minutes to complete update.
+message QueueConfiguration {
+  /*
+    Number of max elements the queue can have.
+
+    To apply a max elements to a queue, set a value greater than 0.
+    To remove the max elements from a queue, set the value to -1.
+    0 will be always ignored and the queue will not be updated.
+
+    All queues are unlimited by default.
+  */
+  int64 max_elements = 1;
+}
+
+message GetQueueRequest {
+  // Name of the queue to be updated
+  // This includes all prefixes and suffixes
+  string queue = 1;
+}
+
+message GetQueueResponse {
+  // Name of the queue
+  string queue = 1;
+
+  // Configuration of the queue
+  QueueConfiguration configuration = 2;
+}
+
+/*
+    Ack /Nack
+*/
+
+message AckRequest {
+  // ID of the message
+  string id = 1;
+
+  // Queue where this message is stored
+  string queue = 2;
+
+  // Reason of this result.
+  // Useful for audit, mostly on 'nack' signals.
+  string reason = 5;
+
+  // The value to subtract the score and increase final message score.
+  // For example if you want to make this message to have a better score you can add 10000 which will represent 10s of score benefit.
+  // If you want to penalize the message you can send a negative number.
+  //
+  // IMPORTANT: The message will not be locked by, in the example, 10 seconds. This attribute is used only to increase or decrease the message priority in the priority queue.
+  // 
+  // This attribute is used only for ack requests and can't be used at the same time of 'lock_ms' attribute.
+  double score_subtract = 3;
+
+  // Breakpoint to set for this message
+  string breakpoint = 4;
+
+  // Time in milliseconds to lock a message before returning it to the queue.
+  // For nack requests the message will be locked before returning to first position in the priority queue.
+  // For ack requests the message will be locked before returning to last position in the priority queue.
+  //
+  // IMPORTANT: The 'score_subtract' attribute will be ignored if this attribute is different than 0.
+  // 
+  // IMPORTANT: Deckard checks for locked messages in a 1-second delay meaning the lock have a second precision and not milliseconds.
+  // This field is in milliseconds because all scores and duration units on deckard are expressed in milliseconds.
+  int64 lock_ms = 6;
+  
+  // Whether the message should be removed when acked/nacked
+  bool removeMessage = 7;
+}
+
+message AckResponse {
+  bool success = 1;
+
+  // The removal response if the message's removal was requested
+  RemoveResponse removal_response = 2;
+}
+
+/*
+    Flush
+*/
+
+message FlushRequest {}
+
+message FlushResponse {
+  bool success = 1;
+}

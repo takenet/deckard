@@ -1,0 +1,14 @@
+.idea/
+*.iml
+.vscode/
+exec/
+docker/base/grpc_health_probe
+
+# Test files
+report.xml
+gotest.out
+coverage.txt
+.coverage.txt
+
+# Mock files
+internal/mocks/
