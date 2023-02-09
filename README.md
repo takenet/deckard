@@ -174,16 +174,11 @@ docker run --rm -p 8081:8081 ko.local/deckard:<build_version>
 
 > Change the `build_version` with the version logged while building the image.
 
-## Java
+## Using Deckard
 
-We currently provide a Java API for the Deckard service. To build java source files you must have [Maven](https://maven.apache.org/) installed.
+Check the [documentation](/docs/using.md) to see how to use Deckard in a project using your favorite language.
 
-To generate the Java API files you must run the following command:
-```shell
-make gen-java
-```
-
-## Organization and Components
+## Project structure and components
 
 The project has as its base a RPC service with the Google implementation known as [gRPC](https://github.com/grpc) using [Protocol Buffers](https://developers.google.com/protocol-buffers).
 
@@ -194,6 +189,7 @@ deckard
 ├── dashboards              # Dashboards templates for Grafana (metrics) and Kibana (audit)
 ├── docker                  # Docker compose to help running integration tests and base docker image file
 ├── docs                    # Documentation files
+├── examples                # Examples using Deckard in different languages
 ├── internal                # Internal .go files
 │   ├── audit               # Audit system
 │   ├── cmd                 # Executable main file for the Deckard service
@@ -252,12 +248,12 @@ The following table shows all available configurations:
 | DECKARD_MONGO_USER |  | The MongoDB user to authenticate while using MongoDB storage implementation. |
 | DECKARD_MONGO_SSL | false | To enable SSL while using MongoDB storage implementation. |
 | DECKARD_MONGO_QUEUE_CONFIGURATION_COLLECTION | queue_configuration | The MongoDB collection to use to store queue configurations while using MongoDB storage implementation. |
-| DECKARD_HOUSEKEEPER_TASK_TIMEOUT_DELAY | 1s" | The delay between each timeout task execution. |
-| DECKARD_HOUSEKEEPER_TASK_UNLOCK_DELAY | 1s" | The delay between each unlock task execution. |
-| DECKARD_HOUSEKEEPER_TASK_UPDATE_DELAY | 1s" | The delay between each update task execution. |
-| DECKARD_HOUSEKEEPER_TASK_TTL_DELAY | 1s" | The delay between each ttl task execution. |
-| DECKARD_HOUSEKEEPER_TASK_MAX_ELEMENTS_DELAY | 1s" | The delay between each max elements task execution. |
-| DECKARD_HOUSEKEEPER_TASK_METRICS_DELAY | 60s" | The delay between each metrics task execution. |
+| DECKARD_HOUSEKEEPER_TASK_TIMEOUT_DELAY | 1s | The delay between each timeout task execution. |
+| DECKARD_HOUSEKEEPER_TASK_UNLOCK_DELAY | 1s | The delay between each unlock task execution. |
+| DECKARD_HOUSEKEEPER_TASK_UPDATE_DELAY | 1s | The delay between each update task execution. |
+| DECKARD_HOUSEKEEPER_TASK_TTL_DELAY | 1s | The delay between each ttl task execution. |
+| DECKARD_HOUSEKEEPER_TASK_MAX_ELEMENTS_DELAY | 1s | The delay between each max elements task execution. |
+| DECKARD_HOUSEKEEPER_TASK_METRICS_DELAY | 60s | The delay between each metrics task execution. |
 
 ## Contributing
 
