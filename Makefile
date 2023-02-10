@@ -21,18 +21,18 @@ run:
 
 # Run only unit tests
 unit-test:
-	go test -parallel 6 -v -short -coverprofile .coverage.txt ./... 2>&1 | tee gotest.out
-	go tool cover -func .coverage.txt | tee coverage.txt
+	go test -parallel 6 -v -short -race -covermode=atomic -coverprofile coverage.out ./... 2>&1 | tee gotest.out
+	go tool cover -func coverage.out | tee coverage.txt
 
 # Run all tests including integration tests
 test:
-	go test -v -p 1 -parallel 6 -coverprofile .coverage.txt ./... 2>&1 | tee gotest.out
-	go tool cover -func .coverage.txt | tee coverage.txt
+	go test -v -p 1 -parallel 6 -race -covermode=atomic -coverprofile coverage.out ./... 2>&1 | tee gotest.out
+	go tool cover -func coverage.out | tee coverage.txt
 
 # Run only integration tests
 integration-test:
-	go test -v -p 1 -parallel 6 -run Integration -coverprofile .coverage.txt ./... 2>&1 | tee gotest.out
-	go tool cover -func .coverage.txt | tee coverage.txt
+	go test -v -p 1 -parallel 6 -run Integration -race -covermode=atomic -coverprofile coverage.out ./... 2>&1 | tee gotest.out
+	go tool cover -func coverage.out | tee coverage.txt
 
 gen-proto:
 	protoc --proto_path=proto/ --go-grpc_out=./ --go-grpc_opt=paths=source_relative --go_out=./ --go_opt=paths=source_relative proto/deckard_service.proto
