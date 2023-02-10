@@ -1,9 +1,8 @@
 name: Release
 
 on:
-  create:
-    tags:
-      - 'v*'
+  release:
+    types: [created]
 
 env:
   KO_DOCKER_REPO: index.docker.io/blipai
@@ -22,7 +21,7 @@ jobs:
         uses: ko-build/setup-ko@v0.6
 
       - name: Checkout code
-        uses: actions/checkout@master
+        uses: actions/checkout@v3
 
       - name: Publish image
         env:
@@ -30,3 +29,21 @@ jobs:
         run: |
           echo "${auth_token}" | ko login index.docker.io --username lucasoares3 --password-stdin
           make build-image
+
+  release-java-package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'adopt'
+      - name: Publish package
+        working-directory: java
+        run: mvn --batch-mode deploy
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
