@@ -247,7 +247,7 @@ func TestCheckTimeoutMessagesListQueueErrorShouldDoNothing(t *testing.T) {
 
 	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
 
-	ProcessTimeoutMessages(ctx, q)
+	_ = ProcessTimeoutMessages(ctx, q)
 }
 
 func TestCheckTimeoutMessagesErrorForQueueShouldContinueOtherQueues(t *testing.T) {
@@ -263,7 +263,7 @@ func TestCheckTimeoutMessagesErrorForQueueShouldContinueOtherQueues(t *testing.T
 
 	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
 
-	ProcessTimeoutMessages(ctx, q)
+	_ = ProcessTimeoutMessages(ctx, q)
 }
 
 func TestRecoveryMessagesPoolShouldAddMessagesAfterBreakpoint(t *testing.T) {
@@ -682,7 +682,7 @@ func TestCheckTimeoutMessagesShouldExecuteTimeoutToAllQueues(t *testing.T) {
 
 	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
 
-	ProcessTimeoutMessages(ctx, q)
+	_ = ProcessTimeoutMessages(ctx, q)
 }
 
 func TestRemoveExceedingMessagesNoQueuesShouldDoNothing(t *testing.T) {
@@ -697,7 +697,7 @@ func TestRemoveExceedingMessagesNoQueuesShouldDoNothing(t *testing.T) {
 
 	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
 
-	RemoveExceedingMessages(ctx, q)
+	_, _ = RemoveExceedingMessages(ctx, q)
 }
 
 func TestRemoveExceedingMessagesListErrorShouldDoNothing(t *testing.T) {
@@ -712,7 +712,7 @@ func TestRemoveExceedingMessagesListErrorShouldDoNothing(t *testing.T) {
 
 	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
 
-	RemoveExceedingMessages(ctx, q)
+	_, _ = RemoveExceedingMessages(ctx, q)
 }
 
 func TestRemoveExceedingMessagesNoQueuesShouldCallRemoveMethodToEachQueue(t *testing.T) {
@@ -727,7 +727,7 @@ func TestRemoveExceedingMessagesNoQueuesShouldCallRemoveMethodToEachQueue(t *tes
 
 	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, queue.NewConfigurationService(ctx, mockStorage), mockCache)
 
-	RemoveExceedingMessages(ctx, q)
+	_, _ = RemoveExceedingMessages(ctx, q)
 }
 
 func TestRemoveExceedingMessagesRecoveryRunning(t *testing.T) {
@@ -740,7 +740,7 @@ func TestRemoveExceedingMessagesRecoveryRunning(t *testing.T) {
 
 	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, queue.NewConfigurationService(ctx, mockStorage), mockCache)
 
-	RemoveExceedingMessages(ctx, q)
+	_, _ = RemoveExceedingMessages(ctx, q)
 }
 
 func TestRemoveTTLMessagesRecoveryRunning(t *testing.T) {
@@ -753,5 +753,5 @@ func TestRemoveTTLMessagesRecoveryRunning(t *testing.T) {
 
 	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, queue.NewConfigurationService(ctx, mockStorage), mockCache)
 
-	RemoveTTLMessages(ctx, q, &time.Time{})
+	_, _ = RemoveTTLMessages(ctx, q, &time.Time{})
 }

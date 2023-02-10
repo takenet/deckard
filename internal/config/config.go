@@ -90,10 +90,16 @@ func LoadConfig() {
 
 	// Environment
 	viper.SetDefault(DEBUG, false)
-	viper.BindEnv(DEBUG, "DEBUG", "debug")
+	err := viper.BindEnv(DEBUG, "DEBUG", "debug")
+	if err != nil {
+		panic(err)
+	}
 
 	viper.SetDefault(LOG_TYPE, "json")
-	viper.BindEnv(LOG_TYPE, "LOG_TYPE", "log_type")
+	err = viper.BindEnv(LOG_TYPE, "LOG_TYPE", "log_type")
+	if err != nil {
+		panic(err)
+	}
 
 	// Housekeeper
 	viper.SetDefault(HOUSEKEEPER_ENABLED, true)

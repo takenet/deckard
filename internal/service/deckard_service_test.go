@@ -22,6 +22,7 @@ import (
 	"github.com/takenet/deckard/internal/messagepool/storage"
 	"github.com/takenet/deckard/internal/mocks"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var ctx = context.Background()
@@ -49,7 +50,9 @@ func TestMemoryDeckardGRPCServeIntegration(t *testing.T) {
 	defer server.Stop()
 
 	// Set up a connection to the server.
-	conn, err := grpc.Dial(fmt.Sprint("localhost:", viper.GetInt(config.GRPC_PORT)), grpc.WithTimeout(time.Millisecond*200), grpc.WithInsecure(), grpc.WithBlock())
+	ctx, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
+	defer cancel()
+	conn, err := grpc.DialContext(ctx, fmt.Sprint("localhost:", viper.GetInt(config.GRPC_PORT)), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}

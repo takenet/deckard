@@ -144,7 +144,7 @@ func startHouseKeeperJobs(pool *messagepool.MessagePool) {
 		shutdown.WaitGroup,
 		viper.GetDuration(config.HOUSEKEEPER_TASK_TIMEOUT_DELAY),
 		func() bool {
-			messagepool.ProcessTimeoutMessages(ctx, pool)
+			_ = messagepool.ProcessTimeoutMessages(ctx, pool)
 
 			return true
 		},
