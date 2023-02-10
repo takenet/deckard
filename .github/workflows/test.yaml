@@ -6,7 +6,7 @@ env:
   GO_VERSION: 1.18
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
 
     services:
@@ -89,4 +89,7 @@ jobs:
 
     - name: Coverage Report
       uses: codecov/codecov-action@v3
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: true
       if: always()
