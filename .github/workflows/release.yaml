@@ -1,0 +1,27 @@
+name: Release
+
+on:
+  create:
+    tags:
+      - 'v*'
+
+env:
+    KO_DOCKER_REPO: docker.io/takenet/deckard
+
+jobs:
+  release-service-image:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@master
+
+    - name: Setup Ko
+      uses: ko-build/setup-ko@v0.6
+
+    - name: Publish image
+      env:
+        auth_token: ${{ secrets.DOCKER_HUB_TOKEN }}
+      run: |
+        echo "${auth_token}" | ko login https://docker.io --username lucasoares3 --password-stdin
+        make build-image
