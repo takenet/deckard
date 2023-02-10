@@ -7,6 +7,7 @@ build-image:
 	@echo Building imagem. Version: $(CURRENT_VERSION)
 	export SOURCE_DATE_EPOCH=$(shell date +%s);\
 	GO111MODULE=on ko publish -B -t $(CURRENT_VERSION) github.com/takenet/deckard/internal/cmd/deckard
+	GO111MODULE=on ko publish -B -t latest github.com/takenet/deckard/internal/cmd/deckard
 
 build-local-image:
 	@echo Building local imagem. Version: $(CURRENT_VERSION)
