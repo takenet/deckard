@@ -60,9 +60,19 @@ jobs:
 
     - name: Install go-junit-report
       run: go install github.com/jstemmer/go-junit-report@latest
+      if: always()
 
     - name: Generate JUnit report
       run: cat gotest.out | go-junit-report -set-exit-code > junit.xml
+      if: always()
+
+    - name: Cat debugging
+      run: cat gotest.out
+      if: always()
+
+    - name: Cat debugging
+      run: cat junit.xml
+      if: always()
 
     - name: Publish JUnit report
       uses: actions/upload-artifact@v2
@@ -79,3 +89,4 @@ jobs:
 
     - name: Coverage Report
       uses: codecov/codecov-action@v3
+      if: always()

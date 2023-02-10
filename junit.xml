@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+	<testsuite tests="7" failures="0" time="0.005" name="github.com/takenet/deckard/internal/audit">
+		<properties>
+			<property name="go.version" value="go1.18.2"></property>
+			<property name="coverage.statements.pct" value="0.0"></property>
+		</properties>
+		<testcase classname="audit" name="TestSignals" time="0.000"></testcase>
+		<testcase classname="audit" name="TestNewAuditorWithoutServerShouldErrIntegration" time="0.000"></testcase>
+		<testcase classname="audit" name="TestNewAuditorWithServerShouldPingOkIntegration" time="0.000"></testcase>
+		<testcase classname="audit" name="TestNewAuditorWithServerPongErrorShouldReturnErrorIntegration" time="0.000"></testcase>
+		<testcase classname="audit" name="TestNewAuditorWithAuditDisabledShouldDoNothingIntegration" time="0.000"></testcase>
+		<testcase classname="audit" name="TestSenderShouldSendMaxEntriesIntegration" time="0.000"></testcase>
+		<testcase classname="audit" name="TestSenderShouldSendMaxTimeEntriesIntegration" time="0.000"></testcase>
+	</testsuite>
+	<testsuite tests="2" failures="0" time="0.005" name="github.com/takenet/deckard/internal/cmd/deckard">
+		<properties>
+			<property name="go.version" value="go1.18.2"></property>
+			<property name="coverage.statements.pct" value="0.0"></property>
+		</properties>
+		<testcase classname="deckard" name="TestLoadDeckardDefaultSettingsShouldLoadSuccessfullyIntegration" time="0.000"></testcase>
+		<testcase classname="deckard" name="TestStopDeckardShouldStopReceivingRequestIntegration" time="0.000"></testcase>
+	</testsuite>
+	<testsuite tests="4" failures="0" time="0.003" name="github.com/takenet/deckard/internal/config">
+		<properties>
+			<property name="go.version" value="go1.18.2"></property>
+			<property name="coverage.statements.pct" value="100.0"></property>
+		</properties>
+		<testcase classname="config" name="TestLoadConfigShouldResetBeforeConfiguring" time="0.000"></testcase>
+		<testcase classname="config" name="TestEnvReplacerShouldConsiderDotAsUnderline" time="0.000"></testcase>
+		<testcase classname="config" name="TestEnvWithoutPrefixShouldReturnDefaultValue" time="0.000"></testcase>
+		<testcase classname="config" name="TestDefaultValues" time="0.000"></testcase>
+	</testsuite>
+	<testsuite tests="4" failures="0" time="0.005" name="github.com/takenet/deckard/internal/logger">
+		<properties>
+			<property name="go.version" value="go1.18.2"></property>
+			<property name="coverage.statements.pct" value="76.7"></property>
+		</properties>
+		<testcase classname="logger" name="TestConfigureLoggerLocal" time="0.000"></testcase>
+		<testcase classname="logger" name="TestConfigureLoggerNotLocal" time="0.000"></testcase>
+		<testcase classname="logger" name="TestLoggerS" time="0.000"></testcase>
+		<testcase classname="logger" name="TestLoggerL" time="0.000"></testcase>
+	</testsuite>
+	<testsuite tests="62" failures="0" time="0.013" name="github.com/takenet/deckard/internal/messagepool">
+		<properties>
+			<property name="go.version" value="go1.18.2"></property>
+			<property name="coverage.statements.pct" value="87.8"></property>
+		</properties>
+		<testcase classname="messagepool" name="TestUpdateOldestMessagePoolMap" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestProcessLockPool" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestProcessLockPoolAckListErrorShouldDoNothing" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestProcessLockPoolNackAckListErrorShouldDoNothing" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestProcessUnlockErrorShouldUnlockOthers" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestRecoveryMessagesCacheError" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestCheckTimeoutMessagesListQueueErrorShouldDoNothing" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestCheckTimeoutMessagesErrorForQueueShouldContinueOtherQueues" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestRecoveryMessagesPoolShouldAddMessagesAfterBreakpoint" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestRecoveryMessagesPoolInitWithEmptyStorageShouldNotStartRecovery" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestRecoveryMessagesPoolInitNonEmptyStorageShouldStartRecovery" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestRecoveryMessagesPoolAlreadyRunning" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestRecoveryMessagesPoolStorageBreakpointError" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestRecoveryMessagesPoolRecoveryRunningError" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestRecoveryMessagesPoolRecoveryBreakpointRunningError" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestRecoveryMessagesPoolStorageError" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestRemoveTTLMessagesShouldRemoveExpiredElements" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestCheckTimeoutMessagesShouldExecuteTimeoutToAllQueues" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestRemoveExceedingMessagesNoQueuesShouldDoNothing" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestRemoveExceedingMessagesListErrorShouldDoNothing" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestRemoveExceedingMessagesNoQueuesShouldCallRemoveMethodToEachQueue" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestRemoveExceedingMessagesRecoveryRunning" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestRemoveTTLMessagesRecoveryRunning" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestPull" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestAckStorageErrorShouldResultError" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestAckMakeAvailableErrorShouldResultError" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestAckSuccessfulShouldAudit" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestAckNilMessage" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestAckWithoutQueue" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestAckWithoutId" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestNackMakeAvailableErrorShouldResultError" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestNackSuccessfulShouldAudit" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestNackNilMessage" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestNackWithoutQueue" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestNackWithoutId" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestPullShouldDeleteNotFoundInStorageAndReturnRemaining" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestPullElementsFromRetryShouldNotAuditMissingElements" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestPullElementsFromBothFirstTryAndRetryShouldMergeElementsAndKeepScoreOrder" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestPullNothingFoundOnStorage" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestPullCacheError" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestPullCacheNoResults" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestMessagePoolTimeoutError" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestMessagePoolRemoveShouldRemoveFromCacheAndStorage" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestMessagePoolRemoveCacheError" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestMessagePoolRemoveStorageError" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestMessagePoolTimeout" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestAddMessagesToCacheSameIdInSameRequestShouldSetLastElementScore" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestAddMessagesToStorageWithoutEditingQueueConfiguration" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestAddMessagesError" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestRemoveExceedingMessagesQueueZeroMaxElementsShouldDoNothing" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestRemoveExceedingMessagesEmptyQueueShouldDoNothing" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestRemoveExceedingMessagesErrorCountingShouldReturnError" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestRemoveExceedingMessagesShouldRemoveExceedingElements" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestRemoveExceedingMessagesFindErrorShouldRemoveResultError" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestRemoveExceedingMessagesRemoveErrorShouldResultError" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestCountShouldCallStorage" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestNilOptsShouldCreateEmptyOpts" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestCountStorageErrorShouldResultError" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestAckWithLockShouldLock" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestAckWithLockErrorShouldResultError" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestNackWithLockShouldLock" time="0.000"></testcase>
+		<testcase classname="messagepool" name="TestNackWithLockErrorShouldResultError" time="0.000"></testcase>
+	</testsuite>
+	<testsuite tests="38" failures="0" time="2.016" name="github.com/takenet/deckard/internal/messagepool/cache">
+		<properties>
+			<property name="go.version" value="go1.18.2"></property>
+			<property name="coverage.statements.pct" value="49.2"></property>
+		</properties>
+		<testcase classname="cache" name="TestMemoryCache" time="2.010"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestBulkElementsShouldNotError" time="1.700"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestCacheShouldSupportLowScoreDifferences" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestFlush" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestGetStorageBreakpointShouldReturnEmpty" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestInsertOneOkShouldNotBeAvailableAgain" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestInsertOneWithInvalidQueue" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestInsertOrderedPullShouldResultMaxScore" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestInsertSameObjectInSameRequestShouldPreserveLastScore" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestInsertSameObjectTwiceShouldNotUpdateScore" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestListQueuesPrimaryPool" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestLockAckWithoutProcessingReturnFalse" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestLockMessageAck" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestLockMessageNack" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestLockMessageWithoutQueueShouldReturnError" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestLockNackWithoutProcessingReturnFalse" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestLockWithInvalidLockMs" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestLockWithoutLockMsShouldError" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestMakeAvailableAfterPull" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestMakeAvailableMessageWithoutProcessingReturnFalse" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestMakeAvailableWithoutQueue" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestPullMoreThanAvailable" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestPullShouldResultMaxScore" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestRemoveShouldDeleteFromActiveQueue" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestRemoveShouldDeleteFromProcessingQueue" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestRemoveShouldDeleteOnlyCorrectId" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestRemoveShouldRemoveFromAllPools" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestSetStorageBreakpointShouldReturnValue" time="0.100"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestTimeoutMessagesShouldMakeAvailableWithMaxScore" time="0.050"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestTimeoutMessagesShouldNotMakeAvailable" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestUnlockMessagesFromAckPool" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestUnlockMessagesFromNackPool" time="0.000"></testcase>
+		<testcase classname="cache" name="TestMemoryCache/TestUnlockTiming" time="0.150"></testcase>
+		<testcase classname="cache" name="TestRedisCacheIntegration" time="0.000">
+			<skipped message="    redis_cache_test.go:15: "></skipped>
+		</testcase>
+		<testcase classname="cache" name="TestNewCacheWithoutServerShouldErrorIntegration" time="0.000">
+			<skipped message="    redis_cache_test.go:32: "></skipped>
+		</testcase>
+		<testcase classname="cache" name="TestInsertShouldInsertWithCorrectScoreIntegration" time="0.000">
+			<skipped message="    redis_cache_test.go:44: "></skipped>
+		</testcase>
+		<testcase classname="cache" name="TestGetActivePoolName" time="0.000"></testcase>
+		<testcase classname="cache" name="TestGetProcessingPoolName" time="0.000"></testcase>
+	</testsuite>
+	<testsuite tests="5" failures="0" time="0.003" name="github.com/takenet/deckard/internal/messagepool/entities">
+		<properties>
+			<property name="go.version" value="go1.18.2"></property>
+			<property name="coverage.statements.pct" value="53.3"></property>
+		</properties>
+		<testcase classname="entities" name="TestMaxScore" time="0.000"></testcase>
+		<testcase classname="entities" name="TestUpdateScoreWithoutUsageShouldResultMaxScore" time="0.000"></testcase>
+		<testcase classname="entities" name="TestUpdateScoreWithOtherScoreWithoutUsageShouldResultMaxScore" time="0.000"></testcase>
+		<testcase classname="entities" name="TestUpdateScoreWithLastUsageWithoutSubtractShouldResultLastUsage" time="0.000"></testcase>
+		<testcase classname="entities" name="TestUpdateScoreWithLastUsageWithSubtractShouldResultLastUsageMinusSubtract" time="0.000"></testcase>
+	</testsuite>
+	<testsuite tests="10" failures="0" time="0.007" name="github.com/takenet/deckard/internal/messagepool/queue">
+		<properties>
+			<property name="go.version" value="go1.18.2"></property>
+			<property name="coverage.statements.pct" value="100.0"></property>
+		</properties>
+		<testcase classname="queue" name="TestCreateQueueConfigurationShouldCreateCache" time="0.000"></testcase>
+		<testcase classname="queue" name="TestEditConfigurationNilConfigurationShouldDoNothing" time="0.000"></testcase>
+		<testcase classname="queue" name="TestEditConfigurationMaxElementsZeroShouldDoNothing" time="0.000"></testcase>
+		<testcase classname="queue" name="TestEditConfigurationCacheNotFoundShouldCallStorageEdit" time="0.000"></testcase>
+		<testcase classname="queue" name="TestEditConfigurationCacheFoundWithSameConfigShouldDoNothing" time="0.000"></testcase>
+		<testcase classname="queue" name="TestEditConfigurationCacheFoundWithDifferentConfigShouldCallStorageAndDeleteCache" time="0.000"></testcase>
+		<testcase classname="queue" name="TestGetConfigurationFromCacheShouldResultFromCache" time="0.000"></testcase>
+		<testcase classname="queue" name="TestGetConfigurationCacheMissStorageErrorShouldResultError" time="0.000"></testcase>
+		<testcase classname="queue" name="TestGetConfigurationCacheMissStorageNotFoundShouldResultDefaultConfigurationAndCacheShouldBeSet" time="0.000"></testcase>
+		<testcase classname="queue" name="TestGetConfigurationCacheMissStorageFoundShouldResultStorageConfigurationAndCacheShouldBeSet" time="0.000"></testcase>
+	</testsuite>
+	<testsuite tests="34" failures="0" time="0.011" name="github.com/takenet/deckard/internal/messagepool/storage">
+		<properties>
+			<property name="go.version" value="go1.18.2"></property>
+			<property name="coverage.statements.pct" value="41.2"></property>
+		</properties>
+		<testcase classname="storage" name="TestMemoryStorage" time="0.000"></testcase>
+		<testcase classname="storage" name="TestMemoryStorage/TestClearOk" time="0.000"></testcase>
+		<testcase classname="storage" name="TestMemoryStorage/TestClearShouldClearQueueConfigurations" time="0.000"></testcase>
+		<testcase classname="storage" name="TestMemoryStorage/TestEditConfigurationShouldEditConfiguration" time="0.000"></testcase>
+		<testcase classname="storage" name="TestMemoryStorage/TestEditConfigurationWithMaxElementsZeroShouldDoNothing" time="0.000"></testcase>
+		<testcase classname="storage" name="TestMemoryStorage/TestEditConfigurationWithNegativeNumberShouldMakeMaxElementsAsZero" time="0.000"></testcase>
+		<testcase classname="storage" name="TestMemoryStorage/TestFindWithNilOptionsOk" time="0.000"></testcase>
+		<testcase classname="storage" name="TestMemoryStorage/TestGetConfigurationNotExistsShouldReturnNil" time="0.000"></testcase>
+		<testcase classname="storage" name="TestMemoryStorage/TestInsertManyOk" time="0.000"></testcase>
+		<testcase classname="storage" name="TestMemoryStorage/TestInsertOneOk" time="0.000"></testcase>
+		<testcase classname="storage" name="TestMemoryStorage/TestInsertTwiceShouldReplaceMessageKeepingFields" time="0.000"></testcase>
+		<testcase classname="storage" name="TestMemoryStorage/TestInsertWithPayloadOk" time="0.000"></testcase>
+		<testcase classname="storage" name="TestMemoryStorage/TestInsertWithoutIDShouldError" time="0.000"></testcase>
+		<testcase classname="storage" name="TestMemoryStorage/TestInsertWithoutQueueShouldError" time="0.000"></testcase>
+		<testcase classname="storage" name="TestMemoryStorage/TestListAllQueueConfigurations" time="0.000"></testcase>
+		<testcase classname="storage" name="TestMemoryStorage/TestListQueueNamesOk" time="0.000"></testcase>
+		<testcase classname="storage" name="TestMemoryStorage/TestListQueueNamesShouldNotResultDeletedMessageQueue" time="0.000"></testcase>
+		<testcase classname="storage" name="TestMemoryStorage/TestUpdateOk" time="0.000"></testcase>
+		<testcase classname="storage" name="TestMemoryStorage/TestWithInternalFilterBreakpointOk" time="0.000"></testcase>
+		<testcase classname="storage" name="TestMemoryStorage/TestWithInternalFilterExpiryDateOk" time="0.000"></testcase>
+		<testcase classname="storage" name="TestMemoryStorage/TestWithInternalFilterIdsOk" time="0.000"></testcase>
+		<testcase classname="storage" name="TestMemoryStorage/TestWithInternalFilterQueueOk" time="0.000"></testcase>
+		<testcase classname="storage" name="TestInternalIdIncrement" time="0.000"></testcase>
+		<testcase classname="storage" name="TestMongoStorageIntegration" time="0.000">
+			<skipped message="    mongo_storage_test.go:17: "></skipped>
+		</testcase>
+		<testcase classname="storage" name="TestNewStorageWithoutServerShouldErrorIntegration" time="0.000">
+			<skipped message="    mongo_storage_test.go:36: "></skipped>
+		</testcase>
+		<testcase classname="storage" name="TestGetNilProjectionShouldReturnEmptyBson" time="0.000"></testcase>
+		<testcase classname="storage" name="TestGetEmptyProjectionShouldReturnEmptyBson" time="0.000"></testcase>
+		<testcase classname="storage" name="TestGetProjection" time="0.000"></testcase>
+		<testcase classname="storage" name="TestGetMongoMessageWithQueue" time="0.000"></testcase>
+		<testcase classname="storage" name="TestGetMongoMessageWithBreakpointGt" time="0.000"></testcase>
+		<testcase classname="storage" name="TestGetMongoMessageWithBreakpointLte" time="0.000"></testcase>
+		<testcase classname="storage" name="TestGetMongoMessageWithBreakpointGtAndLte" time="0.000"></testcase>
+		<testcase classname="storage" name="TestGetMongoMessageWithOneId" time="0.000"></testcase>
+		<testcase classname="storage" name="TestGetMongoMessageWithManyIds" time="0.000"></testcase>
+	</testsuite>
+	<testsuite tests="8" failures="0" time="0.003" name="github.com/takenet/deckard/internal/messagepool/utils">
+		<properties>
+			<property name="go.version" value="go1.18.2"></property>
+			<property name="coverage.statements.pct" value="33.3"></property>
+		</properties>
+		<testcase classname="utils" name="TestStrToInt64" time="0.000"></testcase>
+		<testcase classname="utils" name="TestStrToInt64Error" time="0.000"></testcase>
+		<testcase classname="utils" name="TestStrToInt64RangeError" time="0.000"></testcase>
+		<testcase classname="utils" name="TestStrToInt64TypeError" time="0.000"></testcase>
+		<testcase classname="utils" name="TestStrToInt32TypeError" time="0.000"></testcase>
+		<testcase classname="utils" name="TestMsPrecision" time="0.000"></testcase>
+		<testcase classname="utils" name="TestTimeToMs" time="0.000"></testcase>
+		<testcase classname="utils" name="TestMsToTime" time="0.000"></testcase>
+	</testsuite>
+	<testsuite tests="3" failures="0" time="0.005" name="github.com/takenet/deckard/internal/metrics">
+		<properties>
+			<property name="go.version" value="go1.18.2"></property>
+			<property name="coverage.statements.pct" value="74.6"></property>
+		</properties>
+		<testcase classname="metrics" name="TestChangeMapShouldChangeSuccessfully" time="0.000"></testcase>
+		<testcase classname="metrics" name="TestChangeMapWithNilMapShouldEmptyMap" time="0.000"></testcase>
+		<testcase classname="metrics" name="TestChangeMapWithMissingQueueShouldKeepElementAsZero" time="0.000"></testcase>
+	</testsuite>
+	<testsuite tests="21" failures="0" time="0.006" name="github.com/takenet/deckard/internal/service">
+		<properties>
+			<property name="go.version" value="go1.18.2"></property>
+			<property name="coverage.statements.pct" value="43.1"></property>
+		</properties>
+		<testcase classname="service" name="TestMemoryDeckardGRPCServeIntegration" time="0.000"></testcase>
+		<testcase classname="service" name="TestMemoryDeckardIntegration" time="0.000"></testcase>
+		<testcase classname="service" name="TestRedisAndMongoDeckardIntegration" time="0.000"></testcase>
+		<testcase classname="service" name="TestFlushMemoryDeckardIntegration" time="0.000"></testcase>
+		<testcase classname="service" name="TestFlushOnNonMemoryDeckardShouldNotSuccess" time="0.000"></testcase>
+		<testcase classname="service" name="TestGetMessagePoolError" time="0.000"></testcase>
+		<testcase classname="service" name="TestGetMessagePoolNoMessages" time="0.000"></testcase>
+		<testcase classname="service" name="TestAck" time="0.000"></testcase>
+		<testcase classname="service" name="TestAckPoolError" time="0.000"></testcase>
+		<testcase classname="service" name="TestNack" time="0.000"></testcase>
+		<testcase classname="service" name="TestNackPoolError" time="0.000"></testcase>
+		<testcase classname="service" name="TestCountMessage" time="0.000"></testcase>
+		<testcase classname="service" name="TestCountMessageStorageError" time="0.000"></testcase>
+		<testcase classname="service" name="TestRemoveMessage" time="0.000"></testcase>
+		<testcase classname="service" name="TestRemoveMessagePoolError" time="0.000"></testcase>
+		<testcase classname="service" name="TestRemoveMessageRequestWithoutIds" time="0.000"></testcase>
+		<testcase classname="service" name="TestGetMessageByIdInvalidId" time="0.000"></testcase>
+		<testcase classname="service" name="TestGetMessageByIdInvalidQueue" time="0.000"></testcase>
+		<testcase classname="service" name="TestGetMessageById" time="0.000"></testcase>
+		<testcase classname="service" name="TestGetMessageByIdNotFound" time="0.000"></testcase>
+		<testcase classname="service" name="TestGetMessageByIdStorageError" time="0.000"></testcase>
+	</testsuite>
+	<testsuite tests="4" failures="0" time="0.005" name="github.com/takenet/deckard/internal/shutdown">
+		<properties>
+			<property name="go.version" value="go1.18.2"></property>
+			<property name="coverage.statements.pct" value="58.3"></property>
+		</properties>
+		<testcase classname="shutdown" name="TestShutdownStart" time="0.000"></testcase>
+		<testcase classname="shutdown" name="TestShutdownEnd" time="0.000"></testcase>
+		<testcase classname="shutdown" name="TestShutdownStartedChain" time="0.000"></testcase>
+		<testcase classname="shutdown" name="TestShutdownFinishedChain" time="0.000"></testcase>
+	</testsuite>
+</testsuites>

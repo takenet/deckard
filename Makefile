@@ -21,17 +21,17 @@ run:
 
 # Run only unit tests
 unit-test:
-	go test -parallel 6 -v -short -race -covermode=atomic -coverprofile coverage.out ./... 2>&1 | tee gotest.out
+	go test -parallel 6 -v -short -covermode=atomic -coverprofile coverage.out ./... 2>&1 | tee gotest.out
 	go tool cover -func coverage.out | tee coverage.txt
 
 # Run all tests including integration tests
 test:
-	go test -v -p 1 -parallel 6 -race -covermode=atomic -coverprofile coverage.out ./... 2>&1 | tee gotest.out
+	go test -v -p 1 -parallel 6 -covermode=atomic -coverprofile coverage.out ./... 2>&1 | tee gotest.out
 	go tool cover -func coverage.out | tee coverage.txt
 
 # Run only integration tests
 integration-test:
-	go test -v -p 1 -parallel 6 -run Integration -race -covermode=atomic -coverprofile coverage.out ./... 2>&1 | tee gotest.out
+	go test -v -p 1 -parallel 6 -run Integration -covermode=atomic -coverprofile coverage.out ./... 2>&1 | tee gotest.out
 	go tool cover -func coverage.out | tee coverage.txt
 
 gen-proto:

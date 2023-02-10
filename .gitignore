@@ -7,8 +7,8 @@ docker/base/grpc_health_probe
 # Test files
 report.xml
 gotest.out
+coverage.out
 coverage.txt
-.coverage.txt
 
 # Mock files
 internal/mocks/
