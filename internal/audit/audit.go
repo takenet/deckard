@@ -71,6 +71,12 @@ func NewAuditor(waitGroup *sync.WaitGroup) (*AuditorImpl, error) {
 		Password:  viper.GetString(config.ELASTIC_PASSWORD),
 	})
 
+	if err != nil {
+		zap.S().Error("Error to create audit client", err.Error())
+
+		return nil, err
+	}
+
 	api := esapi.New(esClient)
 
 	pong, err := api.Ping()
@@ -135,7 +141,7 @@ func (a *AuditorImpl) StartSender(ctx context.Context) {
 }
 
 func (a *AuditorImpl) send(ctx context.Context, entries ...Entry) {
-	if entries == nil || len(entries) == 0 {
+	if len(entries) == 0 {
 		return
 	}
 

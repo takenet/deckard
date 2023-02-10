@@ -40,7 +40,6 @@ func TestNewAuditorWithServerShouldPingOkIntegration(t *testing.T) {
 	viper.Set(config.AUDIT_ENABLED, true)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		return
 	}))
 	defer server.Close()
 
@@ -111,9 +110,8 @@ func TestSenderShouldSendMaxEntriesIntegration(t *testing.T) {
 		}
 
 		buf := new(bytes.Buffer)
-		buf.ReadFrom(r.Body)
+		_, _ = buf.ReadFrom(r.Body)
 		body = buf.String()
-		return
 	}))
 	defer server.Close()
 
@@ -129,7 +127,7 @@ func TestSenderShouldSendMaxEntriesIntegration(t *testing.T) {
 			break
 		}
 
-		time.Sleep(10)
+		time.Sleep(10 * time.Millisecond)
 	}
 
 	beforeStore := time.Now()
@@ -144,7 +142,7 @@ func TestSenderShouldSendMaxEntriesIntegration(t *testing.T) {
 			break
 		}
 
-		time.Sleep(10)
+		time.Sleep(10 * time.Millisecond)
 	}
 
 	result := strings.Split(body, "\n")
@@ -200,9 +198,8 @@ func TestSenderShouldSendMaxTimeEntriesIntegration(t *testing.T) {
 		}
 
 		buf := new(bytes.Buffer)
-		buf.ReadFrom(r.Body)
+		_, _ = buf.ReadFrom(r.Body)
 		body = buf.String()
-		return
 	}))
 	defer server.Close()
 
@@ -218,7 +215,7 @@ func TestSenderShouldSendMaxTimeEntriesIntegration(t *testing.T) {
 			break
 		}
 
-		time.Sleep(10)
+		time.Sleep(10 * time.Millisecond)
 	}
 
 	beforeStore := time.Now()
@@ -231,7 +228,7 @@ func TestSenderShouldSendMaxTimeEntriesIntegration(t *testing.T) {
 			break
 		}
 
-		time.Sleep(10)
+		time.Sleep(10 * time.Millisecond)
 	}
 
 	result := strings.Split(body, "\n")

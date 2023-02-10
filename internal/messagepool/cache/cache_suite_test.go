@@ -71,7 +71,7 @@ func (suite *CacheIntegrationTestSuite) TestTimeoutMessagesShouldMakeAvailableWi
 }
 
 func (suite *CacheIntegrationTestSuite) TestFlush() {
-	suite.cache.Set(ctx, RECOVERY_STORAGE_BREAKPOINT_KEY, "asdf")
+	_ = suite.cache.Set(ctx, RECOVERY_STORAGE_BREAKPOINT_KEY, "asdf")
 
 	_, insertError := suite.cache.Insert(ctx, "queue", &entities.Message{
 		ID:          "id1",
@@ -134,15 +134,14 @@ func (suite *CacheIntegrationTestSuite) TestGetStorageBreakpointShouldReturnEmpt
 }
 
 func (suite *CacheIntegrationTestSuite) TestSetStorageBreakpointShouldReturnValue() {
-	suite.cache.Set(ctx, RECOVERY_STORAGE_BREAKPOINT_KEY, "asdfg")
+	_ = suite.cache.Set(ctx, RECOVERY_STORAGE_BREAKPOINT_KEY, "asdfg")
 
-	select {
-	case <-time.After(time.Millisecond * 100):
-		result, err := suite.cache.Get(ctx, RECOVERY_STORAGE_BREAKPOINT_KEY)
+	time.Sleep(time.Millisecond * 100)
 
-		require.NoError(suite.T(), err)
-		require.Equal(suite.T(), "asdfg", result)
-	}
+	result, err := suite.cache.Get(ctx, RECOVERY_STORAGE_BREAKPOINT_KEY)
+
+	require.NoError(suite.T(), err)
+	require.Equal(suite.T(), "asdfg", result)
 }
 
 func (suite *CacheIntegrationTestSuite) TestInsertOneOkShouldNotBeAvailableAgain() {
@@ -500,13 +499,13 @@ func (suite *CacheIntegrationTestSuite) TestMakeAvailableWithoutQueue() {
 }
 
 func (suite *CacheIntegrationTestSuite) TestLockMessageAck() {
-	suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
 	})
 
-	suite.cache.PullMessages(ctx, "q1", 1, 0)
+	_, _ = suite.cache.PullMessages(ctx, "q1", 1, 0)
 
 	result, makeErr := suite.cache.LockMessage(ctx, &entities.Message{
 		ID:          "id1",
@@ -563,13 +562,13 @@ func (suite *CacheIntegrationTestSuite) TestLockWithoutLockMsShouldError() {
 }
 
 func (suite *CacheIntegrationTestSuite) TestLockMessageNack() {
-	suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
 	})
 
-	suite.cache.PullMessages(ctx, "q1", 1, 0)
+	_, _ = suite.cache.PullMessages(ctx, "q1", 1, 0)
 
 	result, makeErr := suite.cache.LockMessage(ctx, &entities.Message{
 		ID:          "id1",
@@ -604,7 +603,7 @@ func (suite *CacheIntegrationTestSuite) TestLockMessageNack() {
 }
 
 func (suite *CacheIntegrationTestSuite) TestLockMessageWithoutQueueShouldReturnError() {
-	suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
@@ -621,7 +620,7 @@ func (suite *CacheIntegrationTestSuite) TestLockMessageWithoutQueueShouldReturnE
 }
 
 func (suite *CacheIntegrationTestSuite) TestLockAckWithoutProcessingReturnFalse() {
-	suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
@@ -638,7 +637,7 @@ func (suite *CacheIntegrationTestSuite) TestLockAckWithoutProcessingReturnFalse(
 	require.False(suite.T(), result)
 }
 func (suite *CacheIntegrationTestSuite) TestLockNackWithoutProcessingReturnFalse() {
-	suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
@@ -656,7 +655,7 @@ func (suite *CacheIntegrationTestSuite) TestLockNackWithoutProcessingReturnFalse
 }
 
 func (suite *CacheIntegrationTestSuite) TestMakeAvailableMessageWithoutProcessingReturnFalse() {
-	suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
@@ -673,12 +672,13 @@ func (suite *CacheIntegrationTestSuite) TestMakeAvailableMessageWithoutProcessin
 }
 
 func (suite *CacheIntegrationTestSuite) TestListQueuesPrimaryPool() {
-	suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
 	})
-	suite.cache.Insert(ctx, "q2", &entities.Message{
+
+	_, _ = suite.cache.Insert(ctx, "q2", &entities.Message{
 		ID:          "id2",
 		Description: "desc",
 		Queue:       "q2",
@@ -693,19 +693,19 @@ func (suite *CacheIntegrationTestSuite) TestListQueuesPrimaryPool() {
 }
 
 func (suite *CacheIntegrationTestSuite) TestRemoveShouldRemoveFromAllPools() {
-	suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
 		ID:    "id1",
 		Queue: "q1",
 	})
-	suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
 		ID:    "id2",
 		Queue: "q1",
 	})
-	suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
 		ID:    "id3",
 		Queue: "q1",
 	})
-	suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
 		ID:    "id4",
 		Queue: "q1",
 	})
@@ -757,17 +757,17 @@ func (suite *CacheIntegrationTestSuite) TestRemoveShouldRemoveFromAllPools() {
 
 func (suite *CacheIntegrationTestSuite) TestUnlockMessagesFromAckPool() {
 	// Insert data
-	suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
 	})
-	suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
 		ID:          "id2",
 		Description: "desc",
 		Queue:       "q1",
 	})
-	suite.cache.Insert(ctx, "q2", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q2", &entities.Message{
 		ID:          "id3",
 		Description: "desc",
 		Queue:       "q2",
@@ -818,17 +818,17 @@ func (suite *CacheIntegrationTestSuite) TestUnlockMessagesFromAckPool() {
 
 func (suite *CacheIntegrationTestSuite) TestUnlockMessagesFromNackPool() {
 	// Insert data
-	suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
 	})
-	suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
 		ID:          "id2",
 		Description: "desc",
 		Queue:       "q1",
 	})
-	suite.cache.Insert(ctx, "q2", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q2", &entities.Message{
 		ID:          "id3",
 		Description: "desc",
 		Queue:       "q2",
@@ -878,17 +878,17 @@ func (suite *CacheIntegrationTestSuite) TestUnlockMessagesFromNackPool() {
 
 func (suite *CacheIntegrationTestSuite) TestUnlockTiming() {
 	// Insert data
-	suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
 	})
-	suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
 		ID:          "id2",
 		Description: "desc",
 		Queue:       "q1",
 	})
-	suite.cache.Insert(ctx, "q2", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q2", &entities.Message{
 		ID:          "id3",
 		Description: "desc",
 		Queue:       "q2",

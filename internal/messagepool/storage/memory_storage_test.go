@@ -32,7 +32,7 @@ func TestInternalIdIncrement(t *testing.T) {
 			ExpiryDate: time.Now().Add(10 * time.Hour),
 		}
 
-		storage.Insert(context.Background(), message)
+		_, _, _ = storage.Insert(context.Background(), message)
 
 		require.Equal(t, int64(i), storage.docs[getKey(message)].InternalId)
 		require.Equal(t, int64(i), storage.internalCounter)

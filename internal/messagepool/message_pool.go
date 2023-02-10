@@ -350,7 +350,7 @@ func (pool *MessagePool) Pull(ctx context.Context, queue string, n int64, scoreF
 
 		// Remove inconsistent elements from cache.
 		// They was probably removed from storage but not from the cache.
-		pool.cache.Remove(ctx, queue, retryNotFound...)
+		_, _ = pool.cache.Remove(ctx, queue, retryNotFound...)
 	}
 
 	if len(retryMessages) > 0 {

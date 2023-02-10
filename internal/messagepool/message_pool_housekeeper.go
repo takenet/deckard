@@ -206,14 +206,14 @@ func RecoveryMessagesPool(ctx context.Context, pool *MessagePool) (metrify bool)
 			return true
 		}
 
-		pool.cache.Set(ctx, cache.RECOVERY_STORAGE_BREAKPOINT_KEY, pool.storage.GetStringInternalId(ctx, &messages[len(messages)-1]))
+		_ = pool.cache.Set(ctx, cache.RECOVERY_STORAGE_BREAKPOINT_KEY, pool.storage.GetStringInternalId(ctx, &messages[len(messages)-1]))
 	}
 
 	if len(messages) < 4000 {
 		logger.S(ctx).Info("Full recovery finished.")
 
-		pool.cache.Set(ctx, cache.RECOVERY_RUNNING, "false")
-		pool.cache.Set(ctx, cache.RECOVERY_STORAGE_BREAKPOINT_KEY, cache.RECOVERY_FINISHED)
+		_ = pool.cache.Set(ctx, cache.RECOVERY_RUNNING, "false")
+		_ = pool.cache.Set(ctx, cache.RECOVERY_STORAGE_BREAKPOINT_KEY, cache.RECOVERY_FINISHED)
 	}
 
 	logger.S(ctx).Debugf("%d messages updated in %s with %s breakpoint.", len(messages), time.Since(t), breakpoint)
@@ -223,7 +223,13 @@ func RecoveryMessagesPool(ctx context.Context, pool *MessagePool) (metrify bool)
 
 func tryToStartRecovery(ctx context.Context, pool *MessagePool) bool {
 	logger.S(ctx).Info("Starting full cache recovery.")
-	pool.cache.Set(ctx, cache.RECOVERY_RUNNING, "true")
+	err := pool.cache.Set(ctx, cache.RECOVERY_RUNNING, "true")
+
+	if err != nil {
+		logger.S(ctx).Error("Error to set full recovery status: ", err)
+
+		return false
+	}
 
 	sort := orderedmap.NewOrderedMap[string, int]()
 	sort.Set("_id", -1)
@@ -245,8 +251,8 @@ func tryToStartRecovery(ctx context.Context, pool *MessagePool) bool {
 	if len(messages) == 0 {
 		logger.S(ctx).Info("Storage is empty. Finishing recovery.")
 
-		pool.cache.Set(ctx, cache.RECOVERY_STORAGE_BREAKPOINT_KEY, cache.RECOVERY_FINISHED)
-		pool.cache.Set(ctx, cache.RECOVERY_RUNNING, "false")
+		_ = pool.cache.Set(ctx, cache.RECOVERY_STORAGE_BREAKPOINT_KEY, cache.RECOVERY_FINISHED)
+		_ = pool.cache.Set(ctx, cache.RECOVERY_RUNNING, "false")
 
 		return false
 	}
@@ -255,7 +261,7 @@ func tryToStartRecovery(ctx context.Context, pool *MessagePool) bool {
 
 	logger.S(ctx).Info("Storage last element key breakpoint: ", recoveryBreakpointKey)
 
-	pool.cache.Set(ctx, cache.RECOVERY_BREAKPOINT_KEY, recoveryBreakpointKey)
+	_ = pool.cache.Set(ctx, cache.RECOVERY_BREAKPOINT_KEY, recoveryBreakpointKey)
 
 	return true
 }
