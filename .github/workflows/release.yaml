@@ -9,6 +9,37 @@ env:
   GO_VERSION: 1.18
 
 jobs:
+  release-deckard-executable:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Build Linux AMD64
+        env:
+          GOOS: linux
+          GOARCH: amd64
+        run: go build -o exec/deckard-linux-amd64 internal/cmd/deckard/main.go
+
+      - name: Build Windows AMD64
+        env:
+          GOOS: windows
+          GOARCH: amd64
+        run: go build -o exec/deckard-windows-amd64.exe internal/cmd/deckard/main.go
+
+      - name: Publish
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            exec/deckard-windows-amd64.exe 
+            exec/deckard-linux-amd64
+
   release-deckard-image:
     runs-on: ubuntu-latest
 
@@ -20,8 +51,7 @@ jobs:
       - name: Setup Ko
         uses: ko-build/setup-ko@v0.6
 
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - name: Publish image
         env:
