@@ -6,22 +6,27 @@ on:
       - 'v*'
 
 env:
-    KO_DOCKER_REPO: docker.io/takenet/deckard
+  KO_DOCKER_REPO: docker.io/takenet/deckard
+  GO_VERSION: 1.18
 
 jobs:
-  release-service-image:
+  release-deckard-image:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@master
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ${{ env.GO_VERSION }}
 
-    - name: Setup Ko
-      uses: ko-build/setup-ko@v0.6
+      - name: Setup Ko
+        uses: ko-build/setup-ko@v0.6
 
-    - name: Publish image
-      env:
-        auth_token: ${{ secrets.DOCKER_HUB_TOKEN }}
-      run: |
-        echo "${auth_token}" | ko login https://docker.io --username lucasoares3 --password-stdin
-        make build-image
+      - name: Checkout code
+        uses: actions/checkout@master
+
+      - name: Publish image
+        env:
+          auth_token: ${{ secrets.DOCKER_HUB_TOKEN }}
+        run: |
+          echo "${auth_token}" | ko login https://docker.io --username lucasoares3 --password-stdin
+          make build-image
