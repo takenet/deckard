@@ -54,3 +54,22 @@ Execute the following command to generate the Java API files:
 ```shell
 make gen-java
 ```
+
+## C#
+
+We currently provide the C# API for the Deckard service in a NuGet Repository.
+
+First you must add Deckard to your project. Check [here](https://github.com/takenet/deckard/pkgs/nuget/Deckard) for the NuGet repository documentation.
+
+Our repository link is `https://nuget.pkg.github.com/takenet/index.json` and you must configure it in your project (using `nuget.config` file or `dotnet nuget add source` command).
+
+After configuring the repository you must add the dependency to your project using `dotnet add package` as documented [here](https://github.com/takenet/deckard/pkgs/nuget/Deckard). After that you can use the Deckard namespace. Check our [C# example](../examples/csharp/Example.cs) for a complete example.
+
+### Building the C# API
+
+If you forked Deckard and changed anything in the [.proto](../proto/deckard_service.proto) file, you must generate the C# API files again.
+
+Execute the following command to generate the C# API files:
+```shell
+make gen-csharp
+```

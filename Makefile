@@ -39,12 +39,12 @@ gen-proto:
 	protoc --proto_path=proto/ --go-grpc_out=./ --go-grpc_opt=paths=source_relative --go_out=./ --go_opt=paths=source_relative proto/deckard_service.proto
 
 gen-java:
-	mkdir -p java/src/main/proto && cp -r proto java/src/main/proto
+	mkdir -p java/src/main/proto && cp -r proto java/src/main
 	mvn $(MAVEN_CLI_OPTS) -f ./java/pom.xml clean package
 
-gen-deploy-java:
-	mkdir -p java/src/main/proto && cp -r proto java/src/main/proto
-	mvn $(MAVEN_CLI_OPTS) -f ./java/pom.xml clean deploy
+gen-csharp:
+	mkdir -p csharp/proto && cp -r proto csharp
+	cd csharp; dotnet build --configuration Release
 
 gen-mocks:
 	go generate ./...

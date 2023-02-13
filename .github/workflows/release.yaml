@@ -7,6 +7,7 @@ on:
 env:
   KO_DOCKER_REPO: index.docker.io/blipai
   GO_VERSION: 1.18
+  DOTNET_VERSION: 6.0.x
 
 jobs:
   release-deckard-executable:
@@ -103,5 +104,43 @@ jobs:
       - name: Publish package
         working-directory: java
         run: mvn --batch-mode deploy
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release-csharp-package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup .NET Core SDK ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install dependencies
+        working-directory: csharp
+        run: dotnet restore
+
+      - name: Copy .proto
+        run: mkdir -p csharp/proto && cp -r proto csharp/
+
+      - name: Build sources
+        working-directory: csharp
+        run: dotnet build --configuration Release
+
+      - name: Pack NuGet package
+        working-directory: csharp
+        run: dotnet pack --no-build --configuration Release
+
+      - name: Configure GitHub NuGet registry
+        working-directory: csharp
+        run: dotnet nuget add source --username USERNAME --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/takenet/index.json"
+
+      - name: Publish package
+        working-directory: csharp
+        run: find bin/Release/ -name '*.nupkg' | xargs -i dotnet nuget push {} --api-key ${{ secrets.GITHUB_TOKEN }} --source "github"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

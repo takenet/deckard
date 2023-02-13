@@ -7,6 +7,7 @@
     <version>0.0.2-SNAPSHOT</version>
 
     <name>deckard</name>
+    <description>Client for Deckard - A Cyclic Priority Queue (CPQ)</description>
     <licenses>
       <license>
         <name>MIT License</name>
