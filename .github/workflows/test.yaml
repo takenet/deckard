@@ -117,9 +117,13 @@ jobs:
         working-directory: csharp
         run: dotnet restore
 
+      - name: Build sources
+        working-directory: csharp
+        run: dotnet build --configuration Release
+
       - name: Pack NuGet package
         working-directory: csharp
-        run: dotnet pack --configuration Release
+        run: dotnet pack --no-build --configuration Release
 
       - name: Publish package
         working-directory: csharp
