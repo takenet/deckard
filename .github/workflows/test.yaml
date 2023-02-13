@@ -108,10 +108,10 @@ jobs:
       - name: Generate C# code
         run: make gen-csharp
 
-      - name: Setup .NET Core SDK ${{ DOTNET_VERSION }}
+      - name: Setup .NET Core SDK ${{ env.DOTNET_VERSION }}
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: ${{ DOTNET_VERSION }}
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Install dependencies
         working-directory: csharp
