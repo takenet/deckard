@@ -208,6 +208,7 @@ deckard
 │   ├── shutdown            # Shutdown package with graceful shutdown implementation
 │   └── trace               # Trace package with tracing implementation
 ├── java                    # Files for generating the Java API
+├── csharp                  # Files for generating the C# API
 ├── proto                   # .proto files with the all definitions
 └── service
     └── api                 # Folder with generated API files via protobuf for golang

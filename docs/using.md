@@ -10,6 +10,7 @@ Since we use [gRPC](https://grpc.io/) you can use any language they support to c
 We currently provide built-in support for the following languages:
 - [Golang](#golang)
 - [Java](#java)
+- [C#](#c)
 
 ## Golang
 
@@ -25,7 +26,7 @@ import (
 )
 ```
 
-Check our [Golang example](../examples/golang/example.go) for a complete example.
+**Check our [Golang example](../examples/golang/example.go) for a complete example.**
 
 ### Building the Golang API
 
@@ -42,7 +43,9 @@ We currently provide the Java API for the Deckard service in a Maven Repository.
 
 First you must add Deckard to your project. Check [here](https://github.com/takenet/deckard/packages/1790378) for the maven repository documentation.
 
-After configuring the repository and adding the dependency you can import the Deckard package and use it. Check our [Java example](../examples/java/Example.java) for a complete example.
+After configuring the repository and adding the dependency you can import the Deckard package and use it.
+
+**Check our [Java example](../examples/java/Example.java) for a complete example.**
 
 ### Building the Java API
 
@@ -59,11 +62,25 @@ make gen-java
 
 We currently provide the C# API for the Deckard service in a NuGet Repository.
 
-First you must add Deckard to your project. Check [here](https://github.com/takenet/deckard/pkgs/nuget/Deckard) for the NuGet repository documentation.
+First you must add Deckard NuGet repository to your project to be able to use it as a dependency. Check [here](https://github.com/takenet/deckard/pkgs/nuget/Deckard) for the NuGet repository documentation.
 
 Our repository link is `https://nuget.pkg.github.com/takenet/index.json` and you must configure it in your project (using `nuget.config` file or `dotnet nuget add source` command).
 
-After configuring the repository you must add the dependency to your project using `dotnet add package` as documented [here](https://github.com/takenet/deckard/pkgs/nuget/Deckard). After that you can use the Deckard namespace. Check our [C# example](../examples/csharp/Example.cs) for a complete example.
+Example for configuring it in the `nuget.config` file:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <clear />
+    <add key="deckard" value="https://nuget.pkg.github.com/takenet/index.json" />
+  </packageSources>
+</configuration>
+```
+
+After configuring the repository you must add the dependency using `dotnet add package` as documented [here](https://github.com/takenet/deckard/pkgs/nuget/Deckard). After that you can use the Deckard namespace in your code.
+
+**Check our [C# example](../examples/csharp/Example.cs) for a complete example.**
 
 ### Building the C# API
 

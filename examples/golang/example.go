@@ -15,6 +15,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*200)
 	defer cancel()
 
+	// Example using Insecure credentials
 	conn, err := grpc.DialContext(ctx, "localhost:8081", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 
 	if err != nil {

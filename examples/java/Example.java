@@ -9,6 +9,7 @@ import io.grpc.ManagedChannelBuilder;
 
 public class Example {
   public static void main(String[] args) {
+    // Example using Insecure credentials
     var client =
         DeckardGrpc.newBlockingStub(
             ManagedChannelBuilder.forTarget("localhost:8081").usePlaintext().build());
