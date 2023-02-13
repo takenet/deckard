@@ -25,9 +25,11 @@ import (
 )
 ```
 
-Check our [Golang example](../examples/golang/golang.go) for a complete example.
+Check our [Golang example](../examples/golang/example.go) for a complete example.
 
 ### Building the Golang API
+
+If you forked Deckard and changed anything in the [.proto](../proto/deckard_service.proto) file, you must generate the Golang API files again.
 
 Execute the following command to generate the Golang API files:
 ```shell
@@ -38,10 +40,13 @@ make gen-proto
 
 We currently provide the Java API for the Deckard service in a Maven Repository.
 
-> TODO: add maven repository and documentation on how to use it
-> TODO: add example
+First you must add Deckard to your project. Check [here](https://github.com/takenet/deckard/packages/1790378) for the maven repository documentation.
+
+After configuring the repository and adding the dependency you can import the Deckard package and use it. Check our [Java example](../examples/java/Example.java) for a complete example.
 
 ### Building the Java API
+
+If you forked Deckard and changed anything in the [.proto](../proto/deckard_service.proto) file, you must generate the Java API files again.
 
 To build java source files you must have [Maven](https://maven.apache.org/) installed.
 

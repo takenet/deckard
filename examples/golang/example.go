@@ -48,6 +48,15 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// do something with the message
+	// Do something with the message
 	log.Println(pullResponse.Messages[0].Score)
+
+	// Ack message
+	client.Ack(ctx, &deckard.AckRequest{
+		Id:    pullResponse.Messages[0].Id,
+		Queue: "queue",
+
+		// Lock message for 10 seconds before it can be pulled again
+		LockMs: 10000,
+	})
 }
