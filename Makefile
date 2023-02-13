@@ -42,6 +42,9 @@ gen-java:
 	mkdir -p java/src/main/proto && cp -r proto java/src/main/proto
 	mvn $(MAVEN_CLI_OPTS) -f ./java/pom.xml clean package
 
+gen-csharp:
+	protoc --proto_path=proto/ -I=proto/ --csharp_out=csharp/src --csharp_opt=file_extension=.g.cs,base_namespace=Takenet,serializable proto/deckard_service.proto
+
 gen-deploy-java:
 	mkdir -p java/src/main/proto && cp -r proto java/src/main/proto
 	mvn $(MAVEN_CLI_OPTS) -f ./java/pom.xml clean deploy

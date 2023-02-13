@@ -11,6 +11,9 @@ option go_package = "github.com/takenet/deckard";
 option java_multiple_files = true;
 option java_package = "br.com.blipai.deckard";
 
+// C# configs
+option csharp_namespace = "Takenet.Deckard";
+
 service Deckard {
   // Adds messages to the queue. If any message already exists (same id and queue) it will be updated
   rpc Add (AddRequest) returns (AddResponse);

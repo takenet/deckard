@@ -4,6 +4,7 @@ on: [pull_request]
 
 env:
   GO_VERSION: 1.18
+  DOTNET_VERSION: 6.0.x
 
 jobs:
   test:
@@ -92,3 +93,36 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: true
       if: always()
+
+  release-csharp-package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup protoc
+        uses: arduino/setup-protoc@v1
+
+      - name: Generate C# code
+        run: make gen-csharp
+
+      - name: Setup .NET Core SDK ${{ DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ DOTNET_VERSION }}
+
+      - name: Install dependencies
+        working-directory: csharp
+        run: dotnet restore
+
+      - name: Pack NuGet package
+        working-directory: csharp
+        run: dotnet pack --configuration Release
+
+      - name: Publish package
+        working-directory: csharp
+        run: find bin/Release/ -name '*.nupkg' | xargs -i dotnet nuget push {} --source "github"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

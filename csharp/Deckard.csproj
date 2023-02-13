@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Takenet.Deckard</RootNamespace>
+    <Company>Takenet</Company>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageVersion>0.0.2-SNAPSHOT</PackageVersion>
+    <Title>Deckard - A Cyclic Priority Queue (CPQ)</Title>
+    <Description>Deckard is a messaging system inspired by projects like: Google Cloud PubSub, Nats, Kafka and others.</Description>
+    <PackageProjectUrl>https://github.com/takenet/deckard</PackageProjectUrl>
+    <PackageLicenseUrl>https://github.com/takenet/deckard</PackageLicenseUrl>
+    <RepositoryUrl>https://github.com/takenet/deckard</RepositoryUrl>
+    <RepositoryType>GitHub</RepositoryType>
+    <PackageTags>deckard queue pubsub priority kafka messaging</PackageTags>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="3.21.12" />
+  </ItemGroup>
+
+</Project>
