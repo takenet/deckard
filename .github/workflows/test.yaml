@@ -127,6 +127,6 @@ jobs:
 
       - name: Publish package
         working-directory: csharp
-        run: find bin/Release/ -name '*.nupkg' | xargs -i dotnet nuget push {} --source "github"
+        run: find bin/Release/ -name '*.nupkg' | xargs -i dotnet nuget push {} --api-key ${{ secrets.GITHUB_TOKEN }} --source "github"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
