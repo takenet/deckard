@@ -4,7 +4,6 @@ on: [pull_request]
 
 env:
   GO_VERSION: 1.18
-  DOTNET_VERSION: 6.0.x
 
 jobs:
   test:
