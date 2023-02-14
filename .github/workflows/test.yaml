@@ -41,8 +41,11 @@ jobs:
     - name: Install mockgen
       run: go install github.com/golang/mock/mockgen@latest
 
-    - name: Make gen-mocks
+    - name: Generate Mocks
       run: make gen-mocks
+
+    - name: Generate TLS certificates
+      run: make gen-cert
 
     - name: Go mod tidy
       run: go mod tidy
