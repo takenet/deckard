@@ -93,7 +93,7 @@ func TestDeckardServerTLS(t *testing.T) {
 
 	viper.Set(config.TLS_SERVER_CERT_FILE_PATHS, "./cert/server-cert.pem")
 	viper.Set(config.TLS_SERVER_KEY_FILE_PATHS, "./cert/server-key.pem")
-	viper.Set(config.GRPC_PORT, "8085")
+	viper.Set(config.GRPC_PORT, "8086")
 
 	storage := storage.NewMemoryStorage(ctx)
 	cache := cache.NewMemoryCache()
@@ -148,7 +148,7 @@ func TestDeckardMutualTLS(t *testing.T) {
 	viper.Set(config.TLS_SERVER_CERT_FILE_PATHS, "./cert/server-cert.pem")
 	viper.Set(config.TLS_SERVER_KEY_FILE_PATHS, "./cert/server-key.pem")
 	viper.Set(config.TLS_CLIENT_AUTH_TYPE, "RequireAndVerifyClientCert")
-	viper.Set(config.GRPC_PORT, "8085")
+	viper.Set(config.GRPC_PORT, "8087")
 
 	storage := storage.NewMemoryStorage(ctx)
 	cache := cache.NewMemoryCache()
