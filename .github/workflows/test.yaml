@@ -26,6 +26,8 @@ jobs:
       with:
         go-version: ${{ env.GO_VERSION }}
 
+    - uses: actions/checkout@v3
+
     - name: Cache Go modules
       uses: actions/cache@v3
       with:
@@ -35,8 +37,6 @@ jobs:
         key: ${{ runner.os }}-golang-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           ${{ runner.os }}-golang-
-
-    - uses: actions/checkout@v3
 
     - name: Install mockgen
       run: go install github.com/golang/mock/mockgen@latest
