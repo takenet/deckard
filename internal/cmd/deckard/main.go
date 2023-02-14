@@ -118,7 +118,7 @@ func startGrpcServer(messagepool *messagepool.MessagePool, queueService queue.Co
 
 	server, err := deckard.ServeGRPCServer(ctx)
 	if err != nil {
-		zap.S().Error("Error with gRPC server", err)
+		zap.S().Error("Error starting gRPC server", err)
 		panic(err)
 	}
 

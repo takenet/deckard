@@ -49,6 +49,10 @@ gen-csharp:
 gen-mocks:
 	go generate ./...
 
+# Generate certificates for tests
+gen-cert:
+	cd internal/service/cert; ./gen.sh; cd ../../..
+
 fmt:
 	go mod tidy
 	go fmt ./...
