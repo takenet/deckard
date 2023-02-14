@@ -47,6 +47,11 @@ const (
 	HOUSEKEEPER_TASK_MAX_ELEMENTS_DELAY string = "housekeeper.task.max_elements.delay"
 	HOUSEKEEPER_TASK_METRICS_DELAY      string = "housekeeper.task.metrics.delay"
 
+	TLS_SERVER_CERT_FILE_PATHS string = "tls.server.cert_file_paths"
+	TLS_SERVER_KEY_FILE_PATHS  string = "tls.server.key_file_paths"
+	TLS_CLIENT_CERT_FILE_PATHS string = "tls.client.cert_file_paths"
+	TLS_CLIENT_AUTH_TYPE       string = "tls.client.auth_type"
+
 	DEBUG    string = "debug"
 	LOG_TYPE string = "log.type"
 )
@@ -111,4 +116,7 @@ func LoadConfig() {
 	viper.SetDefault(HOUSEKEEPER_TASK_TTL_DELAY, "1s")
 	viper.SetDefault(HOUSEKEEPER_TASK_MAX_ELEMENTS_DELAY, "1s")
 	viper.SetDefault(HOUSEKEEPER_TASK_METRICS_DELAY, "60s")
+
+	// TLS
+	viper.SetDefault(TLS_CLIENT_AUTH_TYPE, "NoClientCert")
 }

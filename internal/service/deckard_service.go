@@ -2,7 +2,10 @@ package service
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"strings"
 	"time"
@@ -20,6 +23,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
 	grpchealth "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
@@ -67,12 +71,25 @@ func (d *Deckard) ServeGRPCServer(ctx context.Context) (*grpc.Server, error) {
 		return nil, err
 	}
 
-	// register service
-	d.server = grpc.NewServer(
-		// OpenTelemetry APM
+	options := []grpc.ServerOption{
 		grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
 		grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor()),
+	}
+
+	credentials, err := loadTLSCredentials()
+	if err != nil {
+		return nil, err
+	}
+
+	if credentials != nil {
+		options = append(options, grpc.Creds(credentials))
+	}
+
+	// create and register service
+	d.server = grpc.NewServer(
+		options...,
 	)
+
 	reflection.Register(d.server)
 	grpchealth.RegisterHealthServer(d.server, d.healthServer)
 
@@ -103,6 +120,100 @@ func (d *Deckard) ServeGRPCServer(ctx context.Context) (*grpc.Server, error) {
 	}()
 
 	return d.server, nil
+}
+
+func loadTLSCredentials() (credentials.TransportCredentials, error) {
+	certPath := viper.GetString(config.TLS_SERVER_CERT_FILE_PATHS)
+	keyPath := viper.GetString(config.TLS_SERVER_KEY_FILE_PATHS)
+
+	if certPath == "" || keyPath == "" {
+		return nil, nil
+	}
+
+	// Load server's certificates and private key
+	certPathList := strings.Split(certPath, ",")
+	keyPathList := strings.Split(keyPath, ",")
+
+	if len(certPathList) != len(keyPathList) {
+		return nil, fmt.Errorf("certificate and key file paths must have the same length")
+	}
+
+	certificates := make([]tls.Certificate, len(certPathList))
+	for i := 0; i < len(certPathList); i++ {
+		cert, err := tls.LoadX509KeyPair(certPathList[i], keyPathList[i])
+
+		if err != nil {
+			return nil, fmt.Errorf("could not load credentials (%s and %s) for server: %w", certPathList[i], keyPathList[i], err)
+		}
+
+		certificates[i] = cert
+	}
+
+	authType, err := getClientAuthType()
+	if err != nil {
+		return nil, err
+	}
+
+	certPool, err := loadClientCertPool()
+	if err != nil {
+		return nil, err
+	}
+
+	// Create the credentials and return it
+	config := &tls.Config{
+		Certificates: certificates,
+		ClientAuth:   authType,
+	}
+
+	if certPool != nil {
+		config.ClientCAs = certPool
+	}
+
+	return credentials.NewTLS(config), nil
+}
+
+func loadClientCertPool() (*x509.CertPool, error) {
+	clientCert := viper.GetString(config.TLS_CLIENT_CERT_FILE_PATHS)
+
+	if clientCert == "" {
+		return nil, nil
+	}
+
+	certPool := x509.NewCertPool()
+	clientCerts := strings.Split(clientCert, ",")
+
+	for _, clientCert := range clientCerts {
+		pemServerCA, err := ioutil.ReadFile(clientCert)
+
+		if err != nil {
+			return nil, fmt.Errorf("error reading client CA's certificate (%s): %w", clientCert, err)
+		}
+
+		if !certPool.AppendCertsFromPEM(pemServerCA) {
+			return nil, fmt.Errorf("failed to add client CA's certificate (%s) to the pool", clientCert)
+		}
+	}
+
+	return certPool, nil
+}
+
+func getClientAuthType() (tls.ClientAuthType, error) {
+	clientAuth := viper.GetString(config.TLS_CLIENT_AUTH_TYPE)
+
+	switch clientAuth {
+	case "NoClientCert":
+		return tls.NoClientCert, nil
+	case "RequestClientCert":
+		return tls.RequestClientCert, nil
+	case "RequireAnyClientCert":
+		return tls.RequireAnyClientCert, nil
+	case "VerifyClientCertIfGiven":
+		return tls.VerifyClientCertIfGiven, nil
+	case "RequireAndVerifyClientCert":
+		return tls.RequireAndVerifyClientCert, nil
+	}
+
+	return tls.NoClientCert, fmt.Errorf("invalid client auth type: %s", clientAuth)
 }
 
 // Edits a queue configuration

@@ -2,8 +2,11 @@ package service
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"testing"
 	"time"
@@ -22,6 +25,7 @@ import (
 	"github.com/takenet/deckard/internal/messagepool/storage"
 	"github.com/takenet/deckard/internal/mocks"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
@@ -78,6 +82,114 @@ func TestMemoryDeckardGRPCServeIntegration(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, getResponse.Messages, 1)
 	require.Equal(t, "1", getResponse.Messages[0].Id)
+}
+
+func TestDeckardServerTLS(t *testing.T) {
+	if testing.Short() {
+		return
+	}
+
+	config.LoadConfig()
+
+	viper.Set(config.TLS_SERVER_CERT_FILE_PATHS, "./cert/server-cert.pem")
+	viper.Set(config.TLS_SERVER_KEY_FILE_PATHS, "./cert/server-key.pem")
+	viper.Set(config.GRPC_PORT, "8086")
+
+	storage := storage.NewMemoryStorage(ctx)
+	cache := cache.NewMemoryCache()
+
+	queueService := queue.NewConfigurationService(ctx, storage)
+
+	messagePool := messagepool.NewMessagePool(&audit.AuditorImpl{}, storage, queueService, cache)
+
+	srv := NewMemoryDeckardService(messagePool, queueService)
+
+	server, err := srv.ServeGRPCServer(ctx)
+	require.NoError(t, err)
+	defer server.Stop()
+
+	cert, err := loadClientCredentials(false)
+	require.NoError(t, err)
+
+	// Set up a connection to the server.
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+	defer cancel()
+	conn, err := grpc.DialContext(ctx, fmt.Sprint("0.0.0.0:", viper.GetInt(config.GRPC_PORT)), grpc.WithTransportCredentials(cert), grpc.WithBlock())
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	defer conn.Close()
+
+	client := deckard.NewDeckardClient(conn)
+
+	response, err := client.Add(ctx, &deckard.AddRequest{
+		Messages: []*deckard.AddMessage{
+			{
+				Id:       "1",
+				Queue:    "queue",
+				Timeless: true,
+			},
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, int64(1), response.CreatedCount)
+	require.Equal(t, int64(0), response.UpdatedCount)
+}
+
+func TestDeckardMutualTLS(t *testing.T) {
+	if testing.Short() {
+		return
+	}
+
+	config.LoadConfig()
+
+	viper.Set(config.TLS_CLIENT_CERT_FILE_PATHS, "./cert/ca-cert.pem")
+	viper.Set(config.TLS_SERVER_CERT_FILE_PATHS, "./cert/server-cert.pem")
+	viper.Set(config.TLS_SERVER_KEY_FILE_PATHS, "./cert/server-key.pem")
+	viper.Set(config.TLS_CLIENT_AUTH_TYPE, "RequireAndVerifyClientCert")
+	viper.Set(config.GRPC_PORT, "8087")
+
+	storage := storage.NewMemoryStorage(ctx)
+	cache := cache.NewMemoryCache()
+
+	queueService := queue.NewConfigurationService(ctx, storage)
+
+	messagePool := messagepool.NewMessagePool(&audit.AuditorImpl{}, storage, queueService, cache)
+
+	srv := NewMemoryDeckardService(messagePool, queueService)
+
+	server, err := srv.ServeGRPCServer(ctx)
+	require.NoError(t, err)
+	defer server.Stop()
+
+	cert, err := loadClientCredentials(true)
+	require.NoError(t, err)
+
+	// Set up a connection to the server.
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+	defer cancel()
+	conn, err := grpc.DialContext(ctx, fmt.Sprint("0.0.0.0:", viper.GetInt(config.GRPC_PORT)), grpc.WithTransportCredentials(cert), grpc.WithBlock())
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	defer conn.Close()
+
+	client := deckard.NewDeckardClient(conn)
+
+	response, err := client.Add(ctx, &deckard.AddRequest{
+		Messages: []*deckard.AddMessage{
+			{
+				Id:       "1",
+				Queue:    "queue",
+				Timeless: true,
+			},
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, int64(1), response.CreatedCount)
+	require.Equal(t, int64(0), response.UpdatedCount)
 }
 
 func TestMemoryDeckardIntegration(t *testing.T) {
@@ -541,4 +653,35 @@ func TestGetMessageByIdStorageError(t *testing.T) {
 	})
 
 	require.Error(t, err)
+}
+
+// Test helper to load client credentials.
+// It can be configured to have client certificate or not.
+func loadClientCredentials(loadClientCert bool) (credentials.TransportCredentials, error) {
+	// Load certificate of the CA who signed server's certificate
+	pemServerCA, err := ioutil.ReadFile("./cert/ca-cert.pem")
+	if err != nil {
+		return nil, err
+	}
+
+	certPool := x509.NewCertPool()
+	if !certPool.AppendCertsFromPEM(pemServerCA) {
+		return nil, fmt.Errorf("failed to add server CA's certificate")
+	}
+
+	config := &tls.Config{
+		RootCAs: certPool,
+	}
+
+	if loadClientCert {
+		// Load client's certificate and private key
+		clientCert, err := tls.LoadX509KeyPair("./cert/client-cert.pem", "./cert/client-key.pem")
+		if err != nil {
+			return nil, err
+		}
+
+		config.Certificates = []tls.Certificate{clientCert}
+	}
+
+	return credentials.NewTLS(config), nil
 }
