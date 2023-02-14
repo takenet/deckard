@@ -4,7 +4,7 @@ on:
   workflow_dispatch
 
 jobs:
-  release:
+  perform-release:
     runs-on: ubuntu-20.04
 
     steps:
@@ -17,7 +17,7 @@ jobs:
         VERSION=$(grep -oE 'const Version = "[0-9]+\.[0-9]+\.[0-9]+-SNAPSHOT"' internal/project/project.go | grep -oE '[0-9]+\.[0-9]+\.[0-9]+-SNAPSHOT')
         MAJOR=$(echo $VERSION | grep -oE '^[0-9]+')
         MINOR=$(echo $VERSION | grep -oE '\.[0-9]+\.' | grep -oE '[0-9]+')
-        PATCH=$(echo $VERSION | grep -oE '[0-9]+$' | grep -oE '[0-9]+')
+        PATCH=$(echo $VERSION | grep -oE '[0-9]+' | tail -n 1)
 
         # Remove the -SNAPSHOT suffix
         NEW_VERSION="$MAJOR.$MINOR.$PATCH"
@@ -26,7 +26,7 @@ jobs:
         sed -i -E "s/const Version = \"[0-9]+\.[0-9]+\.[0-9]+-SNAPSHOT\"/const Version = \"$NEW_VERSION\"/" internal/project/project.go
 
         # Replace version in second file
-        sed -i -E "s/    <version>[0-9]+\.[0-9]+\.[0-9]+-SNAPSHOT<\/version>/    <version>$NEW_VERSION<\/version>/" java/pom.xml
+        sed -i -E "1,10 s/    <version>[0-9]+\.[0-9]+\.[0-9]+-SNAPSHOT<\/version>/    <version>$NEW_VERSION<\/version>/" java/pom.xml
 
         # Replace version in third file
         sed -i -E "s/    <PackageVersion>[0-9]+\.[0-9]+\.[0-9]+-SNAPSHOT<\/PackageVersion>/    <PackageVersion>$NEW_VERSION<\/PackageVersion>/" csharp/Deckard.csproj
@@ -45,22 +45,26 @@ jobs:
 
     - name: Release
       uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'refs/tags/')
       with:
-        tag_name: ${{ env.deckard_new_version }}
+        tag_name: v${{ env.deckard_new_version }}
         generate_release_notes: true
+        token: ${{ secrets.RELEASE_PAT }}
+      env:
+        # https://github.com/orgs/community/discussions/25281
+        # https://github.com/orgs/community/discussions/16244
+        GITHUB_TOKEN: ${{ secrets.RELEASE_PAT }}
 
     - name: Add -SNAPSHOT suffix
       run: |
         # Increase patch version and add -SNAPSHOT suffix
-        NEW_PATCH=$(($PATCH + 1))
-        NEW_SNAPSHOT_VERSION="$MAJOR.$MINOR.$NEW_PATCH-SNAPSHOT"
+        NEW_PATCH=$((${{ env.deckard_patch }} + 1))
+        NEW_SNAPSHOT_VERSION="${{ env.deckard_major }}.${{ env.deckard_minor }}.$NEW_PATCH-SNAPSHOT"
 
         # Replace version in first file
         sed -i -E "s/const Version = \"[0-9]+\.[0-9]+\.[0-9]+\"/const Version = \"$NEW_SNAPSHOT_VERSION\"/" internal/project/project.go
 
         # Replace version in second file
-        sed -i -E "s/    <version>[0-9]+\.[0-9]+\.[0-9]+<\/version>/    <version>$NEW_SNAPSHOT_VERSION<\/version>/" java/pom.xml
+        sed -i -E "1,10 s/    <version>[0-9]+\.[0-9]+\.[0-9]+<\/version>/    <version>$NEW_SNAPSHOT_VERSION<\/version>/" java/pom.xml
 
         # Replace version in third file
         sed -i -E "s/    <PackageVersion>[0-9]+\.[0-9]+\.[0-9]+<\/PackageVersion>/    <PackageVersion>$NEW_SNAPSHOT_VERSION<\/PackageVersion>/" csharp/Deckard.csproj
@@ -70,5 +74,5 @@ jobs:
     - name: Commit changes
       uses: stefanzweifel/git-auto-commit-action@v4
       with:
-        commit_message: 'chore: ${{ env.deckard_new_snapshot_version }} release'
+        commit_message: 'chore: ${{ env.deckard_new_snapshot_version }}'
         file_pattern: 'internal/project/project.go java/pom.xml csharp/Deckard.csproj'
