@@ -59,6 +59,8 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
+      - uses: actions/checkout@v3
+
       - name: Cache Go modules
         uses: actions/cache@v3
         with:
@@ -71,8 +73,6 @@ jobs:
 
       - name: Setup Ko
         uses: ko-build/setup-ko@v0.6
-
-      - uses: actions/checkout@v3
 
       - name: Publish image
         env:
