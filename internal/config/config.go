@@ -16,6 +16,7 @@ const (
 	GRPC_ENABLED string = "grpc.enabled"
 	GRPC_PORT    string = "grpc.port"
 
+	REDIS_URI      string = "redis.uri"
 	REDIS_PASSWORD string = "redis.password"
 	REDIS_ADDRESS  string = "redis.address"
 	REDIS_PORT     string = "redis.port"
@@ -27,6 +28,7 @@ const (
 	ELASTIC_PASSWORD string = "elastic.password"
 	ELASTIC_USER     string = "elastic.user"
 
+	MONGO_URI                            string = "mongo.uri"
 	MONGO_ADDRESSES                      string = "mongo.addresses"
 	MONGO_AUTH_DB                        string = "mongo.auth_db"
 	MONGO_PASSWORD                       string = "mongo.password"
