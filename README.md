@@ -222,39 +222,63 @@ For more details about each component see the [components documentation](docs/co
 
 We currently use the [viper](github.com/spf13/viper) project to manage configurations and the current implementation delegates the configuration to environment variables.
 
-The following table shows all available configurations:
+All available environment variables are listed below:
+
+### Service configurations
 
 | Environment Variable         | Default | Description |
 |------------------------------|---------|-------------|
-| DECKARD_DEBUG | false | To enable debug mode to log more information. |
-| DECKARD_LOG_TYPE | json | The log type to use. Available: json, text |
-| DECKARD_STORAGE_TYPE | MEMORY | The storage implementation to use. Available: MEMORY, MONGODB |
-| DECKARD_CACHE_TYPE | MEMORY | The cache implementation to use. Available: MEMORY, REDIS |
-| DECKARD_HOUSEKEEPER_ENABLED | true | To enable housekeeper tasks. |
-| DECKARD_GRPC_ENABLED | true | To enable the gRPC service. |
-| DECKARD_GRPC_PORT | 8081 | The gRPC port to listen. |
-| DECKARD_REDIS_ADDRESS | localhost | The redis address to connect while using redis cache implementation.  |
-| DECKARD_REDIS_PASSWORD |  | The redis password to connect while using redis cache implementation. |
-| DECKARD_REDIS_PORT | 6379 | The redis port to connect while using redis cache implementation.  |
-| DECKARD_REDIS_DB | 0 | The database to use while using redis cache implementation.  |
-| DECKARD_AUDIT_ENABLED | false | To enable auditing. |
-| DECKARD_ELASTIC_ADDRESS | http://localhost:9200/ | A ElasticSearch address to connect to store audit information.  |
-| DECKARD_ELASTIC_PASSWORD |  | A ElasticSearch password to connect to store audit information.  |
-| DECKARD_ELASTIC_USER |  | A ElasticSearch user to connect to store audit information.  |
-| DECKARD_MONGO_ADDRESSES | localhost:27017 | The MongoDB address to connect while using MongoDB storage implementation. |
-| DECKARD_MONGO_AUTH_DB |  | The MongoDB auth database to authenticate while using MongoDB storage implementation. |
-| DECKARD_MONGO_PASSWORD |  | The MongoDB password to authenticate while using MongoDB storage implementation. |
-| DECKARD_MONGO_DATABASE | deckard | The MongoDB database to use to store messages while using MongoDB storage implementation. |
-| DECKARD_MONGO_COLLECTION | queue | The MongoDB collection to use to store messages while using MongoDB storage implementation. |
-| DECKARD_MONGO_USER |  | The MongoDB user to authenticate while using MongoDB storage implementation. |
-| DECKARD_MONGO_SSL | false | To enable SSL while using MongoDB storage implementation. |
-| DECKARD_MONGO_QUEUE_CONFIGURATION_COLLECTION | queue_configuration | The MongoDB collection to use to store queue configurations while using MongoDB storage implementation. |
-| DECKARD_HOUSEKEEPER_TASK_TIMEOUT_DELAY | 1s | The delay between each timeout task execution. |
-| DECKARD_HOUSEKEEPER_TASK_UNLOCK_DELAY | 1s | The delay between each unlock task execution. |
-| DECKARD_HOUSEKEEPER_TASK_UPDATE_DELAY | 1s | The delay between each update task execution. |
-| DECKARD_HOUSEKEEPER_TASK_TTL_DELAY | 1s | The delay between each ttl task execution. |
-| DECKARD_HOUSEKEEPER_TASK_MAX_ELEMENTS_DELAY | 1s | The delay between each max elements task execution. |
-| DECKARD_HOUSEKEEPER_TASK_METRICS_DELAY | 60s | The delay between each metrics task execution. |
+| `DECKARD_DEBUG` | false | To enable debug mode to log more information. |
+| `DECKARD_LOG_TYPE` | json | The log type to use. Available: json, text |
+| `DECKARD_GRPC_ENABLED` | true | To enable the gRPC service. You can disable gRPC service if you want an instance to perform only housekeeper tasks. |
+| `DECKARD_GRPC_PORT` | 8081 | The gRPC port to listen. |
+
+### Cache Configurations
+
+| Environment Variable         | Default | Description |
+|------------------------------|---------|-------------|
+| `DECKARD_CACHE_TYPE` | MEMORY | The cache implementation to use. Available: MEMORY, REDIS |
+| `DECKARD_REDIS_URI` | | The Redis Connection URI to connect with Redis. It will take precedence over any other environment variable related to the connection Redis connection. |
+| `DECKARD_REDIS_ADDRESS` | localhost | The redis address to connect while using redis cache implementation. It will be overriden by `DECKARD_REDIS_URI` if present.  |
+| `DECKARD_REDIS_PASSWORD` |  | The redis password to connect while using redis cache implementation. It will be overriden by `DECKARD_REDIS_URI` if present. |
+| `DECKARD_REDIS_PORT` | 6379 | The redis port to connect while using redis cache implementation. It will be overriden by `DECKARD_REDIS_URI` if present. |
+| `DECKARD_REDIS_DB` | 0 | The database to use while using redis cache implementation. It will be overriden by `DECKARD_REDIS_URI` if present. |
+
+### Storage Configurations
+
+| Environment Variable         | Default | Description |
+|------------------------------|---------|-------------|
+| `DECKARD_STORAGE_TYPE` | MEMORY | The storage implementation to use. Available: MEMORY, MONGODB |
+| `DECKARD_MONGO_URI` |  | The MongoDB Connection URI to connect with MongoDB. It can override any other environment variable related to the connection MongoDB connection since it takes precedence. |
+| `DECKARD_MONGO_ADDRESSES` | localhost:27017 | The MongoDB addresses separated by comma to connect while using MongoDB storage implementation. It can be overridden by `DECKARD_MONGO_URI`. |
+| `DECKARD_MONGO_AUTH_DB` |  | The MongoDB auth database to authenticate while using MongoDB storage implementation. It can be overridden by `DECKARD_MONGO_URI`. |
+| `DECKARD_MONGO_PASSWORD` |  | The MongoDB password to authenticate while using MongoDB storage implementation. It can be overridden by `DECKARD_MONGO_URI`. |
+| `DECKARD_MONGO_DATABASE` | deckard | The MongoDB database to use to store messages while using MongoDB storage implementation. |
+| `DECKARD_MONGO_COLLECTION` | queue | The MongoDB collection to use to store messages while using MongoDB storage implementation. |
+| `DECKARD_MONGO_USER` |  | The MongoDB user to authenticate while using MongoDB storage implementation. It can be overridden by `DECKARD_MONGO_URI`. |
+| `DECKARD_MONGO_SSL` | false | To enable SSL while using MongoDB storage implementation. It can be overridden by `DECKARD_MONGO_URI`. |
+| `DECKARD_MONGO_QUEUE_CONFIGURATION_COLLECTION` | queue_configuration | The MongoDB collection to use to store queue configurations while using MongoDB storage implementation. |
+
+### Housekeeper Configurations
+
+| Environment Variable         | Default | Description |
+|------------------------------|---------|-------------|
+| `DECKARD_HOUSEKEEPER_ENABLED` | true | To enable housekeeper tasks. |
+| `DECKARD_HOUSEKEEPER_TASK_TIMEOUT_DELAY` | 1s | The delay between each timeout task execution. |
+| `DECKARD_HOUSEKEEPER_TASK_UNLOCK_DELAY` | 1s | The delay between each unlock task execution. |
+| `DECKARD_HOUSEKEEPER_TASK_UPDATE_DELAY` | 1s | The delay between each update task execution. |
+| `DECKARD_HOUSEKEEPER_TASK_TTL_DELAY` | 1s | The delay between each ttl task execution. |
+| `DECKARD_HOUSEKEEPER_TASK_MAX_ELEMENTS_DELAY` | 1s | The delay between each max elements task execution. |
+| `DECKARD_HOUSEKEEPER_TASK_METRICS_DELAY` | 60s | The delay between each metrics task execution. |
+
+### Audit Configurations
+
+| Environment Variable         | Default | Description |
+|------------------------------|---------|-------------|
+| `DECKARD_AUDIT_ENABLED` | false | To enable auditing. |
+| `DECKARD_ELASTIC_ADDRESS` | http://localhost:9200/ | A ElasticSearch address to connect to store audit information.  |
+| `DECKARD_ELASTIC_PASSWORD` |  | A ElasticSearch password to connect to store audit information.  |
+| `DECKARD_ELASTIC_USER` |  | A ElasticSearch user to connect to store audit information.  |
 
 ## Contributing
 

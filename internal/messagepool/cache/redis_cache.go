@@ -50,11 +50,24 @@ func NewRedisCache(ctx context.Context) (*RedisCache, error) {
 
 	logger.S(ctx).Info("Connecting to ", address, ".")
 
-	redisClient := redis.NewClient(&redis.Options{
+	uri := viper.GetString(config.REDIS_URI)
+
+	options := &redis.Options{
 		Addr:     address,
 		Password: viper.GetString(config.REDIS_PASSWORD),
 		DB:       viper.GetInt(config.REDIS_DB),
-	})
+	}
+
+	if uri != "" {
+		var err error
+		options, err = redis.ParseURL(uri)
+
+		if err != nil {
+			return nil, fmt.Errorf("error parsing redis uri: %w", err)
+		}
+	}
+
+	redisClient := redis.NewClient(options)
 
 	// OpenTelemetry APM
 	redisClient.AddHook(redisotel.NewTracingHook())

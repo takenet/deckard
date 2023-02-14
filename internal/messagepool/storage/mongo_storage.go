@@ -82,11 +82,13 @@ func createOptions() *options.ClientOptions {
 	}
 
 	addresses := viper.GetString(config.MONGO_ADDRESSES)
-	if strings.Contains(addresses, "localhost") {
-		duration := time.Second
-		mongoOpts.ServerSelectionTimeout = &duration
+	if addresses != "" {
+		if strings.Contains(addresses, "localhost") {
+			duration := time.Second
+			mongoOpts.ServerSelectionTimeout = &duration
+		}
+		mongoOpts.SetHosts(strings.Split(addresses, ","))
 	}
-	mongoOpts.SetHosts(strings.Split(addresses, ","))
 
 	if viper.GetBool(config.MONGO_SSL) {
 		mongoOpts.SetTLSConfig(&tls.Config{})
@@ -94,6 +96,10 @@ func createOptions() *options.ClientOptions {
 
 	// OpenTelemetry APM
 	mongoOpts.SetMonitor(otelmongo.NewMonitor())
+
+	if viper.GetString(config.MONGO_URI) != "" {
+		mongoOpts.ApplyURI(viper.GetString(config.MONGO_URI))
+	}
 
 	return mongoOpts
 }
