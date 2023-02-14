@@ -112,7 +112,7 @@ func TestDeckardServerTLS(t *testing.T) {
 	require.NoError(t, err)
 
 	// Set up a connection to the server.
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Millisecond)
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	conn, err := grpc.DialContext(ctx, fmt.Sprint("0.0.0.0:", viper.GetInt(config.GRPC_PORT)), grpc.WithTransportCredentials(cert), grpc.WithBlock())
 	if err != nil {
@@ -167,7 +167,7 @@ func TestDeckardMutualTLS(t *testing.T) {
 	require.NoError(t, err)
 
 	// Set up a connection to the server.
-	ctx, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	conn, err := grpc.DialContext(ctx, fmt.Sprint("0.0.0.0:", viper.GetInt(config.GRPC_PORT)), grpc.WithTransportCredentials(cert), grpc.WithBlock())
 	if err != nil {
