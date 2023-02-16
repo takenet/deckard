@@ -206,7 +206,7 @@ The project has as its base a RPC service with the Google implementation known a
 It is organized in the following folders:
 
 ```
-deckard
+deckard                     # Root folder with project files and Golang service/gRPC generated sources
 ├── dashboards              # Dashboards templates for Grafana (metrics) and Kibana (audit)
 ├── docker                  # Docker compose to help running integration tests and base docker image file
 ├── docs                    # Documentation files
@@ -231,8 +231,6 @@ deckard
 ├── java                    # Files for generating the Java API
 ├── csharp                  # Files for generating the C# API
 ├── proto                   # .proto files with the all definitions
-└── service
-    └── api                 # Folder with generated API files via protobuf for golang
 ```
 
 > See the [configurations section](/README.md?#configuration) to see how to configure any internal component.
