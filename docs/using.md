@@ -5,7 +5,7 @@ Deckard is a service that provides a queue system for any application that needs
 
 Since we use [gRPC](https://grpc.io/) you can use any language they support to communicate with Deckard.
 
-> If you want to build a client for a language that we don't provide built-in support yet, you can use our [.proto file](proto/deckard_service.proto) file to generate the client following the [gRPC documentation](https://grpc.io/docs/languages/).
+> If you want to build a client for a language that we don't provide built-in support yet, you can use our [.proto file](/proto/deckard_service.proto) file to generate the client following the [gRPC documentation](https://grpc.io/docs/languages/).
 
 We currently provide built-in support for the following languages:
 - [Golang](#golang)
