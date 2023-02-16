@@ -35,9 +35,9 @@ The **main** objectives of the project are:
 - *Developer friendly*: easy to understand and pleasant to use;
 - *Scalable*: it should be possible to support thousands of requests per second and millions of messages;
 
-> **What Deckard is not?**
->
-> It is not a project that has business logic. No logic of any product should be implemented inside Deckard. It was made to be generic and customizable for each individual use case.
+### **What Deckard is not?**
+
+It is not a normal messaging/queue system. If you don't have a use case that needs priority and cyclic queuing or locking mechanism, you should use GCP PubSub, Kafka, RabbitMQ, Azure Service Bus, Amazon SQS, or any other messaging system.
 
 ## Project Status
 
