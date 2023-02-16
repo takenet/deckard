@@ -39,6 +39,16 @@ The **main** objectives of the project are:
 >
 > It is not a project that has business logic. No logic of any product should be implemented inside Deckard. It was made to be generic and customizable for each individual use case.
 
+## Project Status
+
+Deckard has been used in a production environment for over 2 years handling millions of messages and thousands of requests per second.
+
+To be able to open source the project we had to make some changes to the code and that is the reason we opted to release it with a `0.0.x` version.
+
+We also know few issues we need to work but currently we are very confident that it can be used in production environments. Check our [issues](https://github.com/takenet/deckard/issues) to see what we are working on.
+
+Please let us know if you find any issues or have any suggestions in our [discussions](https://github.com/takenet/deckard/discussions).
+
 ## Getting Started
 
 A [getting started guide](/docs/getting-started.md) is available to help you to start using Deckard.
