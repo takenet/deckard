@@ -1,6 +1,12 @@
 name: Test
 
-on: [pull_request]
+on:
+  pull_request:
+    branches:    
+      - main
+  push:
+    branches:
+      - main
 
 env:
   GO_VERSION: 1.18
