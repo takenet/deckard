@@ -5,6 +5,10 @@ on: [pull_request]
 env:
   GO_VERSION: 1.18
 
+permissions:
+  checks: write
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -55,10 +59,10 @@ jobs:
 
     - name: Publish test results
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: gotest.out
         path: gotest.out
-      if: always()
 
     - name: Install go-junit-report
       run: go install github.com/jstemmer/go-junit-report@latest
@@ -68,20 +72,12 @@ jobs:
       run: cat gotest.out | go-junit-report -set-exit-code > junit.xml
       if: always()
 
-    - name: Cat debugging
-      run: cat gotest.out
-      if: always()
-
-    - name: Cat debugging
-      run: cat junit.xml
-      if: always()
-
     - name: Publish JUnit report
       uses: actions/upload-artifact@v2
+      if: always()
       with:
         name: junit.xml
         path: junit.xml
-      if: always()
 
     - name: JUnit report action
       uses: mikepenz/action-junit-report@v3
@@ -91,7 +87,9 @@ jobs:
 
     - name: Coverage Report
       uses: codecov/codecov-action@v3
+      if: always()
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: true
-      if: always()
+        files: coverage.out
+        verbose: true
