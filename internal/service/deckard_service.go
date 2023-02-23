@@ -374,7 +374,7 @@ func (d *Deckard) Pull(ctx context.Context, request *deckard.PullRequest) (*deck
 	addTransactionQueue(ctx, request.Queue)
 	addTransactionLabel(ctx, "amount", fmt.Sprint(request.Amount))
 
-	if request.Amount == 0 {
+	if request.Amount <= 0 {
 		request.Amount = 1
 	}
 

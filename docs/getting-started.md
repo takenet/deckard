@@ -68,6 +68,10 @@ We suggest the usage of [Postman](https://www.postman.com/) to consume the gRPC 
 
 5. Select the `Add` method to add messages and click `Generate Example Message`. Change the message body if wanted and click `Invoke`.
 
+> Validate fields before sending, Postman may generate negative numbers for `int` fields.
+>
+> Also, Postman will not generate valid fields for the `payload` field. It will generate invalid `type_url` values. Check the [documentation](https://developers.google.com/protocol-buffers/docs/proto3#any) to see how `any` fields works and how to generate the `type_url` field.
+
 You have now successfully added messages to the Deckard queue.
 
 Now you can use the `Pull` method to consume messages and `Ack` or `Nack` to acknowledge the message. Remember to use the same `queue` when using `Pull` and the same `id` when using `Ack` or `Nack`.
