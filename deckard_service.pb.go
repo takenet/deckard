@@ -265,6 +265,7 @@ type PullRequest struct {
 	Queue string `protobuf:"bytes,1,opt,name=queue,proto3" json:"queue,omitempty"`
 	// Number of messages to fetch.
 	// Caution: as greater the amount, as more time it will take to process the request.
+	// Max value is 1000 and the default value is 1
 	Amount int32 `protobuf:"varint,2,opt,name=amount,proto3" json:"amount,omitempty"`
 	//
 	//Number to subtract to the current time to filter the max score to return.
