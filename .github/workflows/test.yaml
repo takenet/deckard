@@ -79,7 +79,7 @@ jobs:
       if: always()
 
     - name: Publish JUnit report
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       if: always()
       with:
         name: junit.xml
