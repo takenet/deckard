@@ -51,17 +51,17 @@ jobs:
       - name: Compress files
         run: |
           # Compress the Windows executable to zip
-          zip -r exec/deckard-windows-amd64.exe.zip exec/deckard-windows-amd64.exe
+          zip -r -j deckard-windows-amd64.exe.zip exec/deckard-windows-amd64.exe
 
           # Compress the Linux executable to tar.gz
-          tar -czvf exec/deckard-linux-amd64.tar.gz exec/deckard-linux-amd64
+          tar -czvf deckard-linux-amd64.tar.gz -C exec deckard-linux-amd64
 
       - name: Publish
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            exec/deckard-windows-amd64.exe.zip
-            exec/deckard-linux-amd64.tar.gz
+            deckard-windows-amd64.exe.zip
+            deckard-linux-amd64.tar.gz
 
   release-deckard-image:
     runs-on: ubuntu-latest
