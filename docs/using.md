@@ -60,25 +60,10 @@ make gen-java
 
 ## C#
 
-We currently provide the C# API for the Deckard service in a NuGet Repository.
+We currently provide the C# API for the Deckard service in a NuGet Repository:
+- https://www.nuget.org/packages/Deckard/
 
-First you must add Deckard NuGet repository to your project to be able to use it as a dependency. Check [here](https://github.com/takenet/deckard/pkgs/nuget/Deckard) for the NuGet repository documentation.
-
-Our repository link is `https://nuget.pkg.github.com/takenet/index.json` and you must configure it in your project (using `nuget.config` file or `dotnet nuget add source` command).
-
-Example for configuring it in the `nuget.config` file:
-
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<configuration>
-  <packageSources>
-    <clear />
-    <add key="deckard" value="https://nuget.pkg.github.com/takenet/index.json" />
-  </packageSources>
-</configuration>
-```
-
-After configuring the repository you must add the dependency using `dotnet add package` as documented [here](https://github.com/takenet/deckard/pkgs/nuget/Deckard). After that you can use the Deckard namespace in your code.
+You must add the dependency using `dotnet add package` as documented [here](https://www.nuget.org/packages/Deckard/). After that you can use the Deckard namespace in your code.
 
 **Check our [C# example](../examples/csharp/Example.cs) for a complete example.**
 
