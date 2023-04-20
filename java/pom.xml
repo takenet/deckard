@@ -4,7 +4,7 @@
 
     <groupId>br.com.blipai</groupId>
     <artifactId>deckard</artifactId>
-    <version>0.0.10-SNAPSHOT</version>
+    <version>0.0.10</version>
 
     <name>deckard</name>
     <description>Client for Deckard - A Cyclic Priority Queue (CPQ)</description>
