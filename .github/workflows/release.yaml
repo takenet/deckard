@@ -109,13 +109,9 @@ jobs:
       - name: Copy .proto
         run: mkdir -p java/src/main/proto && cp -r proto java/src/main/proto
 
-      - name: Build Java sources
-        working-directory: java
-        run: mvn clean package
-
       - name: Publish package
         working-directory: java
-        run: mvn --batch-mode deploy
+        run: mvn --batch-mode --errors --show-version clean deploy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
