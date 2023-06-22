@@ -9,12 +9,15 @@ Deckard is a messaging system inspired by projects like: Google Cloud PubSub, Na
 The main difference is that Deckard has a priority associated with each message and it is optionally cyclic, meaning that the message can be delivered again after a certain user-managed time.
 
 Briefly:
-- An application inserts a message to be queued and its configuration (TTL, priority, etc.);
-- A second application fetches message from the deckard at regular intervals and performs any processing;
-    - When it finishes processing a message, this application notifies the deckard with the processing result and its new priority.
-    - The application may also send blocking time to the deckard, meaning that the message will not be delivered until the blocking time is reached.
-    - It is also possible to send a message to the deckard with a new priority, meaning that the message will be prioritized and then delivered.
-- When the message's time limit is reached or an application removes it, it stops being delivered;
+- An application inserts a message to be queued and its configuration (TTL, metadata, payload, etc).
+    - The message will be prioritized with a default timestamp-based algorithm. The priority can also be provided by the application.
+- A worker application pull messages from Deckard at regular intervals and performs any processing.
+    - When it finishes processing a message, the application must notify with the processing result.
+    - When notifying, the application may provide a lock time, to lock the message for a certain duration of time before being requeued and delivered again.
+    - It is also possible to notify a message changing its priority.
+- When the message's TTL is reached, it stops being delivered;
+    - For some use cases the TTL can be set as infinite.
+    - An application can also remove the message when notifying.
 
 ## Motivation
 
