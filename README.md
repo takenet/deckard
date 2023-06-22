@@ -1,8 +1,8 @@
-# Deckard - A Cyclic Priority Queue (CPQ)
+# Deckard: A Highly Scalable Cyclic Priority Queue
 
 [![codecov](https://codecov.io/gh/takenet/deckard/branch/main/graph/badge.svg?token=IMT8NWZ69A)](https://codecov.io/gh/takenet/deckard)
 
-Deckard is a messaging system inspired by projects like: Google Cloud PubSub, Nats, Kafka and others.
+Deckard is a priority queue system inspired by projects like: Google Cloud PubSub, Nats, Kafka and others.
 
 ![deckard](docs/deckard_cartoon.webp)
 
