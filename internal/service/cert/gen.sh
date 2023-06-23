@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if test -f ca-cert.pem && test -f ca-key.pem && test -f client-cert.pem && test -f client-key.pem && test -f client-req.pem && test -f server-cert.pem && test -f server-key.pem && test -f server-req.pem; then
+    exit 0
+fi
+
 # Generate CA's private key and self-signed certificate
 openssl req -x509 -newkey rsa:4096 -days 365 -nodes -keyout ca-key.pem -out ca-cert.pem -subj "/CN=*.deckard.test/emailAddress=server@deckard.test"
 

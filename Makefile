@@ -22,17 +22,29 @@ run:
 
 # Run only unit tests
 unit-test:
-	go test -parallel 6 -v -short -covermode=atomic -coverprofile coverage.out ./... 2>&1 | tee gotest.out
+	make gen-cert
+	make gen-mocks
+	@if ! command -v gotestsum > /dev/null; then echo "Installing gotestsum" && go install -a -v gotest.tools/gotestsum@latest; fi;
+
+	gotestsum --junitfile junit.xml -- -p 6 --parallel 6 -v -short -covermode=atomic -coverprofile coverage.out ./... 2>&1 | tee gotest.out
 	go tool cover -func coverage.out | tee coverage.txt
 
 # Run all tests including integration tests
 test:
-	go test -v -p 1 -parallel 6 -covermode=atomic -coverprofile coverage.out ./... 2>&1 | tee gotest.out
+	make gen-cert
+	make gen-mocks
+	@if ! command -v gotestsum > /dev/null; then echo "Installing gotestsum" && go install -a -v gotest.tools/gotestsum@latest; fi;
+
+	gotestsum --junitfile junit.xml -- -v -p 1 -parallel 1 -covermode=atomic -coverprofile coverage.out ./... 2>&1 | tee gotest.out
 	go tool cover -func coverage.out | tee coverage.txt
 
 # Run only integration tests
 integration-test:
-	go test -v -p 1 -parallel 6 -run Integration -covermode=atomic -coverprofile coverage.out ./... 2>&1 | tee gotest.out
+	make gen-cert
+	make gen-mocks
+	@if ! command -v gotestsum > /dev/null; then echo "Installing gotestsum" && go install -a -v gotest.tools/gotestsum@latest; fi;
+
+	gotestsum --junitfile junit.xml -- -v -p 1 -parallel 1 -run Integration -covermode=atomic -coverprofile coverage.out  ./... 2>&1 | tee gotest.out
 	go tool cover -func coverage.out | tee coverage.txt
 
 gen-proto:
@@ -47,11 +59,13 @@ gen-csharp:
 	cd csharp; dotnet build --configuration Release
 
 gen-mocks:
+	@if ! command -v mockgen > /dev/null; then echo "Installing mockgen" && go install -a -v github.com/golang/mock/mockgen@latest; fi;
+
 	go generate ./...
 
 # Generate certificates for tests
 gen-cert:
-	cd internal/service/cert; ./gen.sh; cd ../../..
+	cd internal/service/cert; ./gen.sh 2>/dev/null || echo "ERROR: Certificate generation failed"
 
 fmt:
 	go mod tidy

@@ -9,6 +9,7 @@ report.xml
 gotest.out
 coverage.out
 coverage.txt
+.coverage.txt
 junit.xml
 
 # Mock files

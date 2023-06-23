@@ -4,7 +4,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/takenet/deckard/internal/config"
@@ -16,8 +15,8 @@ func TestRedisCacheIntegration(t *testing.T) {
 		t.Skip()
 	}
 
-	viper.Set(config.REDIS_ADDRESS, "localhost")
-	viper.Set(config.REDIS_PORT, 6379)
+	config.RedisAddress.Set("localhost")
+	config.RedisPort.Set(6379)
 
 	cache, err := NewRedisCache(ctx)
 
@@ -33,7 +32,7 @@ func TestNewCacheWithoutServerShouldErrorIntegration(t *testing.T) {
 		t.Skip()
 	}
 
-	viper.Set(config.REDIS_PORT, 12345)
+	config.RedisPort.Set(12345)
 
 	_, err := NewRedisCache(ctx)
 
@@ -45,7 +44,7 @@ func TestInsertShouldInsertWithCorrectScoreIntegration(t *testing.T) {
 		t.Skip()
 	}
 
-	config.LoadConfig()
+	config.Configure(true)
 
 	cache, err := NewRedisCache(ctx)
 	require.NoError(t, err)
@@ -98,12 +97,12 @@ func TestConnectWithRedisUsingConnectionURI(t *testing.T) {
 	defer os.Unsetenv("DECKARD_REDIS_PORT")
 	defer os.Unsetenv("DECKARD_REDIS_DB")
 
-	config.LoadConfig()
+	config.Configure(true)
 
-	require.Equal(t, "none", viper.GetString(config.REDIS_ADDRESS))
-	require.Equal(t, "none", viper.GetString(config.REDIS_PASSWORD))
-	require.Equal(t, "1234", viper.GetString(config.REDIS_PORT))
-	require.Equal(t, "5", viper.GetString(config.REDIS_DB))
+	require.Equal(t, "none", config.RedisAddress.Get())
+	require.Equal(t, "none", config.RedisPassword.Get())
+	require.Equal(t, 1234, config.RedisPort.GetInt())
+	require.Equal(t, 5, config.RedisDB.GetInt())
 
 	cache, err := NewRedisCache(ctx)
 	require.NoError(t, err)
@@ -129,9 +128,13 @@ func TestConnectWithRedisUsingConnectionURI(t *testing.T) {
 }
 
 func TestGetActivePoolName(t *testing.T) {
+	t.Parallel()
+
 	require.Equal(t, "deckard:queue:test", (&RedisCache{}).activePool("test"))
 }
 
 func TestGetProcessingPoolName(t *testing.T) {
+	t.Parallel()
+
 	require.Equal(t, "deckard:queue:test:tmp", (&RedisCache{}).processingPool("test"))
 }

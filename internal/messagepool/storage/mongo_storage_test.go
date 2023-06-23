@@ -5,7 +5,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/takenet/deckard/internal/config"
@@ -19,10 +18,10 @@ func TestMongoStorageIntegration(t *testing.T) {
 		t.Skip()
 	}
 
-	config.LoadConfig()
+	config.Configure(true)
 
-	viper.Set(config.MONGO_ADDRESSES, "localhost:27017")
-	viper.Set(config.MONGO_DATABASE, "unit_test")
+	config.MongoAddresses.Set("localhost:27017")
+	config.MongoDatabase.Set("unit_test")
 
 	storage, err := NewMongoStorage(context.Background())
 
@@ -33,7 +32,7 @@ func TestMongoStorageIntegration(t *testing.T) {
 	})
 }
 
-func TestMongoConnectionWithURI(t *testing.T) {
+func TestMongoConnectionWithURIIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
 	}
@@ -46,7 +45,7 @@ func TestMongoConnectionWithURI(t *testing.T) {
 	defer os.Unsetenv("DECKARD_MONGO_ADDRESSES")
 	defer os.Unsetenv("DECKARD_MONGO_PASSWORD")
 
-	config.LoadConfig()
+	config.Configure(true)
 
 	storage, err := NewMongoStorage(context.Background())
 	require.NoError(t, err)
@@ -68,10 +67,8 @@ func TestNewStorageWithoutServerShouldErrorIntegration(t *testing.T) {
 		t.Skip()
 	}
 
-	t.Parallel()
-
-	viper.Set(config.MONGO_ADDRESSES, "localhost:41343")
-	viper.Set(config.MONGO_DATABASE, "unit_test")
+	config.MongoAddresses.Set("localhost:41343")
+	config.MongoDatabase.Set("unit_test")
 
 	_, err := NewMongoStorage(context.Background())
 

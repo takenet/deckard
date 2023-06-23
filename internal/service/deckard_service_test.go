@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/takenet/deckard"
@@ -36,9 +35,9 @@ func TestMemoryDeckardGRPCServeIntegration(t *testing.T) {
 		return
 	}
 
-	config.LoadConfig()
+	config.Configure(true)
 
-	viper.Set(config.GRPC_PORT, "8085")
+	config.GrpcPort.Set("8085")
 
 	storage := storage.NewMemoryStorage(ctx)
 	cache := cache.NewMemoryCache()
@@ -56,7 +55,7 @@ func TestMemoryDeckardGRPCServeIntegration(t *testing.T) {
 	// Set up a connection to the server.
 	ctx, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
 	defer cancel()
-	conn, err := grpc.DialContext(ctx, fmt.Sprint("localhost:", viper.GetInt(config.GRPC_PORT)), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	conn, err := grpc.DialContext(ctx, fmt.Sprint("localhost:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -89,11 +88,11 @@ func TestDeckardServerTLS(t *testing.T) {
 		return
 	}
 
-	config.LoadConfig()
+	config.Configure(true)
 
-	viper.Set(config.TLS_SERVER_CERT_FILE_PATHS, "./cert/server-cert.pem")
-	viper.Set(config.TLS_SERVER_KEY_FILE_PATHS, "./cert/server-key.pem")
-	viper.Set(config.GRPC_PORT, "8086")
+	config.TlsServerCertFilePaths.Set("./cert/server-cert.pem")
+	config.TlsServerKeyFilePaths.Set("./cert/server-key.pem")
+	config.GrpcPort.Set("8086")
 
 	storage := storage.NewMemoryStorage(ctx)
 	cache := cache.NewMemoryCache()
@@ -114,7 +113,7 @@ func TestDeckardServerTLS(t *testing.T) {
 	// Set up a connection to the server.
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
-	conn, err := grpc.DialContext(ctx, fmt.Sprint("0.0.0.0:", viper.GetInt(config.GRPC_PORT)), grpc.WithTransportCredentials(cert), grpc.WithBlock())
+	conn, err := grpc.DialContext(ctx, fmt.Sprint("0.0.0.0:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(cert), grpc.WithBlock())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -142,13 +141,13 @@ func TestDeckardMutualTLS(t *testing.T) {
 		return
 	}
 
-	config.LoadConfig()
+	config.Configure(true)
 
-	viper.Set(config.TLS_CLIENT_CERT_FILE_PATHS, "./cert/ca-cert.pem")
-	viper.Set(config.TLS_SERVER_CERT_FILE_PATHS, "./cert/server-cert.pem")
-	viper.Set(config.TLS_SERVER_KEY_FILE_PATHS, "./cert/server-key.pem")
-	viper.Set(config.TLS_CLIENT_AUTH_TYPE, "RequireAndVerifyClientCert")
-	viper.Set(config.GRPC_PORT, "8087")
+	config.TlsClientCertFilePaths.Set("./cert/ca-cert.pem")
+	config.TlsServerCertFilePaths.Set("./cert/server-cert.pem")
+	config.TlsServerKeyFilePaths.Set("./cert/server-key.pem")
+	config.TlsClientAuthType.Set("RequireAndVerifyClientCert")
+	config.GrpcPort.Set("8087")
 
 	storage := storage.NewMemoryStorage(ctx)
 	cache := cache.NewMemoryCache()
@@ -169,7 +168,7 @@ func TestDeckardMutualTLS(t *testing.T) {
 	// Set up a connection to the server.
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
-	conn, err := grpc.DialContext(ctx, fmt.Sprint("0.0.0.0:", viper.GetInt(config.GRPC_PORT)), grpc.WithTransportCredentials(cert), grpc.WithBlock())
+	conn, err := grpc.DialContext(ctx, fmt.Sprint("0.0.0.0:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(cert), grpc.WithBlock())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -197,7 +196,7 @@ func TestMemoryDeckardIntegration(t *testing.T) {
 		return
 	}
 
-	config.LoadConfig()
+	config.Configure(true)
 
 	storage := storage.NewMemoryStorage(ctx)
 	cache := cache.NewMemoryCache()
@@ -221,9 +220,9 @@ func TestRedisAndMongoDeckardIntegration(t *testing.T) {
 		return
 	}
 
-	config.LoadConfig()
+	config.Configure(true)
 
-	viper.Set(config.MONGO_DATABASE, "unit_test")
+	config.MongoDatabase.Set("unit_test")
 
 	storage, err := storage.NewMongoStorage(context.Background())
 

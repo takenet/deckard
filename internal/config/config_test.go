@@ -5,85 +5,84 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"github.com/takenet/deckard/internal/project"
 )
 
 func TestLoadConfigShouldResetBeforeConfiguring(t *testing.T) {
-	LoadConfig()
+	Configure(true)
 
-	require.Equal(t, project.Name, viper.GetString(MONGO_DATABASE))
+	require.Equal(t, project.Name, MongoDatabase.Get())
 
-	viper.Set(MONGO_DATABASE, "test")
+	MongoDatabase.Set("test")
 
-	require.Equal(t, "test", viper.GetString(MONGO_DATABASE))
+	require.Equal(t, "test", MongoDatabase.Get())
 
-	LoadConfig()
+	Configure(true)
 
-	require.Equal(t, project.Name, viper.GetString(MONGO_DATABASE))
+	require.Equal(t, project.Name, MongoDatabase.Get())
 }
 
 func TestEnvReplacerShouldConsiderDotAsUnderline(t *testing.T) {
-	LoadConfig()
+	Configure(true)
 
-	require.Equal(t, false, viper.GetBool(AUDIT_ENABLED))
+	require.Equal(t, false, AuditEnabled.GetBool())
 
 	os.Setenv("DECKARD_AUDIT_ENABLED", "true")
 
 	defer os.Unsetenv("DECKARD_AUDIT_ENABLED")
 
-	require.Equal(t, true, viper.GetBool(AUDIT_ENABLED))
+	require.Equal(t, true, AuditEnabled.GetBool())
 }
 
 func TestEnvWithoutPrefixShouldReturnDefaultValue(t *testing.T) {
-	LoadConfig()
+	Configure(true)
 
-	require.Equal(t, false, viper.GetBool(AUDIT_ENABLED))
+	require.Equal(t, false, AuditEnabled.GetBool())
 
 	os.Setenv("AUDIT_ENABLED", "true")
 
-	require.Equal(t, false, viper.GetBool(AUDIT_ENABLED))
+	require.Equal(t, false, AuditEnabled.GetBool())
 }
 
 func TestDefaultValues(t *testing.T) {
-	LoadConfig()
+	Configure(true)
 
 	// Deckard configuration
-	require.Equal(t, "MEMORY", viper.GetString(STORAGE_TYPE))
-	require.Equal(t, "MEMORY", viper.GetString(CACHE_TYPE))
+	require.Equal(t, "MEMORY", StorageType.Get())
+	require.Equal(t, "MEMORY", CacheType.Get())
 
 	// gRPC server
-	require.Equal(t, true, viper.GetBool(GRPC_ENABLED))
-	require.Equal(t, 8081, viper.GetInt(GRPC_PORT))
+	require.Equal(t, true, GrpcEnabled.GetBool())
+	require.Equal(t, 8081, GrpcPort.GetInt())
 
 	// Redis configurations
-	require.Equal(t, "localhost", viper.GetString(REDIS_ADDRESS))
-	require.Equal(t, 6379, viper.GetInt(REDIS_PORT))
-	require.Equal(t, 0, viper.GetInt(REDIS_DB))
+	require.Equal(t, "localhost", RedisAddress.Get())
+	require.Equal(t, 6379, RedisPort.GetInt())
+	require.Equal(t, 0, RedisDB.GetInt())
 
 	// Audit
-	require.Equal(t, false, viper.GetBool(AUDIT_ENABLED))
+	require.Equal(t, false, AuditEnabled.GetBool())
 
 	// ElasticSearch
-	require.Equal(t, "http://localhost:9200/", viper.GetString(ELASTIC_ADDRESS))
+	require.Equal(t, "http://localhost:9200/", ElasticAddress.Get())
 
 	// MongoDB
-	require.Equal(t, "localhost:27017", viper.GetString(MONGO_ADDRESSES))
-	require.Equal(t, project.Name, viper.GetString(MONGO_DATABASE))
-	require.Equal(t, "queue", viper.GetString(MONGO_COLLECTION))
-	require.Equal(t, "queue_configuration", viper.GetString(MONGO_QUEUE_CONFIGURATION_COLLECTION))
-	require.Equal(t, false, viper.GetBool(MONGO_SSL))
+	require.Equal(t, "localhost:27017", MongoAddresses.Get())
+	require.Equal(t, project.Name, MongoDatabase.Get())
+	require.Equal(t, "queue", MongoCollection.Get())
+	require.Equal(t, "queue_configuration", MongoQueueConfigurationCollection.Get())
+	require.Equal(t, false, MongoSsl.GetBool())
 
 	// Environment
-	require.Equal(t, false, viper.GetBool(DEBUG))
+	require.Equal(t, false, DebugEnabled.GetBool())
 
 	// Housekeeper
-	require.Equal(t, true, viper.GetBool(HOUSEKEEPER_ENABLED))
-	require.Equal(t, 1*time.Second, viper.GetDuration(HOUSEKEEPER_TASK_TIMEOUT_DELAY))
-	require.Equal(t, 1*time.Second, viper.GetDuration(HOUSEKEEPER_TASK_UNLOCK_DELAY))
-	require.Equal(t, 1*time.Second, viper.GetDuration(HOUSEKEEPER_TASK_UPDATE_DELAY))
-	require.Equal(t, 1*time.Second, viper.GetDuration(HOUSEKEEPER_TASK_TTL_DELAY))
-	require.Equal(t, 1*time.Second, viper.GetDuration(HOUSEKEEPER_TASK_MAX_ELEMENTS_DELAY))
-	require.Equal(t, 60*time.Second, viper.GetDuration(HOUSEKEEPER_TASK_METRICS_DELAY))
+	require.Equal(t, true, HousekeeperEnabled.GetBool())
+	require.Equal(t, 1*time.Second, HousekeeperTaskTimeoutDelay.GetDuration(), HousekeeperTaskTimeoutDelay.GetDuration())
+	require.Equal(t, 1*time.Second, HousekeeperTaskUnlockDelay.GetDuration())
+	require.Equal(t, 1*time.Second, HousekeeperTaskUpdateDelay.GetDuration())
+	require.Equal(t, 1*time.Second, HousekeeperTaskTTLDelay.GetDuration())
+	require.Equal(t, 1*time.Second, HousekeeperTaskMaxElementsDelay.GetDuration())
+	require.Equal(t, 60*time.Second, HousekeeperTaskMetricsDelay.GetDuration())
 }

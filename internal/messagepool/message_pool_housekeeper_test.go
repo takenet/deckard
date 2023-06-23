@@ -22,6 +22,8 @@ import (
 )
 
 func TestUpdateOldestMessagePoolMap(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -82,6 +84,8 @@ func TestUpdateOldestMessagePoolMap(t *testing.T) {
 }
 
 func TestProcessLockPool(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -105,6 +109,8 @@ func TestProcessLockPool(t *testing.T) {
 }
 
 func TestProcessLockPoolAckListErrorShouldDoNothing(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -122,6 +128,8 @@ func TestProcessLockPoolAckListErrorShouldDoNothing(t *testing.T) {
 }
 
 func TestProcessLockPoolNackAckListErrorShouldDoNothing(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -140,6 +148,8 @@ func TestProcessLockPoolNackAckListErrorShouldDoNothing(t *testing.T) {
 }
 
 func TestProcessUnlockErrorShouldUnlockOthers(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -163,6 +173,8 @@ func TestProcessUnlockErrorShouldUnlockOthers(t *testing.T) {
 }
 
 func TestRecoveryMessagesCacheError(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -237,6 +249,8 @@ func TestRecoveryMessagesCacheError(t *testing.T) {
 }
 
 func TestCheckTimeoutMessagesListQueueErrorShouldDoNothing(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -251,6 +265,8 @@ func TestCheckTimeoutMessagesListQueueErrorShouldDoNothing(t *testing.T) {
 }
 
 func TestCheckTimeoutMessagesErrorForQueueShouldContinueOtherQueues(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -267,6 +283,8 @@ func TestCheckTimeoutMessagesErrorForQueueShouldContinueOtherQueues(t *testing.T
 }
 
 func TestRecoveryMessagesPoolShouldAddMessagesAfterBreakpoint(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -353,6 +371,8 @@ func TestRecoveryMessagesPoolShouldAddMessagesAfterBreakpoint(t *testing.T) {
 }
 
 func TestRecoveryMessagesPoolInitWithEmptyStorageShouldNotStartRecovery(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -381,6 +401,8 @@ func TestRecoveryMessagesPoolInitWithEmptyStorageShouldNotStartRecovery(t *testi
 }
 
 func TestRecoveryMessagesPoolInitNonEmptyStorageShouldStartRecovery(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -456,6 +478,8 @@ func TestRecoveryMessagesPoolInitNonEmptyStorageShouldStartRecovery(t *testing.T
 }
 
 func TestRecoveryMessagesPoolAlreadyRunning(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -544,6 +568,8 @@ func TestRecoveryMessagesPoolAlreadyRunning(t *testing.T) {
 }
 
 func TestRecoveryMessagesPoolStorageBreakpointError(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -557,6 +583,8 @@ func TestRecoveryMessagesPoolStorageBreakpointError(t *testing.T) {
 }
 
 func TestRecoveryMessagesPoolRecoveryRunningError(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -571,6 +599,8 @@ func TestRecoveryMessagesPoolRecoveryRunningError(t *testing.T) {
 }
 
 func TestRecoveryMessagesPoolRecoveryBreakpointRunningError(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -586,6 +616,8 @@ func TestRecoveryMessagesPoolRecoveryBreakpointRunningError(t *testing.T) {
 }
 
 func TestRecoveryMessagesPoolStorageError(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -621,6 +653,8 @@ func TestRecoveryMessagesPoolStorageError(t *testing.T) {
 }
 
 func TestRemoveTTLMessagesShouldRemoveExpiredElements(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -670,6 +704,8 @@ func TestRemoveTTLMessagesShouldRemoveExpiredElements(t *testing.T) {
 }
 
 func TestCheckTimeoutMessagesShouldExecuteTimeoutToAllQueues(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -686,6 +722,8 @@ func TestCheckTimeoutMessagesShouldExecuteTimeoutToAllQueues(t *testing.T) {
 }
 
 func TestRemoveExceedingMessagesNoQueuesShouldDoNothing(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -701,6 +739,8 @@ func TestRemoveExceedingMessagesNoQueuesShouldDoNothing(t *testing.T) {
 }
 
 func TestRemoveExceedingMessagesListErrorShouldDoNothing(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -716,6 +756,8 @@ func TestRemoveExceedingMessagesListErrorShouldDoNothing(t *testing.T) {
 }
 
 func TestRemoveExceedingMessagesNoQueuesShouldCallRemoveMethodToEachQueue(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -731,6 +773,8 @@ func TestRemoveExceedingMessagesNoQueuesShouldCallRemoveMethodToEachQueue(t *tes
 }
 
 func TestRemoveExceedingMessagesRecoveryRunning(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -744,6 +788,8 @@ func TestRemoveExceedingMessagesRecoveryRunning(t *testing.T) {
 }
 
 func TestRemoveTTLMessagesRecoveryRunning(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 

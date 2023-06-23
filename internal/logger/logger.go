@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 
-	"github.com/spf13/viper"
 	"github.com/takenet/deckard/internal/config"
 	"github.com/takenet/deckard/internal/project"
 	"go.opentelemetry.io/otel/trace"
@@ -17,8 +16,8 @@ func ConfigureLogger() {
 
 	stackTrace := zap.AddStacktrace(zapcore.ErrorLevel)
 
-	debug := viper.GetBool(config.DEBUG)
-	logType := viper.GetString(config.LOG_TYPE)
+	debug := config.DebugEnabled.GetBool()
+	logType := config.LogType.Get()
 
 	if logType != "json" {
 		zapConfig := zap.NewDevelopmentConfig()

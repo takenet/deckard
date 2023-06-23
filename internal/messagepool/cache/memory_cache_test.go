@@ -8,7 +8,7 @@ import (
 )
 
 func TestMemoryCache(t *testing.T) {
-	config.LoadConfig()
+	config.Configure(true)
 
 	cache := NewMemoryCache()
 

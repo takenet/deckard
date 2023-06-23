@@ -8,7 +8,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/spf13/viper"
 	"github.com/takenet/deckard/internal/audit"
 	"github.com/takenet/deckard/internal/config"
 	"github.com/takenet/deckard/internal/logger"
@@ -49,7 +48,7 @@ func main() {
 	backgroundTaskLocker = &sync.Mutex{}
 	ctx, cancel = context.WithCancel(context.Background())
 
-	config.LoadConfig()
+	config.Configure()
 	logger.ConfigureLogger()
 
 	err := trace.Init()
@@ -59,7 +58,7 @@ func main() {
 		panic(err)
 	}
 
-	dataStorage, err := storage.CreateStorage(ctx, storage.Type(viper.GetString(config.STORAGE_TYPE)))
+	dataStorage, err := storage.CreateStorage(ctx, storage.Type(config.StorageType.Get()))
 	if err != nil {
 		zap.S().Error("Error to connect to storage: ", err)
 		panic(err)
@@ -70,7 +69,7 @@ func main() {
 		}
 	}()
 
-	dataCache, err := cache.CreateCache(ctx, cache.Type(viper.GetString(config.CACHE_TYPE)))
+	dataCache, err := cache.CreateCache(ctx, cache.Type(config.CacheType.Get()))
 	if err != nil {
 		zap.S().Error("Error to connect to cache: ", err)
 		panic(err)
@@ -92,11 +91,11 @@ func main() {
 
 	messagePool := messagepool.NewMessagePool(auditor, dataStorage, queueService, dataCache)
 
-	if viper.GetBool(config.GRPC_ENABLED) {
+	if config.GrpcEnabled.GetBool() {
 		server = startGrpcServer(messagePool, queueService)
 	}
 
-	if viper.GetBool(config.HOUSEKEEPER_ENABLED) {
+	if config.HousekeeperEnabled.GetBool() {
 		startHouseKeeperJobs(messagePool)
 	}
 
@@ -110,7 +109,7 @@ func main() {
 }
 
 func isMemoryInstance() bool {
-	return viper.GetString(config.CACHE_TYPE) == string(cache.MEMORY) && viper.GetString(config.STORAGE_TYPE) == string(storage.MEMORY)
+	return config.CacheType.Get() == string(cache.MEMORY) && config.StorageType.Get() == string(storage.MEMORY)
 }
 
 func startGrpcServer(messagepool *messagepool.MessagePool, queueService queue.ConfigurationService) *grpc.Server {
@@ -130,7 +129,7 @@ func startHouseKeeperJobs(pool *messagepool.MessagePool) {
 		UNLOCK,
 		nil,
 		shutdown.WaitGroup,
-		viper.GetDuration(config.HOUSEKEEPER_TASK_UNLOCK_DELAY),
+		config.HousekeeperTaskUnlockDelay.GetDuration(),
 		func() bool {
 			messagepool.ProcessLockPool(ctx, pool)
 
@@ -142,7 +141,7 @@ func startHouseKeeperJobs(pool *messagepool.MessagePool) {
 		TIMEOUT,
 		nil,
 		shutdown.WaitGroup,
-		viper.GetDuration(config.HOUSEKEEPER_TASK_TIMEOUT_DELAY),
+		config.HousekeeperTaskTimeoutDelay.GetDuration(),
 		func() bool {
 			_ = messagepool.ProcessTimeoutMessages(ctx, pool)
 
@@ -154,7 +153,7 @@ func startHouseKeeperJobs(pool *messagepool.MessagePool) {
 		METRICS,
 		nil,
 		shutdown.WaitGroup,
-		viper.GetDuration(config.HOUSEKEEPER_TASK_METRICS_DELAY),
+		config.HousekeeperTaskMetricsDelay.GetDuration(),
 		func() bool {
 			messagepool.ComputeMetrics(ctx, pool)
 
@@ -166,7 +165,7 @@ func startHouseKeeperJobs(pool *messagepool.MessagePool) {
 		RECOVERY,
 		backgroundTaskLocker,
 		shutdown.CriticalWaitGroup,
-		viper.GetDuration(config.HOUSEKEEPER_TASK_UPDATE_DELAY),
+		config.HousekeeperTaskUpdateDelay.GetDuration(),
 		func() bool {
 			return messagepool.RecoveryMessagesPool(ctx, pool)
 		},
@@ -176,7 +175,7 @@ func startHouseKeeperJobs(pool *messagepool.MessagePool) {
 		MAX_ELEMENTS,
 		backgroundTaskLocker,
 		shutdown.WaitGroup,
-		viper.GetDuration(config.HOUSEKEEPER_TASK_MAX_ELEMENTS_DELAY),
+		config.HousekeeperTaskMaxElementsDelay.GetDuration(),
 		func() bool {
 			metrify, _ := messagepool.RemoveExceedingMessages(ctx, pool)
 
@@ -188,7 +187,7 @@ func startHouseKeeperJobs(pool *messagepool.MessagePool) {
 		TTL,
 		backgroundTaskLocker,
 		shutdown.WaitGroup,
-		viper.GetDuration(config.HOUSEKEEPER_TASK_TTL_DELAY),
+		config.HousekeeperTaskTTLDelay.GetDuration(),
 		func() bool {
 			now := time.Now()
 

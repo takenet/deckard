@@ -11,7 +11,6 @@ import (
 	"github.com/go-redis/redis/extra/redisotel/v8"
 	"github.com/go-redis/redis/v8"
 	"github.com/meirf/gopart"
-	"github.com/spf13/viper"
 	"github.com/takenet/deckard/internal/config"
 	"github.com/takenet/deckard/internal/logger"
 	"github.com/takenet/deckard/internal/messagepool/entities"
@@ -46,16 +45,16 @@ var LOCK_ACK_POOL_REGEX = regexp.MustCompile("(.+)" + LOCK_ACK_SUFFIX + "$")
 var LOCK_NACK_POOL_REGEX = regexp.MustCompile("(.+)" + LOCK_NACK_SUFFIX + "$")
 
 func NewRedisCache(ctx context.Context) (*RedisCache, error) {
-	address := fmt.Sprint(viper.GetString(config.REDIS_ADDRESS), ":", viper.GetInt(config.REDIS_PORT))
+	address := fmt.Sprint(config.RedisAddress.Get(), ":", config.RedisPort.GetInt())
 
 	logger.S(ctx).Info("Connecting to ", address, ".")
 
-	uri := viper.GetString(config.REDIS_URI)
+	uri := config.RedisUri.Get()
 
 	options := &redis.Options{
 		Addr:     address,
-		Password: viper.GetString(config.REDIS_PASSWORD),
-		DB:       viper.GetInt(config.REDIS_DB),
+		Password: config.RedisPassword.Get(),
+		DB:       config.RedisDB.GetInt(),
 	}
 
 	if uri != "" {

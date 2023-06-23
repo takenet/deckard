@@ -2,7 +2,7 @@
 
 ## Storage
 
-The storage is responsible for persisting the messages and queues.
+The storage is responsible for persisting the messages and queue configurations.
 
 Deckard currently supports the following Storage engines:
 - Memory (default)
@@ -25,15 +25,15 @@ The memory implementation is mainly used in tests and local development and is n
 The housekeeper is responsible for several background tasks that are necessary for the correct functioning of the service.
 
 The following tasks are currently being performed by the housekeeper:
-- Timeout messages that haven't received an acknoledgement for a specific period;
-- Unlock messages that have been locked for any specific reason;
+- Handles deadline timeout of messages that haven't received an acknoledgement for a specific period;
+- Unlock messages that have been locked by the application;
 - Remove expired messages from the queue;
 - Compute metrics from the system and queues;
 - Remove elements from queues that are limited by size;
 
-Running with memory storage/cache engine the housekeeper must run in the same service instance since everything is locally stored.
+If you run Deckard with memory storage or cache engines, the housekeeper must also run in the same service instance since everything is stored locally.
 
-Running with any other engine we suggest running the housekeeper in a separate instance to avoid any performance issues with the gRPC service managing messages and requests.
+Running with any other engine we suggest running the housekeeper in a separate instance to avoid any performance issues, since it would be competing resource usage against the gRPC service.
 
 ## Audit
 
@@ -43,7 +43,7 @@ The audit system is currently implemented with the [ElasticSearch](https://www.e
 
 The kibana dashboard template is in the [kibana.ndjson](dashboards/kibana.ndjson) file.
 
-Audit dashboard images:
+Few images of the Audit dashboard:
 
 ![Audit Dashboard 1](audit/audit1.png)
 
@@ -51,9 +51,9 @@ Audit dashboard images:
 
 ## Trace and Metrics
 
-Deckard provides a trace and metrics system that can be used in any observability system. Both systems are implemented with [OpenTelemetry](https://opentelemetry.io/).
+Deckard provides instrumentation for trace and metrics that can be used in any observability system. Both systems are implemented with [OpenTelemetry](https://opentelemetry.io/).
 
-Metrics will be exposed in the `/metrics` endpoint and traces must be exported to a OpenTelemetry Collector using their environment variables configurations.
+Metrics will be exposed in the `/metrics` endpoint and traces must be exported to a OpenTelemetry Collector using the OTLP exporter, configured with their [environment variables](https://opentelemetry.io/docs/specs/otel/protocol/exporter/). Deckard currently only exports traces using the gRPC exporter.
 
 A Grafana dashboard template is also provided in the [grafana.json](dashboards/grafana.json) file.
 

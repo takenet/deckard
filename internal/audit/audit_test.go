@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"github.com/takenet/deckard/internal/config"
 )
@@ -24,8 +23,8 @@ func TestNewAuditorWithoutServerShouldErrIntegration(t *testing.T) {
 		return
 	}
 
-	viper.Set(config.AUDIT_ENABLED, true)
-	viper.Set(config.ELASTIC_ADDRESS, "http://localhost:9201/")
+	config.AuditEnabled.Set(true)
+	config.ElasticAddress.Set("http://localhost:9201/")
 
 	_, err := NewAuditor(waitGroup)
 
@@ -37,13 +36,13 @@ func TestNewAuditorWithServerShouldPingOkIntegration(t *testing.T) {
 		return
 	}
 
-	viper.Set(config.AUDIT_ENABLED, true)
+	config.AuditEnabled.Set(true)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	}))
 	defer server.Close()
 
-	viper.Set(config.ELASTIC_ADDRESS, server.URL)
+	config.ElasticAddress.Set(server.URL)
 
 	_, err := NewAuditor(waitGroup)
 
@@ -55,14 +54,14 @@ func TestNewAuditorWithServerPongErrorShouldReturnErrorIntegration(t *testing.T)
 		return
 	}
 
-	viper.Set(config.AUDIT_ENABLED, true)
+	config.AuditEnabled.Set(true)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
 	}))
 	defer server.Close()
 
-	viper.Set(config.ELASTIC_ADDRESS, server.URL)
+	config.ElasticAddress.Set(server.URL)
 
 	_, err := NewAuditor(waitGroup)
 
@@ -74,7 +73,7 @@ func TestNewAuditorWithAuditDisabledShouldDoNothingIntegration(t *testing.T) {
 		return
 	}
 
-	viper.Set(config.AUDIT_ENABLED, false)
+	config.AuditEnabled.Set(false)
 
 	var executed bool
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -82,7 +81,7 @@ func TestNewAuditorWithAuditDisabledShouldDoNothingIntegration(t *testing.T) {
 	}))
 	defer server.Close()
 
-	viper.Set(config.ELASTIC_ADDRESS, server.URL)
+	config.ElasticAddress.Set(server.URL)
 
 	auditor, err := NewAuditor(waitGroup)
 
@@ -100,7 +99,7 @@ func TestSenderShouldSendMaxEntriesIntegration(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(ctx)
 
-	viper.Set(config.AUDIT_ENABLED, true)
+	config.AuditEnabled.Set(true)
 	maxEntriesSize = 2
 
 	var body string
@@ -115,7 +114,7 @@ func TestSenderShouldSendMaxEntriesIntegration(t *testing.T) {
 	}))
 	defer server.Close()
 
-	viper.Set(config.ELASTIC_ADDRESS, server.URL)
+	config.ElasticAddress.Set(server.URL)
 
 	auditor, err := NewAuditor(waitGroup)
 	require.NoError(t, err)
@@ -188,7 +187,7 @@ func TestSenderShouldSendMaxTimeEntriesIntegration(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(ctx)
 
-	viper.Set(config.AUDIT_ENABLED, true)
+	config.AuditEnabled.Set(true)
 	maxSendTime = 100 * time.Millisecond
 
 	var body string
@@ -203,7 +202,7 @@ func TestSenderShouldSendMaxTimeEntriesIntegration(t *testing.T) {
 	}))
 	defer server.Close()
 
-	viper.Set(config.ELASTIC_ADDRESS, server.URL)
+	config.ElasticAddress.Set(server.URL)
 
 	auditor, err := NewAuditor(waitGroup)
 	require.NoError(t, err)
