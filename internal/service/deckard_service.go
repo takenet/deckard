@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/viper"
 	"github.com/takenet/deckard"
 	"github.com/takenet/deckard/internal/config"
 	"github.com/takenet/deckard/internal/logger"
@@ -64,7 +63,7 @@ func NewDeckardService(qpool messagepool.DeckardMessagePool, queueConfigurationS
 }
 
 func (d *Deckard) ServeGRPCServer(ctx context.Context) (*grpc.Server, error) {
-	port := viper.GetInt(config.GRPC_PORT)
+	port := config.GrpcPort.GetInt()
 
 	listen, err := net.Listen("tcp", fmt.Sprint(":", port))
 	if err != nil {
@@ -123,8 +122,8 @@ func (d *Deckard) ServeGRPCServer(ctx context.Context) (*grpc.Server, error) {
 }
 
 func loadTLSCredentials() (credentials.TransportCredentials, error) {
-	certPath := viper.GetString(config.TLS_SERVER_CERT_FILE_PATHS)
-	keyPath := viper.GetString(config.TLS_SERVER_KEY_FILE_PATHS)
+	certPath := config.TlsServerCertFilePaths.Get()
+	keyPath := config.TlsServerKeyFilePaths.Get()
 
 	if certPath == "" || keyPath == "" {
 		return nil, nil
@@ -173,7 +172,7 @@ func loadTLSCredentials() (credentials.TransportCredentials, error) {
 }
 
 func loadClientCertPool() (*x509.CertPool, error) {
-	clientCert := viper.GetString(config.TLS_CLIENT_CERT_FILE_PATHS)
+	clientCert := config.TlsClientCertFilePaths.Get()
 
 	if clientCert == "" {
 		return nil, nil
@@ -198,7 +197,7 @@ func loadClientCertPool() (*x509.CertPool, error) {
 }
 
 func getClientAuthType() (tls.ClientAuthType, error) {
-	clientAuth := viper.GetString(config.TLS_CLIENT_AUTH_TYPE)
+	clientAuth := config.TlsClientAuthType.Get()
 
 	switch clientAuth {
 	case "NoClientCert":

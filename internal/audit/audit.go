@@ -21,7 +21,6 @@ import (
 
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
-	"github.com/spf13/viper"
 )
 
 const esIndex = project.Name
@@ -58,7 +57,7 @@ type AuditorImpl struct {
 // NewAuditor returns a new auditor with a elastic search.
 // If the audit is disabled by config, it returns a noop AuditorImpl
 func NewAuditor(waitGroup *sync.WaitGroup) (*AuditorImpl, error) {
-	if !viper.GetBool(config.AUDIT_ENABLED) {
+	if !config.AuditEnabled.GetBool() {
 		return &AuditorImpl{
 			enabled:   false,
 			waitGroup: waitGroup,
@@ -66,13 +65,13 @@ func NewAuditor(waitGroup *sync.WaitGroup) (*AuditorImpl, error) {
 	}
 
 	esClient, err := elasticsearch.NewClient(elasticsearch.Config{
-		Addresses: []string{viper.GetString(config.ELASTIC_ADDRESS)},
-		Username:  viper.GetString(config.ELASTIC_USER),
-		Password:  viper.GetString(config.ELASTIC_PASSWORD),
+		Addresses: []string{config.ElasticAddress.Get()},
+		Username:  config.ElasticUser.Get(),
+		Password:  config.ElasticPassword.Get(),
 	})
 
 	if err != nil {
-		zap.S().Error("Error to create audit client", err.Error())
+		zap.L().Error("Error creating audit client", zap.Error(err))
 
 		return nil, err
 	}
@@ -81,13 +80,13 @@ func NewAuditor(waitGroup *sync.WaitGroup) (*AuditorImpl, error) {
 
 	pong, err := api.Ping()
 	if err != nil {
-		zap.S().Error("Error to create audit client", err.Error())
+		zap.L().Error("Error creating audit client", zap.Error(err))
 
 		return nil, err
 	}
 
 	if pong.IsError() {
-		zap.S().Error("Error to create audit client", pong.String())
+		zap.S().Error("Error creating audit client", pong.String())
 
 		return nil, fmt.Errorf("error with ping request")
 	}

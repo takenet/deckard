@@ -142,7 +142,7 @@ func (suite *StorageTestSuite) TestWithInternalFilterQueueOk() {
 	require.True(suite.T(), result[1].ID == "id2" || result[1].ID == "id3")
 }
 
-func (suite *StorageTestSuite) TestWithInternalFilterBreakpointOk() {
+func (suite *StorageTestSuite) TestFindWithInternalFilterBreakpointOk() {
 	messages := []*entities.Message{{
 		Queue:      "q1",
 		ID:         "id",
@@ -348,24 +348,25 @@ func (suite *StorageTestSuite) TestListQueueNamesOk() {
 
 	require.Equal(suite.T(), queues, resultQueues)
 }
-func (suite *StorageTestSuite) TestListQueueNamesShouldNotResultDeletedMessageQueue() {
-	messages := make([]entities.Message, 100)
-	toInsert := make([]*entities.Message, 100)
 
+func (suite *StorageTestSuite) TestListQueueNamesShouldNotResultDeletedMessageQueue() {
+	toInsert := make([]*entities.Message, 100)
 	queues := make([]string, 100)
 
-	for i := range messages {
-		queues[i] = strconv.Itoa(i)
-		messages[i].Queue = strconv.Itoa(i)
-		messages[i].ID = strconv.Itoa(i)
+	for i := 0; i < 100; i++ {
+		message := entities.Message{
+			Queue: strconv.Itoa(i),
+			ID:    strconv.Itoa(i),
+		}
 
-		toInsert[i] = &messages[i]
+		queues[i] = strconv.Itoa(i)
+		toInsert[i] = &message
 	}
 
 	suite.insertDataNoError(toInsert...)
 
 	// Deleting one element from queue.
-	// Deleting element from queue 1 because the result will be lexicography ordered and number 1 will be the second element resulted
+	// Deleting element from queue 1 because the result will be lexicography ordered and number 1 will be the second element
 	removed, err := suite.storage.Remove(ctx, "1", "1")
 
 	require.NoError(suite.T(), err)

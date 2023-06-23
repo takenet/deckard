@@ -21,6 +21,8 @@ import (
 var ctx = context.Background()
 
 func TestPull(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -55,6 +57,8 @@ func TestPull(t *testing.T) {
 }
 
 func TestAckStorageErrorShouldResultError(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -81,6 +85,8 @@ func TestAckStorageErrorShouldResultError(t *testing.T) {
 }
 
 func TestAckMakeAvailableErrorShouldResultError(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -109,6 +115,8 @@ func TestAckMakeAvailableErrorShouldResultError(t *testing.T) {
 }
 
 func TestAckSuccessfulShouldAudit(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -148,6 +156,8 @@ func TestAckSuccessfulShouldAudit(t *testing.T) {
 }
 
 func TestAckNilMessage(t *testing.T) {
+	t.Parallel()
+
 	q := NewMessagePool(nil, nil, nil, nil)
 
 	result, err := q.Ack(ctx, nil, time.Time{}, "")
@@ -157,6 +167,8 @@ func TestAckNilMessage(t *testing.T) {
 }
 
 func TestAckWithoutQueue(t *testing.T) {
+	t.Parallel()
+
 	q := NewMessagePool(nil, nil, nil, nil)
 
 	result, err := q.Ack(ctx, &entities.Message{ID: "1"}, time.Time{}, "")
@@ -166,6 +178,8 @@ func TestAckWithoutQueue(t *testing.T) {
 }
 
 func TestAckWithoutId(t *testing.T) {
+	t.Parallel()
+
 	q := NewMessagePool(nil, nil, nil, nil)
 
 	result, err := q.Ack(ctx, &entities.Message{Queue: "queue"}, time.Time{}, "")
@@ -175,6 +189,8 @@ func TestAckWithoutId(t *testing.T) {
 }
 
 func TestNackMakeAvailableErrorShouldResultError(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -202,6 +218,8 @@ func TestNackMakeAvailableErrorShouldResultError(t *testing.T) {
 }
 
 func TestNackSuccessfulShouldAudit(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -239,6 +257,8 @@ func TestNackSuccessfulShouldAudit(t *testing.T) {
 }
 
 func TestNackNilMessage(t *testing.T) {
+	t.Parallel()
+
 	q := NewMessagePool(nil, nil, nil, nil)
 
 	result, err := q.Nack(ctx, nil, time.Now(), "")
@@ -248,6 +268,8 @@ func TestNackNilMessage(t *testing.T) {
 }
 
 func TestNackWithoutQueue(t *testing.T) {
+	t.Parallel()
+
 	q := NewMessagePool(nil, nil, nil, nil)
 
 	result, err := q.Nack(ctx, &entities.Message{ID: "1"}, time.Now(), "")
@@ -257,6 +279,8 @@ func TestNackWithoutQueue(t *testing.T) {
 }
 
 func TestNackWithoutId(t *testing.T) {
+	t.Parallel()
+
 	q := NewMessagePool(nil, nil, nil, nil)
 
 	result, err := q.Nack(ctx, &entities.Message{Queue: "queue"}, time.Now(), "")
@@ -266,6 +290,8 @@ func TestNackWithoutId(t *testing.T) {
 }
 
 func TestPullShouldDeleteNotFoundInStorageAndReturnRemaining(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -321,6 +347,8 @@ func TestPullShouldDeleteNotFoundInStorageAndReturnRemaining(t *testing.T) {
 }
 
 func TestPullElementsFromRetryShouldNotAuditMissingElements(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -372,6 +400,8 @@ func TestPullElementsFromRetryShouldNotAuditMissingElements(t *testing.T) {
 }
 
 func TestPullElementsFromBothFirstTryAndRetryShouldMergeElementsAndKeepScoreOrder(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -432,6 +462,8 @@ func TestPullElementsFromBothFirstTryAndRetryShouldMergeElementsAndKeepScoreOrde
 }
 
 func TestPullNothingFoundOnStorage(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -487,6 +519,8 @@ func TestPullNothingFoundOnStorage(t *testing.T) {
 }
 
 func TestPullCacheError(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -502,6 +536,8 @@ func TestPullCacheError(t *testing.T) {
 }
 
 func TestPullCacheNoResults(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -543,6 +579,8 @@ func (m isSameEntry) String() string {
 }
 
 func TestMessagePoolTimeoutError(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -557,6 +595,8 @@ func TestMessagePoolTimeoutError(t *testing.T) {
 }
 
 func TestMessagePoolRemoveShouldRemoveFromCacheAndStorage(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -588,6 +628,8 @@ func TestMessagePoolRemoveShouldRemoveFromCacheAndStorage(t *testing.T) {
 }
 
 func TestMessagePoolRemoveCacheError(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -603,6 +645,8 @@ func TestMessagePoolRemoveCacheError(t *testing.T) {
 }
 
 func TestMessagePoolRemoveStorageError(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -621,6 +665,8 @@ func TestMessagePoolRemoveStorageError(t *testing.T) {
 }
 
 func TestMessagePoolTimeout(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -649,6 +695,8 @@ func TestMessagePoolTimeout(t *testing.T) {
 }
 
 func TestAddMessagesToCacheSameIdInSameRequestShouldSetLastElementScore(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -716,6 +764,8 @@ func TestAddMessagesToCacheSameIdInSameRequestShouldSetLastElementScore(t *testi
 }
 
 func TestAddMessagesToStorageWithoutEditingQueueConfiguration(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -750,6 +800,8 @@ func TestAddMessagesToStorageWithoutEditingQueueConfiguration(t *testing.T) {
 }
 
 func TestAddMessagesError(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -779,6 +831,8 @@ func TestAddMessagesError(t *testing.T) {
 }
 
 func TestRemoveExceedingMessagesQueueZeroMaxElementsShouldDoNothing(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -791,6 +845,8 @@ func TestRemoveExceedingMessagesQueueZeroMaxElementsShouldDoNothing(t *testing.T
 }
 
 func TestRemoveExceedingMessagesEmptyQueueShouldDoNothing(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -807,6 +863,8 @@ func TestRemoveExceedingMessagesEmptyQueueShouldDoNothing(t *testing.T) {
 }
 
 func TestRemoveExceedingMessagesErrorCountingShouldReturnError(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -823,6 +881,8 @@ func TestRemoveExceedingMessagesErrorCountingShouldReturnError(t *testing.T) {
 }
 
 func TestRemoveExceedingMessagesShouldRemoveExceedingElements(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -861,6 +921,8 @@ func TestRemoveExceedingMessagesShouldRemoveExceedingElements(t *testing.T) {
 }
 
 func TestRemoveExceedingMessagesFindErrorShouldRemoveResultError(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -886,6 +948,8 @@ func TestRemoveExceedingMessagesFindErrorShouldRemoveResultError(t *testing.T) {
 }
 
 func TestRemoveExceedingMessagesRemoveErrorShouldResultError(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -913,6 +977,8 @@ func TestRemoveExceedingMessagesRemoveErrorShouldResultError(t *testing.T) {
 }
 
 func TestCountShouldCallStorage(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -931,6 +997,8 @@ func TestCountShouldCallStorage(t *testing.T) {
 }
 
 func TestNilOptsShouldCreateEmptyOpts(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -949,6 +1017,8 @@ func TestNilOptsShouldCreateEmptyOpts(t *testing.T) {
 }
 
 func TestCountStorageErrorShouldResultError(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -967,6 +1037,8 @@ func TestCountStorageErrorShouldResultError(t *testing.T) {
 }
 
 func TestAckWithLockShouldLock(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -1010,6 +1082,8 @@ func TestAckWithLockShouldLock(t *testing.T) {
 }
 
 func TestAckWithLockErrorShouldResultError(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -1044,6 +1118,8 @@ func TestAckWithLockErrorShouldResultError(t *testing.T) {
 }
 
 func TestNackWithLockShouldLock(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -1084,6 +1160,8 @@ func TestNackWithLockShouldLock(t *testing.T) {
 }
 
 func TestNackWithLockErrorShouldResultError(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 

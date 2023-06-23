@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"github.com/takenet/deckard"
 	"github.com/takenet/deckard/internal/config"
@@ -23,8 +22,8 @@ func TestLoadDeckardDefaultSettingsShouldLoadSuccessfullyIntegration(t *testing.
 	}
 
 	shutdown.Reset()
-	os.Setenv(config.GRPC_PORT, "8050")
-	defer os.Unsetenv(config.GRPC_PORT)
+	os.Setenv(config.GrpcPort.GetKey(), "8050")
+	defer os.Unsetenv(config.GrpcPort.GetKey())
 
 	go main()
 
@@ -77,8 +76,8 @@ func TestStopDeckardShouldStopReceivingRequestIntegration(t *testing.T) {
 		return
 	}
 
-	os.Setenv(config.GRPC_PORT, "8051")
-	defer os.Unsetenv(config.GRPC_PORT)
+	os.Setenv(config.GrpcPort.GetKey(), "8051")
+	defer os.Unsetenv(config.GrpcPort.GetKey())
 
 	shutdown.Reset()
 	go main()
@@ -107,5 +106,5 @@ func TestStopDeckardShouldStopReceivingRequestIntegration(t *testing.T) {
 func dial() (*grpc.ClientConn, error) {
 	ctx, _ := context.WithTimeout(context.Background(), time.Millisecond*200)
 
-	return grpc.DialContext(ctx, fmt.Sprint("localhost:", viper.GetInt(config.GRPC_PORT)), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	return grpc.DialContext(ctx, fmt.Sprint("localhost:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 }

@@ -4,20 +4,25 @@ import (
 	"context"
 	"testing"
 
-	"github.com/spf13/viper"
+	"github.com/stretchr/testify/require"
 	"github.com/takenet/deckard/internal/config"
 )
 
 // Configure logger should not panic
 
-func TestConfigureLoggerLocal(t *testing.T) {
-	viper.Set(config.DEBUG, true)
+func TestConfigureLoggerWithDebug(t *testing.T) {
+	config.DebugEnabled.Set(true)
 	ConfigureLogger()
+
+	require.Equal(t, true, config.DebugEnabled.GetBool())
+
 }
 
-func TestConfigureLoggerNotLocal(t *testing.T) {
-	viper.Set(config.DEBUG, false)
+func TestConfigureLoggerWithoutDebug(t *testing.T) {
+	config.DebugEnabled.Set(false)
 	ConfigureLogger()
+
+	require.Equal(t, false, config.DebugEnabled.GetBool())
 }
 
 func TestLoggerS(t *testing.T) {

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/elliotchance/orderedmap/v2"
-	"github.com/spf13/viper"
 	"github.com/takenet/deckard/internal/config"
 	"github.com/takenet/deckard/internal/logger"
 	"github.com/takenet/deckard/internal/messagepool/entities"
@@ -38,7 +37,7 @@ type MongoStorage struct {
 var _ Storage = &MongoStorage{}
 
 func NewMongoStorage(ctx context.Context) (*MongoStorage, error) {
-	logger.S(ctx).Info("Connecting to ", viper.GetString(config.MONGO_ADDRESSES), ".")
+	logger.S(ctx).Info("Connecting to ", config.MongoAddresses.Get(), ".")
 
 	client, err := createClient(createOptions())
 	if err != nil {
@@ -52,9 +51,9 @@ func NewMongoStorage(ctx context.Context) (*MongoStorage, error) {
 		return nil, err
 	}
 
-	database := viper.GetString(config.MONGO_DATABASE)
-	queueCollection := viper.GetString(config.MONGO_COLLECTION)
-	queueConfigurationCollection := viper.GetString(config.MONGO_QUEUE_CONFIGURATION_COLLECTION)
+	database := config.MongoDatabase.Get()
+	queueCollection := config.MongoCollection.Get()
+	queueConfigurationCollection := config.MongoQueueConfigurationCollection.Get()
 
 	return &MongoStorage{
 		client:                        client,
@@ -69,19 +68,19 @@ func createOptions() *options.ClientOptions {
 	mongoOpts := options.Client()
 	mongoOpts.SetAppName(project.Name)
 	mongoOpts.SetReadPreference(readpref.SecondaryPreferred())
-	mongoOpts.SetMaxPoolSize(uint64(viper.GetInt(config.MONGO_MAX_POOL_SIZE)))
+	mongoOpts.SetMaxPoolSize(uint64(config.MongoMaxPoolSize.GetInt()))
 
-	user := viper.GetString(config.MONGO_USER)
+	user := config.MongoUser.Get()
 	if user != "" {
 		mongoOpts.SetAuth(options.Credential{
-			AuthSource:  viper.GetString(config.MONGO_AUTH_DB),
+			AuthSource:  config.MongoAuthDb.Get(),
 			Username:    user,
-			Password:    viper.GetString(config.MONGO_PASSWORD),
+			Password:    config.MongoPassword.Get(),
 			PasswordSet: true,
 		})
 	}
 
-	addresses := viper.GetString(config.MONGO_ADDRESSES)
+	addresses := config.MongoAddresses.Get()
 	if addresses != "" {
 		if strings.Contains(addresses, "localhost") {
 			duration := time.Second
@@ -90,15 +89,16 @@ func createOptions() *options.ClientOptions {
 		mongoOpts.SetHosts(strings.Split(addresses, ","))
 	}
 
-	if viper.GetBool(config.MONGO_SSL) {
+	if config.MongoSsl.GetBool() {
 		mongoOpts.SetTLSConfig(&tls.Config{})
 	}
 
 	// OpenTelemetry APM
 	mongoOpts.SetMonitor(otelmongo.NewMonitor())
 
-	if viper.GetString(config.MONGO_URI) != "" {
-		mongoOpts.ApplyURI(viper.GetString(config.MONGO_URI))
+	uri := config.MongoUri.Get()
+	if uri != "" {
+		mongoOpts.ApplyURI(uri)
 	}
 
 	return mongoOpts

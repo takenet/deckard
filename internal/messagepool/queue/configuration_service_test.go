@@ -15,6 +15,8 @@ import (
 var ctx = context.Background()
 
 func TestCreateQueueConfigurationShouldCreateCache(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -27,18 +29,24 @@ func TestCreateQueueConfigurationShouldCreateCache(t *testing.T) {
 }
 
 func TestEditConfigurationNilConfigurationShouldDoNothing(t *testing.T) {
+	t.Parallel()
+
 	configuration := NewConfigurationService(ctx, nil)
 
 	require.NoError(t, configuration.EditQueueConfiguration(ctx, nil))
 }
 
 func TestEditConfigurationMaxElementsZeroShouldDoNothing(t *testing.T) {
+	t.Parallel()
+
 	configuration := NewConfigurationService(ctx, nil)
 
 	require.NoError(t, configuration.EditQueueConfiguration(ctx, &entities.QueueConfiguration{MaxElements: 0}))
 }
 
 func TestEditConfigurationCacheNotFoundShouldCallStorageEdit(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -52,6 +60,8 @@ func TestEditConfigurationCacheNotFoundShouldCallStorageEdit(t *testing.T) {
 }
 
 func TestEditConfigurationCacheFoundWithSameConfigShouldDoNothing(t *testing.T) {
+	t.Parallel()
+
 	configuration := NewConfigurationService(ctx, nil)
 
 	config := &entities.QueueConfiguration{MaxElements: 321, Queue: "q1"}
@@ -62,6 +72,8 @@ func TestEditConfigurationCacheFoundWithSameConfigShouldDoNothing(t *testing.T) 
 }
 
 func TestEditConfigurationCacheFoundWithDifferentConfigShouldCallStorageAndDeleteCache(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -82,6 +94,8 @@ func TestEditConfigurationCacheFoundWithDifferentConfigShouldCallStorageAndDelet
 }
 
 func TestGetConfigurationFromCacheShouldResultFromCache(t *testing.T) {
+	t.Parallel()
+
 	config := &entities.QueueConfiguration{MaxElements: 321, Queue: "q1"}
 
 	configuration := NewConfigurationService(ctx, nil)
@@ -94,6 +108,8 @@ func TestGetConfigurationFromCacheShouldResultFromCache(t *testing.T) {
 }
 
 func TestGetConfigurationCacheMissStorageErrorShouldResultError(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -108,6 +124,8 @@ func TestGetConfigurationCacheMissStorageErrorShouldResultError(t *testing.T) {
 }
 
 func TestGetConfigurationCacheMissStorageNotFoundShouldResultDefaultConfigurationAndCacheShouldBeSet(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -132,6 +150,8 @@ func TestGetConfigurationCacheMissStorageNotFoundShouldResultDefaultConfiguratio
 }
 
 func TestGetConfigurationCacheMissStorageFoundShouldResultStorageConfigurationAndCacheShouldBeSet(t *testing.T) {
+	t.Parallel()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 

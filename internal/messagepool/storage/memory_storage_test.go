@@ -13,7 +13,7 @@ import (
 )
 
 func TestMemoryStorage(t *testing.T) {
-	config.LoadConfig()
+	config.Configure(true)
 
 	storage := NewMemoryStorage(context.Background())
 
@@ -23,6 +23,8 @@ func TestMemoryStorage(t *testing.T) {
 }
 
 func TestInternalIdIncrement(t *testing.T) {
+	t.Parallel()
+
 	storage := NewMemoryStorage(context.Background())
 
 	for i := 1; i < 10; i++ {

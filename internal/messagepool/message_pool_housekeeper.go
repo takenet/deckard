@@ -18,7 +18,9 @@ import (
 
 // ProcessTimeoutMessages process messages timeout that have not been acked (or nacked) for more
 // than 5 minutes returning them back to the active queue with the maximum score.
-// TODO allow each queue to have its own deadline for timeout.
+// TODO: allow each queue to have its own deadline for timeout.
+// TODO: change the behavior of this so it doesn't need to load all queue names in memory, we could use the storage to list queues with a cursor
+// TODO: we could even change the timeout mechanism to be not based on the queue name
 func ProcessTimeoutMessages(ctx context.Context, pool *MessagePool) error {
 	t := time.Now()
 

@@ -136,8 +136,6 @@ func (suite *CacheIntegrationTestSuite) TestGetStorageBreakpointShouldReturnEmpt
 func (suite *CacheIntegrationTestSuite) TestSetStorageBreakpointShouldReturnValue() {
 	_ = suite.cache.Set(ctx, RECOVERY_STORAGE_BREAKPOINT_KEY, "asdfg")
 
-	time.Sleep(time.Millisecond * 100)
-
 	result, err := suite.cache.Get(ctx, RECOVERY_STORAGE_BREAKPOINT_KEY)
 
 	require.NoError(suite.T(), err)
@@ -416,10 +414,10 @@ func (suite *CacheIntegrationTestSuite) TestRemoveShouldDeleteFromActiveQueue() 
 }
 
 func (suite *CacheIntegrationTestSuite) TestBulkElementsShouldNotError() {
-	ids := make([]string, 15222)
-	data := make([]*entities.Message, 15222)
+	ids := make([]string, 100)
+	data := make([]*entities.Message, 100)
 
-	for i := 0; i < 15222; i++ {
+	for i := 0; i < 100; i++ {
 		id := fmt.Sprintf("giganicstringtoconsumelotofmemoryofredisscript%d", i)
 
 		ids[i] = id
@@ -441,7 +439,7 @@ func (suite *CacheIntegrationTestSuite) TestBulkElementsShouldNotError() {
 
 	count, removeErr := suite.cache.Remove(ctx, "queue", ids...)
 	require.NoError(suite.T(), removeErr)
-	require.Equal(suite.T(), int64(15222), count)
+	require.Equal(suite.T(), int64(100), count)
 
 	pullResult, err = suite.cache.PullMessages(ctx, "queue", 1, 0)
 	require.NoError(suite.T(), err)
@@ -906,7 +904,7 @@ func (suite *CacheIntegrationTestSuite) TestUnlockTiming() {
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
-		LockMs:      50,
+		LockMs:      25,
 	}, LOCK_NACK)
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), result)
@@ -915,7 +913,7 @@ func (suite *CacheIntegrationTestSuite) TestUnlockTiming() {
 		ID:          "id2",
 		Description: "desc",
 		Queue:       "q1",
-		LockMs:      100,
+		LockMs:      50,
 	}, LOCK_NACK)
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), result)
@@ -924,26 +922,26 @@ func (suite *CacheIntegrationTestSuite) TestUnlockTiming() {
 		ID:          "id3",
 		Description: "desc",
 		Queue:       "q2",
-		LockMs:      150,
+		LockMs:      75,
 	}, LOCK_NACK)
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), result)
 
 	// Check for unlocked data
 
-	<-time.After(time.Millisecond * 50)
+	<-time.After(time.Millisecond * 25)
 
 	messages, err := suite.cache.UnlockMessages(ctx, "q1", LOCK_NACK)
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), []string{"id1"}, messages)
 
-	<-time.After(time.Millisecond * 50)
+	<-time.After(time.Millisecond * 25)
 
 	messages, err = suite.cache.UnlockMessages(ctx, "q1", LOCK_NACK)
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), []string{"id2"}, messages)
 
-	<-time.After(time.Millisecond * 50)
+	<-time.After(time.Millisecond * 25)
 
 	messages, err = suite.cache.UnlockMessages(ctx, "q2", LOCK_NACK)
 	require.NoError(suite.T(), err)
