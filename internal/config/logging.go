@@ -13,6 +13,6 @@ var LogType = Create(&ViperConfigKey{
 })
 
 func init() {
-	viper.BindEnv(DebugEnabled.GetKey(), "DEBUG", "debug")
-	viper.BindEnv(LogType.GetKey(), "LOG_TYPE", "log_type")
+	_ = viper.BindEnv(DebugEnabled.GetKey(), "DEBUG", "debug")
+	_ = viper.BindEnv(LogType.GetKey(), "LOG_TYPE", "log_type")
 }
