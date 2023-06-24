@@ -100,26 +100,26 @@ All available environment variables are listed below:
 | Environment Variable         | Default | Description |
 |------------------------------|---------|-------------|
 | `DECKARD_CACHE_TYPE` | `MEMORY` | The cache implementation to use. Available: MEMORY, REDIS |
-| `DECKARD_REDIS_URI` | | The Redis Connection URI to connect with Redis. It will take precedence over any other environment variable related to the connection Redis connection. |
-| `DECKARD_REDIS_ADDRESS` | `localhost` | The redis address to connect while using redis cache implementation. It will be overriden by `DECKARD_REDIS_URI` if present.  |
-| `DECKARD_REDIS_PASSWORD` |  | The redis password to connect while using redis cache implementation. It will be overriden by `DECKARD_REDIS_URI` if present. |
-| `DECKARD_REDIS_PORT` | `6379` | The redis port to connect while using redis cache implementation. It will be overriden by `DECKARD_REDIS_URI` if present. |
-| `DECKARD_REDIS_DB` | `0` | The database to use while using redis cache implementation. It will be overriden by `DECKARD_REDIS_URI` if present. |
+| `DECKARD_CACHE_URI` | | The cache Connection URI to connect with the cache service. Currently only a Redis URI is accepted. It will take precedence over any other environment variable related to the connection Redis connection. |
+| `DECKARD_REDIS_ADDRESS` | `localhost` | The redis address to connect while using redis cache implementation. It will be overriden by `DECKARD_CACHE_URI` if present.  |
+| `DECKARD_REDIS_PASSWORD` |  | The redis password to connect while using redis cache implementation. It will be overriden by `DECKARD_CACHE_URI` if present. |
+| `DECKARD_REDIS_PORT` | `6379` | The redis port to connect while using redis cache implementation. It will be overriden by `DECKARD_CACHE_URI` if present. |
+| `DECKARD_REDIS_DB` | `0` | The database to use while using redis cache implementation. It will be overriden by `DECKARD_CACHE_URI` if present. |
 
 ### Storage Configuration
 
 | Environment Variable         | Default | Description |
 |------------------------------|---------|-------------|
 | `DECKARD_STORAGE_TYPE` | `MEMORY` | The storage implementation to use. Available: MEMORY, MONGODB |
-| `DECKARD_MONGO_URI` |  | The MongoDB Connection URI to connect with MongoDB. It can override any other environment variable related to the connection MongoDB connection since it takes precedence. |
-| `DECKARD_MONGO_ADDRESSES` | `localhost:27017` | The MongoDB addresses separated by comma to connect while using MongoDB storage implementation. It can be overridden by `DECKARD_MONGO_URI`. |
-| `DECKARD_MONGO_AUTH_DB` |  | The MongoDB auth database to authenticate while using MongoDB storage implementation. It can be overridden by `DECKARD_MONGO_URI`. |
-| `DECKARD_MONGO_PASSWORD` |  | The MongoDB password to authenticate while using MongoDB storage implementation. It can be overridden by `DECKARD_MONGO_URI`. |
-| `DECKARD_MONGO_DATABASE` | `deckard` | The MongoDB database to use to store messages while using MongoDB storage implementation. |
-| `DECKARD_MONGO_COLLECTION` | `queue` | The MongoDB collection to use to store messages while using MongoDB storage implementation. |
-| `DECKARD_MONGO_USER` |  | The MongoDB user to authenticate while using MongoDB storage implementation. It can be overridden by `DECKARD_MONGO_URI`. |
-| `DECKARD_MONGO_SSL` | `false` | To enable SSL while using MongoDB storage implementation. It can be overridden by `DECKARD_MONGO_URI`. |
-| `DECKARD_MONGO_QUEUE_CONFIGURATION_COLLECTION` | `queue_configuration` | The MongoDB collection to use to store queue configurations while using MongoDB storage implementation. |
+| `DECKARD_STORAGE_URI` |  | The storage Connection URI to connect with the storage service. Currently only a MongoDB URI is accepted. It can override any other environment variable related to the connection MongoDB connection since it takes precedence. |
+| `DECKARD_MONGODB_ADDRESSES` | `localhost:27017` | The MongoDB addresses separated by comma to connect while using MongoDB storage implementation. It can be overridden by `DECKARD_STORAGE_URI`. |
+| `DECKARD_MONGODB_AUTH_DB` |  | The MongoDB auth database to authenticate while using MongoDB storage implementation. It can be overridden by `DECKARD_STORAGE_URI`. |
+| `DECKARD_MONGODB_PASSWORD` |  | The MongoDB password to authenticate while using MongoDB storage implementation. It can be overridden by `DECKARD_STORAGE_URI`. |
+| `DECKARD_MONGODB_DATABASE` | `deckard` | The MongoDB database to use to store messages while using MongoDB storage implementation. |
+| `DECKARD_MONGODB_COLLECTION` | `queue` | The MongoDB collection to use to store messages while using MongoDB storage implementation. |
+| `DECKARD_MONGODB_USER` |  | The MongoDB user to authenticate while using MongoDB storage implementation. It can be overridden by `DECKARD_STORAGE_URI`. |
+| `DECKARD_MONGODB_SSL` | `false` | To enable SSL while using MongoDB storage implementation. It can be overridden by `DECKARD_STORAGE_URI`. |
+| `DECKARD_MONGODB_QUEUE_CONFIGURATION_COLLECTION` | `queue_configuration` | The MongoDB collection to use to store queue configurations while using MongoDB storage implementation. |
 
 ### Housekeeper Configuration
 

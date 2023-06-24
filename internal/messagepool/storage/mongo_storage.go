@@ -96,7 +96,7 @@ func createOptions() *options.ClientOptions {
 	// OpenTelemetry APM
 	mongoOpts.SetMonitor(otelmongo.NewMonitor())
 
-	uri := config.MongoUri.Get()
+	uri := config.StorageUri.Get()
 	if uri != "" {
 		mongoOpts.ApplyURI(uri)
 	}

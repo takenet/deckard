@@ -49,7 +49,7 @@ func NewRedisCache(ctx context.Context) (*RedisCache, error) {
 
 	logger.S(ctx).Info("Connecting to ", address, ".")
 
-	uri := config.RedisUri.Get()
+	uri := config.CacheUri.Get()
 
 	options := &redis.Options{
 		Addr:     address,

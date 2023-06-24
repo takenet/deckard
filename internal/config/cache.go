@@ -5,9 +5,12 @@ var CacheType = Create(&ViperConfigKey{
 	Default: "MEMORY",
 })
 
-var RedisUri = Create(&ViperConfigKey{
-	Key: "redis.uri",
+var CacheUri = Create(&ViperConfigKey{
+	Key:     "cache.uri",
+	Aliases: []string{"redis.uri"},
 })
+
+// Redis Configurations
 
 var RedisPassword = Create(&ViperConfigKey{
 	Key: "redis.password",

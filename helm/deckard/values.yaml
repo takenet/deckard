@@ -1,0 +1,103 @@
+# Default values for deckard.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: blipai/deckard
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+labels: {}
+
+# To control deckard's housekeeping
+housekeeper:
+  # If the housekeeper task will run in a separate deployment
+  enabled: true
+
+  image:
+    repository: blipai/deckard
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: ""
+
+  # The number of replicas for the housekeeper deployment
+  replicaCount: 1
+
+  # If the housekeeper task will run in the same pod as the deckard gRPC service
+  # Useful for development purposes when you don't want a separate deployment for the housekeeper
+  self:
+    enabled: false
+
+# To control Deckard's audit system
+audit:
+  # Deckard's DECKARD_AUDIT_ENABLED environment variable
+  enabled: false
+
+env: []
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+storage:
+  # Deckard's DECKARD_STORAGE_TYPE environment variable
+  # Available options: MONGODB, MEMORY
+  # Remember to set the mongodb.enabled to false if you want to use a self-deployed MongoDB or a Memory storage
+  type: MONGODB
+  # Deckard's DECKARD_STORAGE_URI environment variable
+  # If mongodb.enabled is true, Deckard will use the deployed MongoDB's URI
+  # Prefer setting the DECKARD_STORAGE_URI in the env field instead of using this value so you can use a secret
+  # Empty means that Deckard will use the default storage URI
+  uri: ""
+
+# See available options here: https://github.com/bitnami/charts/tree/main/bitnami/mongodb
+mongodb:
+  enabled: false
+
+cache:
+  # Deckard's DECKARD_REDIS_TYPE environment variable
+  # Available options: REDIS, MEMORY
+  # Remember to set the redis.enabled to false if you want to use a self-deployed Redis or a Memory storage
+  type: REDIS
+  # Deckard's DECKARD_CACHE_URI environment variable
+  # If redis.enabled is true, Deckard will use the deployed Redis' URI
+  # Prefer setting the DECKARD_CACHE_URI in the env field instead of using this value so you can use a secret
+  # Empty means that Deckard will use the default cache URI
+  uri: ""
+
+# See available options here: https://github.com/bitnami/charts/tree/main/bitnami/redis
+redis:
+  enabled: false
+
+service:
+  type: ClusterIP
+  port: 8081
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  tls: []
+
+resources: {}
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
