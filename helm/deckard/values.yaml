@@ -5,7 +5,7 @@
 replicaCount: 1
 
 image:
-  repository: ko.local/deckard
+  repository: blipai/deckard
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
@@ -121,7 +121,7 @@ housekeeper:
   enabled: true
 
   image:
-    repository: ko.local/deckard
+    repository: blipai/deckard
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
     tag: ""
