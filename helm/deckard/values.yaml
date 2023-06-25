@@ -18,6 +18,12 @@ labels: {}
 
 # To control deckard's housekeeping
 housekeeper:
+  # If the housekeeper task will run in the same pod as the deckard gRPC service
+  # Useful for development purposes when you don't want a separate deployment for the housekeeper
+  # Deckard's DECKARD_HOUSEKEEPER_ENABLED environment variable
+  self:
+    enabled: false
+
   # If the housekeeper task will run in a separate deployment
   enabled: true
 
@@ -30,10 +36,38 @@ housekeeper:
   # The number of replicas for the housekeeper deployment
   replicaCount: 1
 
-  # If the housekeeper task will run in the same pod as the deckard gRPC service
-  # Useful for development purposes when you don't want a separate deployment for the housekeeper
-  self:
-    enabled: false
+  labels: {}
+
+  podAnnotations: {}
+
+  podSecurityContext: {}
+
+  securityContext: {}
+
+  env: []
+
+  resources: {}
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+
+  service:
+    enabled: true
+    type: ClusterIP
+    port: 8081
+
+  storage:
+    # By default the housekeeper will use same uri as the Deckard gRPC instance.
+    # To modify this behavior set the housekeeper uri
+    uri: ""
+
+  cache:
+    # By default the housekeeper will use same uri as the Deckard gRPC instance.
+    # To modify this behavior set the housekeeper uri
+    uri: ""
 
 # To control Deckard's audit system
 audit:
@@ -51,12 +85,12 @@ securityContext: {}
 storage:
   # Deckard's DECKARD_STORAGE_TYPE environment variable
   # Available options: MONGODB, MEMORY
-  # Remember to set the mongodb.enabled to false if you want to use a self-deployed MongoDB or a Memory storage
+  # Remember to set the mongodb.enabled to false if you want to use a existing MongoDB or a Memory storage
   type: MONGODB
   # Deckard's DECKARD_STORAGE_URI environment variable.
   # By default this chart will use the deployed MongoDB's URI
-  # If you change MongoDB architecture to replicaSet you must set the URI to the replicaSet URI
-  # TODO: deal with non standalone MongoDB deployments to generate the URI dinamically in the deployment.yaml
+  # If you change mongodb chart values you will need to set URI manually
+  # TODO: deal with different MongoDB deployments to generate the correct URI
   uri: ""
   mongodb:
     # Deckard's DECKARD_MONGODB_DATABASE environment variable
@@ -68,6 +102,7 @@ storage:
 
 # See available options here: https://github.com/bitnami/charts/tree/main/bitnami/mongodb
 mongodb:
+  # When enabled this chart will also deploy a MongoDB
   enabled: true
   auth:
     enabled: true
@@ -83,8 +118,8 @@ cache:
   type: REDIS
   # Deckard's DECKARD_CACHE_URI environment variable.
   # By default this chart will use the deployed Redis's URI
-  # If you change Redis architecture you must set the URI by yourself
-  # TODO: deal with non standalone Redis deployments to generate the URI dinamically in the deployment.yaml
+  # If you change redis chart values you will need to set URI manually
+  # TODO: deal with different Redis deployments to generate the correct URI
   uri: ""
   redis:
     # Deckard's DECKARD_REDIS_DB environment variable
@@ -92,14 +127,16 @@ cache:
 
 # See available options here: https://github.com/bitnami/charts/tree/main/bitnami/redis
 redis:
+  # When enabled this chart will also deploy a Redis
   enabled: true
   architecture: standalone
   auth:
     enabled: true
+    # In a production environment prefer setting all passwords using redis's existingSecret chart field
     password: deckard
 
-
 service:
+  enabled: true
   type: ClusterIP
   port: 8081
 
