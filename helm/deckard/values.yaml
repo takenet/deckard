@@ -53,30 +53,51 @@ storage:
   # Available options: MONGODB, MEMORY
   # Remember to set the mongodb.enabled to false if you want to use a self-deployed MongoDB or a Memory storage
   type: MONGODB
-  # Deckard's DECKARD_STORAGE_URI environment variable
-  # If mongodb.enabled is true, Deckard will use the deployed MongoDB's URI
-  # Prefer setting the DECKARD_STORAGE_URI in the env field instead of using this value so you can use a secret
-  # Empty means that Deckard will use the default storage URI
+  # Deckard's DECKARD_STORAGE_URI environment variable.
+  # By default this chart will use the deployed MongoDB's URI
+  # If you change MongoDB architecture to replicaSet you must set the URI to the replicaSet URI
+  # TODO: deal with non standalone MongoDB deployments to generate the URI dinamically in the deployment.yaml
   uri: ""
+  mongodb:
+    # Deckard's DECKARD_MONGODB_DATABASE environment variable
+    database: "deckard"
+    # Deckard's DECKARD_MONGODB_COLLECTION environment variable
+    collection: "queue"
+    # Deckard's DECKARD_MONGODB_QUEUE_CONFIGURATION_COLLECTION environment variable
+    queue_configuration_collection: "queue_configuration"
 
 # See available options here: https://github.com/bitnami/charts/tree/main/bitnami/mongodb
 mongodb:
-  enabled: false
+  enabled: true
+  auth:
+    enabled: true
+    # In a production environment prefer setting all passwords and configurations using mongodb's existingSecret chart field
+    rootUser: deckard
+    rootPassword: deckard
+  architecture: standalone
 
 cache:
   # Deckard's DECKARD_REDIS_TYPE environment variable
   # Available options: REDIS, MEMORY
   # Remember to set the redis.enabled to false if you want to use a self-deployed Redis or a Memory storage
   type: REDIS
-  # Deckard's DECKARD_CACHE_URI environment variable
-  # If redis.enabled is true, Deckard will use the deployed Redis' URI
-  # Prefer setting the DECKARD_CACHE_URI in the env field instead of using this value so you can use a secret
-  # Empty means that Deckard will use the default cache URI
+  # Deckard's DECKARD_CACHE_URI environment variable.
+  # By default this chart will use the deployed Redis's URI
+  # If you change Redis architecture you must set the URI by yourself
+  # TODO: deal with non standalone Redis deployments to generate the URI dinamically in the deployment.yaml
   uri: ""
+  redis:
+    # Deckard's DECKARD_REDIS_DB environment variable
+    database: 0
 
 # See available options here: https://github.com/bitnami/charts/tree/main/bitnami/redis
 redis:
-  enabled: false
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: true
+    password: deckard
+
 
 service:
   type: ClusterIP

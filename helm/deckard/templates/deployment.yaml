@@ -47,13 +47,25 @@ spec:
               value: {{ quote .Values.housekeeper.self.enabled }}
             - name: DECKARD_AUDIT_ENABLED
               value: {{ quote .Values.audit.enabled }}
-            {{- if and (not .Values.mongodb.enabled) (eq .Values.storage.type "MONGODB") }}
+            {{- if eq .Values.storage.type "MONGODB" }}
+            {{- if and (.Values.mongodb.enabled) (eq .Values.mongodb.architecture "standalone") }}
+            # TODO: improve storage URI handling without hardcoded port and other architectures
+            - name: DECKARD_STORAGE_URI
+              value: mongodb://{{ .Values.mongodb.auth.rootUser }}:{{ .Values.mongodb.auth.rootPassword }}@{{ include "deckard.fullname" . }}-mongodb.{{ .Release.Namespace }}.svc:27017/admin?ssl=false
+            {{- else }}
             - name: DECKARD_STORAGE_URI
               value: {{ .Values.storage.uri }}
             {{- end }}
-            {{- if and (not .Values.redis.enabled) (eq .Values.cache.type "REDIS") }}
+            {{- end }}
+            {{- if eq .Values.cache.type "REDIS" }}
+            {{- if and (.Values.redis.enabled) (eq .Values.redis.architecture "standalone") }}
+            # TODO: improve cache URI handling without hardcoded port and other architectures
+            - name: DECKARD_CACHE_URI
+              value: redis://:{{ .Values.redis.auth.password }}@{{ include "deckard.fullname" . }}-redis-master.{{ .Release.Namespace }}.svc:6379/{{ .Values.cache.redis.database }}
+            {{- else }}
             - name: DECKARD_CACHE_URI
               value: {{ .Values.cache.uri }}
+            {{- end }}
             {{- end }}
           ports:
             - name: grpc

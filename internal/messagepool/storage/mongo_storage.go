@@ -37,7 +37,11 @@ type MongoStorage struct {
 var _ Storage = &MongoStorage{}
 
 func NewMongoStorage(ctx context.Context) (*MongoStorage, error) {
-	logger.S(ctx).Info("Connecting to ", config.MongoAddresses.Get(), ".")
+	if config.StorageUri.Get() == "" {
+		logger.S(ctx).Info("Connecting to ", config.MongoAddresses.Get(), ".")
+	} else {
+		logger.S(ctx).Info("Connecting to URI ", config.StorageUri.Get(), ".")
+	}
 
 	client, err := createClient(createOptions())
 	if err != nil {
@@ -68,6 +72,17 @@ func createOptions() *options.ClientOptions {
 	mongoOpts := options.Client()
 	mongoOpts.SetAppName(project.Name)
 	mongoOpts.SetReadPreference(readpref.SecondaryPreferred())
+
+	// OpenTelemetry APM
+	mongoOpts.SetMonitor(otelmongo.NewMonitor())
+
+	uri := config.StorageUri.Get()
+	if uri != "" {
+		mongoOpts.ApplyURI(uri)
+
+		return mongoOpts
+	}
+
 	mongoOpts.SetMaxPoolSize(uint64(config.MongoMaxPoolSize.GetInt()))
 
 	user := config.MongoUser.Get()
@@ -91,14 +106,6 @@ func createOptions() *options.ClientOptions {
 
 	if config.MongoSsl.GetBool() {
 		mongoOpts.SetTLSConfig(&tls.Config{})
-	}
-
-	// OpenTelemetry APM
-	mongoOpts.SetMonitor(otelmongo.NewMonitor())
-
-	uri := config.StorageUri.Get()
-	if uri != "" {
-		mongoOpts.ApplyURI(uri)
 	}
 
 	return mongoOpts

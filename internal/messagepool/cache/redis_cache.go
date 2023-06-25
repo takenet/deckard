@@ -45,19 +45,22 @@ var LOCK_ACK_POOL_REGEX = regexp.MustCompile("(.+)" + LOCK_ACK_SUFFIX + "$")
 var LOCK_NACK_POOL_REGEX = regexp.MustCompile("(.+)" + LOCK_NACK_SUFFIX + "$")
 
 func NewRedisCache(ctx context.Context) (*RedisCache, error) {
-	address := fmt.Sprint(config.RedisAddress.Get(), ":", config.RedisPort.GetInt())
-
-	logger.S(ctx).Info("Connecting to ", address, ".")
-
 	uri := config.CacheUri.Get()
 
-	options := &redis.Options{
-		Addr:     address,
-		Password: config.RedisPassword.Get(),
-		DB:       config.RedisDB.GetInt(),
-	}
+	var options *redis.Options
+	if uri == "" {
+		address := fmt.Sprint(config.RedisAddress.Get(), ":", config.RedisPort.GetInt())
 
-	if uri != "" {
+		logger.S(ctx).Info("Connecting to ", address, ".")
+
+		options = &redis.Options{
+			Addr:     address,
+			Password: config.RedisPassword.Get(),
+			DB:       config.RedisDB.GetInt(),
+		}
+	} else {
+		logger.S(ctx).Info("Connecting to URI ", uri, ".")
+
 		var err error
 		options, err = redis.ParseURL(uri)
 
