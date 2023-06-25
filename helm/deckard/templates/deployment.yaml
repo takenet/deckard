@@ -82,6 +82,10 @@ spec:
           startupProbe:
             grpc:
               port: {{ .Values.service.port }}
+            failureThreshold: 30
+            periodSeconds: 2
+            initialDelaySeconds: 1
+            timeoutSeconds: 1
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}

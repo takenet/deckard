@@ -13,6 +13,21 @@ var StorageUri = Create(&ViperConfigKey{
 	Default: "",
 })
 
+var StorageConnectionRetryEnabled = Create(&ViperConfigKey{
+	Key:     "storage.connection.retry.enabled",
+	Default: true,
+})
+
+var StorageConnectionRetryAttempts = Create(&ViperConfigKey{
+	Key:     "storage.connection.retry.attempts",
+	Default: 10,
+})
+
+var StorageConnectionRetryDelay = Create(&ViperConfigKey{
+	Key:     "storage.connection.retry.delay",
+	Default: "5s",
+})
+
 // MongoDB Configurations
 
 var MongoAddresses = Create(&ViperConfigKey{

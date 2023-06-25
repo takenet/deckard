@@ -37,41 +37,43 @@ type MongoStorage struct {
 var _ Storage = &MongoStorage{}
 
 func NewMongoStorage(ctx context.Context) (*MongoStorage, error) {
-	if config.StorageUri.Get() == "" {
-		logger.S(ctx).Info("Connecting to ", config.MongoAddresses.Get(), ".")
-	} else {
-		logger.S(ctx).Info("Connecting to URI ", config.StorageUri.Get(), ".")
-	}
+	mongoSecondaryOpts := createOptions()
 
-	client, err := createClient(createOptions())
+	logger.S(ctx).Debug("Connecting to ", mongoSecondaryOpts.Hosts, " MongoDB instance(s).")
+
+	start := time.Now()
+
+	mongoSecondaryOpts.SetReadPreference(readpref.SecondaryPreferred())
+	clientSecondaryPreference, err := waitForClient(ctx, mongoSecondaryOpts)
 	if err != nil {
 		return nil, err
 	}
 
-	mongoOpts := createOptions()
-	mongoOpts.SetReadPreference(readpref.PrimaryPreferred())
-	clientPrimaryPreference, err := createClient(mongoOpts)
+	mongoPrimaryOptions := createOptions()
+	mongoPrimaryOptions.SetReadPreference(readpref.PrimaryPreferred())
+	clientPrimaryPreference, err := waitForClient(ctx, mongoPrimaryOptions)
 	if err != nil {
 		return nil, err
 	}
+
+	logger.S(ctx).Debug("Connected to MongoDB storage in ", time.Since(start))
 
 	database := config.MongoDatabase.Get()
 	queueCollection := config.MongoCollection.Get()
 	queueConfigurationCollection := config.MongoQueueConfigurationCollection.Get()
 
 	return &MongoStorage{
-		client:                        client,
+		client:                        clientSecondaryPreference,
 		clientPrimaryPreference:       clientPrimaryPreference,
-		messagesCollection:            client.Database(database).Collection(queueCollection),
+		messagesCollection:            clientSecondaryPreference.Database(database).Collection(queueCollection),
 		messagesCollectionPrimaryRead: clientPrimaryPreference.Database(database).Collection(queueCollection),
-		queueConfigurationCollection:  client.Database(database).Collection(queueConfigurationCollection),
+		queueConfigurationCollection:  clientSecondaryPreference.Database(database).Collection(queueConfigurationCollection),
 	}, nil
 }
 
 func createOptions() *options.ClientOptions {
 	mongoOpts := options.Client()
 	mongoOpts.SetAppName(project.Name)
-	mongoOpts.SetReadPreference(readpref.SecondaryPreferred())
 
 	// OpenTelemetry APM
 	mongoOpts.SetMonitor(otelmongo.NewMonitor())
@@ -111,18 +113,37 @@ func createOptions() *options.ClientOptions {
 	return mongoOpts
 }
 
-func createClient(opts *options.ClientOptions) (*mongo.Client, error) {
+func waitForClient(ctx context.Context, opts *options.ClientOptions) (*mongo.Client, error) {
+	var err error
+	var client *mongo.Client
+
+	for i := 1; i <= config.StorageConnectionRetryAttempts.GetInt(); i++ {
+		client, err = createClient(ctx, opts)
+
+		if err == nil || !config.StorageConnectionRetryEnabled.GetBool() {
+			break
+		}
+
+		logger.S(ctx).Warnf("Failed to connect to MongoDB (%d times). Trying again in %s.", i, config.StorageConnectionRetryDelay.GetDuration())
+
+		<-time.After(config.StorageConnectionRetryDelay.GetDuration())
+	}
+
+	return client, err
+}
+
+func createClient(ctx context.Context, opts *options.ClientOptions) (*mongo.Client, error) {
 	client, err := mongo.NewClient(opts)
 	if err != nil {
 		return nil, fmt.Errorf("error creating client: %w", err)
 	}
 
-	err = client.Connect(context.Background())
+	err = client.Connect(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to client: %w", err)
 	}
 
-	err = client.Ping(context.Background(), readpref.SecondaryPreferred())
+	err = client.Ping(ctx, readpref.SecondaryPreferred())
 	if err != nil {
 		return nil, fmt.Errorf("error pinging client: %w", err)
 	}

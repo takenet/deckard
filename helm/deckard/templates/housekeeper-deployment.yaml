@@ -83,6 +83,10 @@ spec:
           startupProbe:
             grpc:
               port: {{ .Values.housekeeper.service.port }}
+            failureThreshold: 30
+            periodSeconds: 2
+            initialDelaySeconds: 1
+            timeoutSeconds: 1
           resources:
             {{- toYaml .Values.housekeeper.resources | nindent 12 }}
       {{- with .Values.housekeeper.nodeSelector }}

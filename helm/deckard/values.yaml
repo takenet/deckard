@@ -5,7 +5,7 @@
 replicaCount: 1
 
 image:
-  repository: blipai/deckard
+  repository: ko.local/deckard
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
@@ -16,60 +16,8 @@ fullnameOverride: ""
 
 labels: {}
 
-# To control deckard's housekeeping
-housekeeper:
-  # If the housekeeper task will run in the same pod as the deckard gRPC service
-  # Useful for development purposes when you don't want a separate deployment for the housekeeper
-  # Deckard's DECKARD_HOUSEKEEPER_ENABLED environment variable
-  self:
-    enabled: false
-
-  # If the housekeeper task will run in a separate deployment
-  enabled: true
-
-  image:
-    repository: blipai/deckard
-    pullPolicy: IfNotPresent
-    # Overrides the image tag whose default is the chart appVersion.
-    tag: ""
-
-  # The number of replicas for the housekeeper deployment
-  replicaCount: 1
-
-  labels: {}
-
-  podAnnotations: {}
-
-  podSecurityContext: {}
-
-  securityContext: {}
-
-  env: []
-
-  resources: {}
-
-  nodeSelector: {}
-
-  tolerations: []
-
-  affinity: {}
-
-  service:
-    enabled: true
-    type: ClusterIP
-    port: 8081
-
-  storage:
-    # By default the housekeeper will use same uri as the Deckard gRPC instance.
-    # To modify this behavior set the housekeeper uri
-    uri: ""
-
-  cache:
-    # By default the housekeeper will use same uri as the Deckard gRPC instance.
-    # To modify this behavior set the housekeeper uri
-    uri: ""
-
-# To control Deckard's audit system
+# Configure the audit system using environment variables.
+# Check Deckard's configuration documentation for more information.
 audit:
   # Deckard's DECKARD_AUDIT_ENABLED environment variable
   enabled: false
@@ -159,3 +107,57 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+# To control deckard's housekeeer
+housekeeper:
+  # Defines if the housekeeper task will also run in the same pod as the deckard gRPC service
+  # Useful for development purposes when you don't want a separate deployment for the housekeeper.
+  # You must also set housekeeper.enabled to false if you want to change the default behavior
+  # Deckard's DECKARD_HOUSEKEEPER_ENABLED environment variable
+  self:
+    enabled: false
+
+  # If the housekeeper task will run in a separate deployment
+  enabled: true
+
+  image:
+    repository: ko.local/deckard
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: ""
+
+  # The number of replicas for the housekeeper deployment
+  replicaCount: 1
+
+  labels: {}
+
+  podAnnotations: {}
+
+  podSecurityContext: {}
+
+  securityContext: {}
+
+  env: []
+
+  resources: {}
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+
+  service:
+    enabled: true
+    type: ClusterIP
+    port: 8081
+
+  storage:
+    # By default the housekeeper will use same uri as the Deckard gRPC instance.
+    # You can use this field to modify the housekeeper storage uri
+    uri: ""
+
+  cache:
+    # By default the housekeeper will use same uri as the Deckard gRPC instance.
+    # You can use this field to modify the housekeeper cache uri
+    uri: ""
