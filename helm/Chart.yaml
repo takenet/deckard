@@ -53,11 +53,11 @@ dependencies:
   - name: mongodb
     version: 13.15.3
     repository: https://charts.bitnami.com/bitnami
-    condition: deckard.mongodb.selfDeployed
+    condition: mongodb.enabled
   - name: redis
     version: 17.11.6
     repository: https://charts.bitnami.com/bitnami
-    condition: if and (eq cacheType "REDIS") (redis.enabled)
+    condition: redis.enabled
 
 sources:
   - https://github.com/takenet/deckard/tree/main/helm/deckard
