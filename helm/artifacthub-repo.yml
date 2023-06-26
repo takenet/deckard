@@ -2,3 +2,6 @@ repositoryID: c528c9ed-0a67-45df-93c3-85f1508a303a
 owners:
   - name: Lucas Soares
     email: lucas.soares@blip.ai
+ignore:
+  - name: mongodb
+  - name: redis
