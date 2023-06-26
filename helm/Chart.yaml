@@ -10,7 +10,7 @@ annotations:
   artifacthub.io/license: MIT
   artifacthub.io/links: |
     - name: helm chart
-      url: https://github.com/takenet/deckard/tree/main/helm/deckard
+      url: https://github.com/takenet/deckard/tree/main/helm
     - name: source code
       url: https://github.com/takenet/deckard
     - name: Blip company
@@ -60,4 +60,4 @@ dependencies:
     condition: redis.enabled
 
 sources:
-  - https://github.com/takenet/deckard/tree/main/helm/deckard
+  - https://github.com/takenet/deckard/tree/main/helm
