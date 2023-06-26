@@ -92,7 +92,17 @@ ingress:
   enabled: false
   className: ""
   annotations: {}
-  tls: []
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  # hosts:
+    # - host: deckard.local
+      # paths:
+        # - path: /
+          # pathType: ImplementationSpecific
+  # tls: []
+  #  - secretName: deckard-tls
+  #    hosts:
+  #      - deckard.local
 
 resources: {}
 
@@ -101,6 +111,7 @@ autoscaling:
   minReplicas: 1
   maxReplicas: 10
   targetCPUUtilizationPercentage: 80
+# targetMemoryUtilizationPercentage: 80
 
 nodeSelector: {}
 
