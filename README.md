@@ -1,12 +1,12 @@
 # Deckard: A Highly Scalable Cyclic Priority Queue
 
-[![codecov](https://codecov.io/gh/takenet/deckard/branch/main/graph/badge.svg?token=IMT8NWZ69A)](https://codecov.io/gh/takenet/deckard) [![Go Report Card](https://goreportcard.com/badge/github.com/takenet/deckard)](https://goreportcard.com/report/github.com/takenet/deckard)
+[![License](https://img.shields.io/github/license/takenet/deckard)](https://github.com/takenet/deckard/blob/main/LICENSE) [![codecov](https://codecov.io/gh/takenet/deckard/branch/main/graph/badge.svg?token=IMT8NWZ69A)](https://codecov.io/gh/takenet/deckard) [![Go Report Card](https://goreportcard.com/badge/github.com/takenet/deckard)](https://goreportcard.com/report/github.com/takenet/deckard)
 
-[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/deckard)](https://artifacthub.io/packages/helm/deckard/deckard) [![Docker Pulls](https://img.shields.io/docker/pulls/blipai/deckard)](https://hub.docker.com/r/blipai/deckard) [![Nuget org](https://img.shields.io/nuget/v/Deckard)](https://www.nuget.org/packages/Deckard)
+[![Artifact Hub](https://img.shields.io/badge/helm-Artifact_Hub_%28Deckard%29-blue?logo=helm&link=https://artifacthub.io/packages/helm/deckard/deckard)](https://artifacthub.io/packages/helm/deckard/deckard) [![Docker](https://img.shields.io/docker/image-size/blipai/deckard/latest?logo=docker)](https://hub.docker.com/r/blipai/deckard)
 
-[![License](https://img.shields.io/github/license/takenet/deckard)](https://github.com/takenet/deckard/blob/main/LICENSE)
+[![Nuget org](https://img.shields.io/nuget/v/deckard?logo=nuget)](https://www.nuget.org/packages/Deckard) [![Golang](https://img.shields.io/github/go-mod/go-version/takenet/deckard?logo=go)](https://pkg.go.dev/github.com/takenet/deckard)
 
-[![Slack](https://img.shields.io/badge/Slack-Gophers_%28Deckard%29-blue?logo=slack&link=https://gophers.slack.com/archives/C05E1TMS1FY)](https://gophers.slack.com/archives/C05E1TMS1FY)
+[![Slack](https://img.shields.io/badge/slack-Gophers_%28Deckard%29-blue?logo=slack&link=https://gophers.slack.com/archives/C05E1TMS1FY)](https://gophers.slack.com/archives/C05E1TMS1FY)
 
 Deckard is a priority queue system inspired by projects such as Google Cloud PubSub, Nats, Kafka, and others. Its main distinction lies in its ability to associate a priority with each message and have a queue that can be optionally cyclic. This means that messages can be delivered again after a user-managed time. Additionally, Deckard implements a locking mechanism to prevent message processing for a specified duration.
 
