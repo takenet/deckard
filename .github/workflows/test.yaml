@@ -73,14 +73,6 @@ jobs:
         name: gotest.out
         path: gotest.out
 
-    - name: Install go-junit-report
-      run: go install github.com/jstemmer/go-junit-report@latest
-      if: always()
-
-    - name: Generate JUnit report
-      run: cat gotest.out | go-junit-report -set-exit-code > junit.xml
-      if: always()
-
     - name: Publish JUnit report
       uses: actions/upload-artifact@v3
       if: always()
