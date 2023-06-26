@@ -6,6 +6,7 @@
 
 [![License](https://img.shields.io/github/license/takenet/deckard)](https://github.com/takenet/deckard/blob/main/LICENSE)
 
+[![Slack](https://img.shields.io/badge/Slack-Gophers_%28Deckard%29-blue?logo=slack&link=https://gophers.slack.com/archives/C05E1TMS1FY)](https://gophers.slack.com/archives/C05E1TMS1FY)
 
 Deckard is a priority queue system inspired by projects such as Google Cloud PubSub, Nats, Kafka, and others. Its main distinction lies in its ability to associate a priority with each message and have a queue that can be optionally cyclic. This means that messages can be delivered again after a user-managed time. Additionally, Deckard implements a locking mechanism to prevent message processing for a specified duration.
 
