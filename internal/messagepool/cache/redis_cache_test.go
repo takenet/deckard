@@ -4,6 +4,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/takenet/deckard/internal/config"
@@ -32,6 +33,8 @@ func TestNewCacheWithoutServerShouldErrorIntegration(t *testing.T) {
 		t.Skip()
 	}
 
+	defer viper.Reset()
+	config.CacheConnectionRetryEnabled.Set(false)
 	config.RedisPort.Set(12345)
 
 	_, err := NewRedisCache(ctx)
