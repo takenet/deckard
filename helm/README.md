@@ -11,11 +11,11 @@ Check the [Deckard's github](https://github.com/takenet/deckard) for more inform
 
 ## Installing the Chart
 
-To install the Deckard chart, use the following command:
+To install the Deckard chart, use the following commands:
 
 ```bash
-helm repo add deckard TODO
-helm install deckard TODO
+helm repo add deckard https://takenet.github.io/deckard/
+helm install deckard deckard/deckard
 ```
 
 ## Uninstalling the Chart
