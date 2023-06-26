@@ -1,14 +1,15 @@
 # Deckard: A Highly Scalable Cyclic Priority Queue
 
-[![codecov](https://codecov.io/gh/takenet/deckard/branch/main/graph/badge.svg?token=IMT8NWZ69A)](https://codecov.io/gh/takenet/deckard)
+[![codecov](https://codecov.io/gh/takenet/deckard/branch/main/graph/badge.svg?token=IMT8NWZ69A)](https://codecov.io/gh/takenet/deckard) [![Go Report Card](https://goreportcard.com/badge/github.com/takenet/deckard)](https://goreportcard.com/report/github.com/takenet/deckard)
 
-[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/deckard)](https://artifacthub.io/packages/search?repo=deckard)
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/deckard)](https://artifacthub.io/packages/helm/deckard/deckard) [![Docker Pulls](https://img.shields.io/docker/pulls/blipai/deckard)](https://hub.docker.com/r/blipai/deckard) [![Nuget org](https://img.shields.io/nuget/v/Deckard)](https://www.nuget.org/packages/Deckard)
 
-Deckard is a priority queue system inspired by projects like: Google Cloud PubSub, Nats, Kafka and others.
+[![License](https://img.shields.io/github/license/takenet/deckard)](https://github.com/takenet/deckard/blob/main/LICENSE)
+
+
+Deckard is a priority queue system inspired by projects such as Google Cloud PubSub, Nats, Kafka, and others. Its main distinction lies in its ability to associate a priority with each message and have a queue that can be optionally cyclic. This means that messages can be delivered again after a user-managed time. Additionally, Deckard implements a locking mechanism to prevent message processing for a specified duration.
 
 ![deckard](docs/deckard_cartoon.webp)
-
-The main difference is that Deckard has a priority associated with each message and it is optionally cyclic, meaning that the message can be delivered again after a certain user-managed time.
 
 Briefly:
 - An application inserts a message to be queued and its configuration (TTL, metadata, payload, etc).
@@ -25,7 +26,7 @@ Briefly:
 
 Deckard was born from an initiative to simplify and unify applications called Frontiers which were part of STILINGUE's orchestration system for data gathering.
 
-Several different implementations were made, but they proved to have several limitations such as:
+Several different implementations were made, but they proved to have limitations such as:
 - Debugging
 - Genericity
 - Scalability
@@ -44,23 +45,23 @@ The **main** objectives of the project are:
 
 ### **What Deckard is not?**
 
-It is not a normal messaging/queue system. If you don't have a use case that needs priority and cyclic queuing or locking mechanism, you should use GCP PubSub, Kafka, RabbitMQ, Azure Service Bus, Amazon SQS, or any other messaging system.
+It is important to note that Deckard is not a conventional messaging/queue system. If your use case does not involve priority, cyclic queuing, or a locking mechanism, it is recommended to consider alternatives such as GCP PubSub, Kafka, RabbitMQ, Azure Service Bus, Amazon SQS, or other messaging systems.
 
 ## Project Status
 
-Deckard has been used in a production environment for over 2 years handling millions of messages and thousands of requests per second.
+Deckard has been used in a production environment since 2019, handling billions of messages and thousands of requests per second. Since its initial internal release, Deckard has undergone significant improvements and enhancements.
 
-To be able to open source the project we had to make some changes to the code and that is the reason we opted to release it with a `0.0.x` version.
+The performance and reliability of Deckard are directly dependent on these external services. Therefore, it is crucial to configure MongoDB and Redis correctly to ensure optimal performance. Redis is responsible for storing all priority queues and has a significant impact on Deckard's performance, while MongoDB usage is simpler and has a lower impact on performance.
 
-We also know few issues we need to work but currently we are very confident that it can be used in production environments. Check our [issues](https://github.com/takenet/deckard/issues) to see what we are working on.
+> Currently, we have projects that utilize MongoDB in both a virtual machine environment and a Kubernetes environment. However, it's worth noting that we have had more extensive usage of MongoDB in a virtual machine (VM) environment compared to Kubernetes. When deploying Deckard, it is important to configure MongoDB properly, following MongoDB's recommendations for production environments (documented here: [MongoDB Production Notes](https://www.mongodb.com/docs/manual/administration/production-notes/)).
 
-Please let us know if you find any issues or have any suggestions in our [discussions](https://github.com/takenet/deckard/discussions).
+While the project is being released with a `0.0.x` version due to necessary code modifications for open-sourcing, it has been thoroughly tested and proven to be reliable in production scenarios.
+
+Please refer to our [issues](https://github.com/takenet/deckard/issues) section for more details. Your feedback and suggestions are highly appreciated and can be shared in our [discussions](https://github.com/takenet/deckard/discussions).
 
 ## Getting Started
 
-A [getting started guide](/docs/getting-started.md) is available to help you to start using Deckard.
-
-Check also the [client documentation](/docs/using.md) to see how to use Deckard in a project using your favorite language.
+To quickly get started with Deckard, please consult our [getting started guide](/docs/getting-started.md), which provides step-by-step instructions. Additionally, we have provided [client documentation](/docs/using.md) for various programming languages to assist you in integrating Deckard into your projects.
 
 ### Running Deckard
 

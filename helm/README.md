@@ -4,6 +4,8 @@ This Helm chart deploys Deckard, an application that provides a gRPC API for man
 
 Check the [Deckard's github](https://github.com/takenet/deckard) for more information.
 
+> Currently, we are in the early stages of using our Helm chart, please share any problems you may encounter with it.
+
 ## Prerequisites
 
 - Kubernetes 1.16+
