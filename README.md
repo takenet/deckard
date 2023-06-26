@@ -51,7 +51,7 @@ It is important to note that Deckard is not a conventional messaging/queue syste
 
 Deckard has been used in a production environment since 2019, handling billions of messages and thousands of requests per second. Since its initial internal release, Deckard has undergone significant improvements and enhancements.
 
-The performance and reliability of Deckard are directly dependent on these external services. Therefore, it is crucial to configure MongoDB and Redis correctly to ensure optimal performance. Redis is responsible for storing all priority queues and has a significant impact on Deckard's performance, while MongoDB usage is simpler and has a lower impact on performance.
+The performance and reliability of Deckard are directly dependent on the storage and cache services. Therefore, it is crucial to configure MongoDB and Redis correctly to ensure optimal performance. Redis is responsible for storing all priority queues and has a significant impact on Deckard's performance, while MongoDB usage is simpler and has a lower impact on performance.
 
 > Currently, we have projects that utilize MongoDB in both a virtual machine environment and a Kubernetes environment. However, it's worth noting that we have had more extensive usage of MongoDB in a virtual machine (VM) environment compared to Kubernetes. When deploying Deckard, it is important to configure MongoDB properly, following MongoDB's recommendations for production environments (documented here: [MongoDB Production Notes](https://www.mongodb.com/docs/manual/administration/production-notes/)).
 
