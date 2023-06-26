@@ -12,7 +12,7 @@ annotations:
 
 apiVersion: v2
 name: deckard
-description: A Helm chart for Deckard
+description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
 
 # A chart can be either an 'application' or a 'library' chart.
 #
@@ -45,7 +45,9 @@ home: https://www.blip.ai/
 
 maintainers:
   - name: Blip
-    url: https://github.com/takenet/deckard
+    url: https://github.com/takenet
+  - name: lucasoares
+    url: https://github.com/lucasoares
 
 dependencies:
   - name: mongodb
