@@ -44,6 +44,10 @@ func (config *ViperConfigKey) Get() string {
 		}
 	}
 
+	if val, ok := config.GetDefault().(string); ok {
+		return val
+	}
+
 	return ""
 }
 
@@ -57,6 +61,12 @@ func (config *ViperConfigKey) GetDuration() time.Duration {
 		if viper.IsSet(alias) {
 			return viper.GetDuration(alias)
 		}
+	}
+
+	if val, ok := config.GetDefault().(string); ok {
+		duration, _ := time.ParseDuration(val)
+
+		return duration
 	}
 
 	return 0
@@ -74,6 +84,10 @@ func (config *ViperConfigKey) GetBool() bool {
 		}
 	}
 
+	if val, ok := config.GetDefault().(bool); ok {
+		return val
+	}
+
 	return false
 }
 
@@ -87,6 +101,10 @@ func (config *ViperConfigKey) GetInt() int {
 		if viper.IsSet(alias) {
 			return viper.GetInt(alias)
 		}
+	}
+
+	if val, ok := config.GetDefault().(int); ok {
+		return val
 	}
 
 	return 0

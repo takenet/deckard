@@ -8,6 +8,7 @@ var CacheType = Create(&ViperConfigKey{
 var CacheUri = Create(&ViperConfigKey{
 	Key:     "cache.uri",
 	Aliases: []string{"redis.uri"},
+	Default: nil,
 })
 
 var CacheConnectionRetryEnabled = Create(&ViperConfigKey{

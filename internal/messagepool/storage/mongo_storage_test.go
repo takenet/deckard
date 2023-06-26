@@ -70,8 +70,7 @@ func TestNewStorageWithoutServerShouldErrorIntegration(t *testing.T) {
 
 	defer viper.Reset()
 	config.StorageConnectionRetryEnabled.Set(false)
-	config.MongoAddresses.Set("localhost:41343")
-	config.MongoDatabase.Set("unit_test")
+	config.StorageUri.Set("mongodb://localhost:41343/unit_test?connectTimeoutMS=200&socketTimeoutMS=200")
 
 	_, err := NewMongoStorage(context.Background())
 

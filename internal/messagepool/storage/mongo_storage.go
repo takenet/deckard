@@ -118,6 +118,12 @@ func waitForClient(ctx context.Context, opts *options.ClientOptions) (*mongo.Cli
 	var client *mongo.Client
 
 	for i := 1; i <= config.StorageConnectionRetryAttempts.GetInt(); i++ {
+		var cancelFunc context.CancelFunc = func() {}
+		if opts.ConnectTimeout != nil {
+			ctx, cancelFunc = context.WithTimeout(ctx, *opts.ConnectTimeout)
+		}
+		defer cancelFunc()
+
 		client, err = createClient(ctx, opts)
 
 		if err == nil || !config.StorageConnectionRetryEnabled.GetBool() {

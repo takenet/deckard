@@ -10,7 +10,7 @@ var StorageType = Create(&ViperConfigKey{
 var StorageUri = Create(&ViperConfigKey{
 	Key:     "storage.uri",
 	Aliases: []string{"mongo.uri", "mongodb.uri"},
-	Default: "",
+	Default: nil,
 })
 
 var StorageConnectionRetryEnabled = Create(&ViperConfigKey{
