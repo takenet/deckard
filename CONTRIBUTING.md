@@ -6,6 +6,45 @@ You can help this project by reporting problems, suggestions, localizing it or c
 
 Go to our [issue tracker](https://github.com/takenet/deckard/issues) and check if your problem/suggestion is already reported. If not, create a new issue with a descriptive title and detail your suggestion or steps to reproduce the problem.
 
+## Project structure and components
+
+The project has as its base a RPC service with the Google implementation known as [gRPC](https://github.com/grpc) using [Protocol Buffers](https://developers.google.com/protocol-buffers).
+
+It is organized in the following folders:
+
+```
+deckard                     # Root folder with project files and Golang service/gRPC generated sources
+├── dashboards              # Dashboards templates for Grafana (metrics) and Kibana (audit)
+├── docker                  # Docker compose to help running integration tests and base docker image file
+├── helm                    # Helm chart for deploying Deckard in Kubernetes
+├── docs                    # Documentation files
+├── examples                # Examples using Deckard in different languages
+├── internal                # Internal .go files
+│   ├── audit               # Audit system
+│   ├── cmd                 # Executable main file for the Deckard service
+│   ├── config              # Configuration variables managed by viper
+│   ├── logger              # Logging configuration
+│   ├── messagepool         # Contains all main implementation files and housekeeping program logic
+│   │   ├── cache           # Caching implementation
+│   │   ├── entities        # Message and QueueConfiguration internal definitions
+│   │   ├── queue           # Queue definition
+│   │   ├── storage         # Storage implementation
+│   │   └── utils           # Utility package for data conversion
+│   ├── metrics             # Package with metrics definitions
+│   ├── mocks               # Auto-generated files via mockgen (created after running `make gen-mocks`)
+│   ├── project             # Project package with information used by the version control system
+│   ├── service             # Internal service implementation of the gRPC service
+│   ├── shutdown            # Shutdown package with graceful shutdown implementation
+│   └── trace               # Trace package with tracing implementation
+├── java                    # Files for generating the Java client
+├── csharp                  # Files for generating the C# client
+├── proto                   # .proto files with the all definitions
+```
+
+> See the [configurations section](/README.md?#configuration) to see how to configure any internal component.
+
+For more details about each component see the [components documentation](docs/components.md).
+
 ## Contribute to the code
 
 To contribute with Deckard you need to follow these steps:
@@ -141,6 +180,13 @@ To run the integration tests you must have the following services available in `
 - Cache:
     - Redis: `localhost:6379`
 
+> We provide a simple [docker-compose](docker/docker-compose.yml) file to help you run these services.
+>
+> Run it with the following command:
+> ```shell
+> docker compose -f docker/docker-compose.yml up -d
+> ```
+
 Unit tests and integration tests may be found in the same file, but all integration tests must use the [short](https://golang.org/pkg/testing/#Short) flag.
 
 Every integration tests have the suffix `Integration` in their name.
@@ -198,44 +244,6 @@ docker run --rm -p 8081:8081 ko.local/deckard:<build_version>
 ```
 
 > Change the `build_version` with the version logged while building the image.
-
-## Project structure and components
-
-The project has as its base a RPC service with the Google implementation known as [gRPC](https://github.com/grpc) using [Protocol Buffers](https://developers.google.com/protocol-buffers).
-
-It is organized in the following folders:
-
-```
-deckard                     # Root folder with project files and Golang service/gRPC generated sources
-├── dashboards              # Dashboards templates for Grafana (metrics) and Kibana (audit)
-├── docker                  # Docker compose to help running integration tests and base docker image file
-├── docs                    # Documentation files
-├── examples                # Examples using Deckard in different languages
-├── internal                # Internal .go files
-│   ├── audit               # Audit system
-│   ├── cmd                 # Executable main file for the Deckard service
-│   ├── config              # Configuration variables managed by viper
-│   ├── logger              # Logging configuration
-│   ├── messagepool         # Contains all main implementation files and housekeeping program logic
-│   │   ├── cache           # Caching implementation
-│   │   ├── entities        # Message and QueueConfiguration internal definitions
-│   │   ├── queue           # Queue definition
-│   │   ├── storage         # Storage implementation
-│   │   └── utils           # Utility package for data conversion
-│   ├── metrics             # Package with metrics definitions
-│   ├── mocks               # Auto-generated files via mockgen (created after running `make gen-mocks`)
-│   ├── project             # Project package with information used by the version control system
-│   ├── service             # Internal service implementation of the gRPC service
-│   ├── shutdown            # Shutdown package with graceful shutdown implementation
-│   └── trace               # Trace package with tracing implementation
-├── java                    # Files for generating the Java API
-├── csharp                  # Files for generating the C# API
-├── proto                   # .proto files with the all definitions
-```
-
-> See the [configurations section](/README.md?#configuration) to see how to configure any internal component.
-
-For more details about each component see the [components documentation](docs/components.md).
 
 ## Versioning
 

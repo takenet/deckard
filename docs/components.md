@@ -31,9 +31,7 @@ The following tasks are currently being performed by the housekeeper:
 - Compute metrics from the system and queues;
 - Remove elements from queues that are limited by size;
 
-If you run Deckard with memory storage or cache engines, the housekeeper must also run in the same service instance since everything is stored locally.
-
-Running with any other engine we suggest running the housekeeper in a separate instance to avoid any performance issues, since it would be competing resource usage against the gRPC service.
+If you run Deckard with memory storage or cache engines, the housekeeper must also run in the same service instance since everything is stored locally, but running with any other engines we suggest running the housekeeper in a separate instance to avoid any performance issues, since it would be competing resource usage against the gRPC service.
 
 ## Audit
 
@@ -63,7 +61,7 @@ Grafana dashboard images:
 
 ![Grafana Dashboard 2](grafana/grafana2.png)
 
-![Grafana Dashboard 2](grafana/grafana2.png)
+![Grafana Dashboard 3](grafana/grafana3.png)
 
 ## Logging
 
