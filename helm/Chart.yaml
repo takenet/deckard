@@ -27,7 +27,7 @@ type: application
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
 # Versions are expected to follow Semantic Versioning (https://semver.org/)
-version: 0.1.0
+version: 0.0.11-SNAPSHOT
 
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application. Versions are not expected to
@@ -49,11 +49,11 @@ maintainers:
 
 dependencies:
   - name: mongodb
-    version: 13.15.3
+    version: 0.0.1-SNAPSHOT
     repository: https://charts.bitnami.com/bitnami
     condition: deckard.mongodb.selfDeployed
   - name: redis
-    version: 17.11.6
+    version: 0.0.1-SNAPSHOT
     repository: https://charts.bitnami.com/bitnami
     condition: if and (eq cacheType "REDIS") (redis.enabled)
 
