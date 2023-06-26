@@ -9,9 +9,7 @@ This guide will help you to start using Deckard and consists of the following se
 
 The fastest way to start using deckard is by using Docker or downloading its binary.
 
-> By default it will use a memory storage and a memory cache engine.
->
-> To change the default configuration see the [configuration section](/README.md?#configuration).
+If you want to execute it in a Kubernetes cluster you can use the Helm chart.
 
 ### Using docker
 
@@ -20,6 +18,24 @@ You can run deckard using docker by using the following command:
 ```bash
 docker run --rm -p 8081:8081 blipai/deckard
 ```
+
+> By default it will use a memory storage and a memory cache engine.
+>
+> To change the default configuration see the [configuration section](/README.md?#configuration).
+
+### Using Helm
+
+To install the Deckard chart, use the following commands:
+
+```bash
+helm repo add deckard https://takenet.github.io/deckard/
+helm install deckard deckard/deckard
+```
+
+> It will deploy a MongoDB for storage and a Redis for cache.
+>
+> Check the chart [values.yaml](../helm/values.yaml) to see all available configurations.
+
 
 ### Using the binary
 

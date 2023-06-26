@@ -2,6 +2,8 @@
 
 [![codecov](https://codecov.io/gh/takenet/deckard/branch/main/graph/badge.svg?token=IMT8NWZ69A)](https://codecov.io/gh/takenet/deckard)
 
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/deckard)](https://artifacthub.io/packages/search?repo=deckard)
+
 Deckard is a priority queue system inspired by projects like: Google Cloud PubSub, Nats, Kafka and others.
 
 ![deckard](docs/deckard_cartoon.webp)
@@ -69,16 +71,27 @@ On `Linux` you can run it from sources with:
 make run
 ```
 
-You can also run it with Docker:
+You can run it with Docker:
 ```shell
 docker run --rm -p 8081:8081 blipai/deckard
 ```
 
-You may also download the latest release from the [releases](https://github.com/takenet/deckard/releases) page and execute it.
-
-> By default it will use a memory storage and a memory cache engine.
+> By default for Docker and Linux it will use a memory storage and a memory cache engine.
 >
 > To change the default configuration see the [configuration section](/README.md?#configuration).
+
+You can also run it in a Kubernetes cluster using Helm:
+
+> It will deploy a MongoDB for storage and a Redis for cache.
+>
+> Check the chart [values.yaml](helm/values.yaml) to see all available configurations.
+
+```shell
+helm repo add deckard https://takenet.github.io/deckard/
+helm install deckard deckard/deckard
+```
+
+You may also download the latest release from the [releases](https://github.com/takenet/deckard/releases) page and execute it.
 
 ## Configuration
 
