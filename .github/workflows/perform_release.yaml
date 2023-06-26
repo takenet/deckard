@@ -47,7 +47,7 @@ jobs:
       uses: stefanzweifel/git-auto-commit-action@v4
       with:
         commit_message: 'build: ${{ env.deckard_new_version }} release'
-        file_pattern: 'internal/project/project.go java/pom.xml csharp/Deckard.csproj'
+        file_pattern: 'internal/project/project.go java/pom.xml csharp/Deckard.csproj helm/Chart.yaml'
 
     - name: Release
       uses: softprops/action-gh-release@v1
@@ -87,4 +87,4 @@ jobs:
       uses: stefanzweifel/git-auto-commit-action@v4
       with:
         commit_message: 'chore: ${{ env.deckard_new_snapshot_version }}'
-        file_pattern: 'internal/project/project.go java/pom.xml csharp/Deckard.csproj'
+        file_pattern: 'internal/project/project.go java/pom.xml csharp/Deckard.csproj helm/Chart.yaml'
