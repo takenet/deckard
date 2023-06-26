@@ -59,6 +59,15 @@ mongodb:
     rootUser: deckard
     rootPassword: deckard
   architecture: standalone
+  initdbScripts:
+    init_database.js: |
+      db = db.getSiblingDB("deckard");
+
+      db.queue.createIndex({ "expiry_date": 1 });
+      db.queue.createIndex({ "queue": 1, "expiry_date": 1 });
+      db.queue.createIndex({ "id": 1, "queue": 1, "score": 1 });
+      db.queue.createIndex({ "queue_prefix": 1, "last_usage": 1 });
+      db.queue.createIndex({ "id": 1, "queue": 1 }, { unique: true });
 
 cache:
   # Deckard's DECKARD_REDIS_TYPE environment variable
