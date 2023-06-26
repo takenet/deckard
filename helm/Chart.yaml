@@ -49,11 +49,11 @@ maintainers:
 
 dependencies:
   - name: mongodb
-    version: 0.0.1-SNAPSHOT
+    version: 13.15.3
     repository: https://charts.bitnami.com/bitnami
     condition: deckard.mongodb.selfDeployed
   - name: redis
-    version: 0.0.1-SNAPSHOT
+    version: 17.11.6
     repository: https://charts.bitnami.com/bitnami
     condition: if and (eq cacheType "REDIS") (redis.enabled)
 

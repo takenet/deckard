@@ -34,7 +34,7 @@ jobs:
         run: helm repo add bitnami https://charts.bitnami.com/bitnami
       - name: Build chart dependencies
         working-directory: helm
-        run: helm dependency build .
+        run: helm dependency update .
       - name: Lint chart
         working-directory: helm
         run: helm lint .

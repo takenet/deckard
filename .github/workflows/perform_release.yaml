@@ -35,7 +35,7 @@ jobs:
         sed -i -E "s/appVersion: \"[0-9]+\.[0-9]+\.[0-9]+-SNAPSHOT\"/appVersion: \"$NEW_VERSION\"/" helm/Chart.yaml
 
         # Replace chart version in Helm Chart.yaml file
-        sed -i -E "s/version: [0-9]+\.[0-9]+\.[0-9]+-SNAPSHOT/version: $NEW_VERSION/" helm/Chart.yaml
+        sed -i -E "s/^version: [0-9]+\.[0-9]+\.[0-9]+-SNAPSHOT/version: $NEW_VERSION/" helm/Chart.yaml
 
         echo "deckard_new_version=$NEW_VERSION" >> $GITHUB_ENV
         echo "deckard_old_version=$VERSION" >> $GITHUB_ENV
@@ -79,7 +79,7 @@ jobs:
         sed -i -E "s/appVersion: \"[0-9]+\.[0-9]+\.[0-9]+\"/appVersion: \"$NEW_SNAPSHOT_VERSION\"/" helm/Chart.yaml
 
         # Replace chart version in Helm Chart.yaml file
-        sed -i -E "s/version: [0-9]+\.[0-9]+\.[0-9]+/version: $NEW_SNAPSHOT_VERSION/" helm/Chart.yaml
+        sed -i -E "s/^version: [0-9]+\.[0-9]+\.[0-9]+/version: $NEW_SNAPSHOT_VERSION/" helm/Chart.yaml
 
         echo "deckard_new_snapshot_version=$NEW_SNAPSHOT_VERSION" >> $GITHUB_ENV
 
