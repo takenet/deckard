@@ -59,6 +59,7 @@ mongodb:
     rootUser: deckard
     rootPassword: deckard
   architecture: standalone
+  # If you change storage.mongodb.database or storage.mongodb.collection you will need to update this script or create indexes manually
   initdbScripts:
     init_database.js: |
       db = db.getSiblingDB("deckard");
