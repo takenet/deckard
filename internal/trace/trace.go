@@ -2,6 +2,7 @@ package trace
 
 import (
 	"context"
+	"os"
 
 	"github.com/takenet/deckard/internal/logger"
 	"github.com/takenet/deckard/internal/project"
@@ -18,6 +19,12 @@ var tracerProvider *sdktrace.TracerProvider
 
 func Init() error {
 	ctx := context.Background()
+
+	if os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") == "" && os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") == "" {
+		logger.S(ctx).Warn("Tracing is disabled. Enabled it configuring OpenTelemetry environment variables.")
+
+		return nil
+	}
 
 	client := otlptracegrpc.NewClient()
 	exporter, err := otlptrace.New(ctx, client)

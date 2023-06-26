@@ -1,0 +1,185 @@
+# Default values for deckard.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+# TODO: allow configuring the /metrics endpoint/port to be used by prometheus
+
+replicaCount: 1
+
+image:
+  repository: blipai/deckard
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+labels: {}
+
+# Configure the audit system using environment variables.
+# Check Deckard's configuration documentation for more information.
+audit:
+  # Deckard's DECKARD_AUDIT_ENABLED environment variable
+  enabled: false
+
+env: []
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+storage:
+  # Deckard's DECKARD_STORAGE_TYPE environment variable
+  # Available options: MONGODB, MEMORY
+  # Remember to set the mongodb.enabled to false if you want to use a existing MongoDB or a Memory storage
+  type: MONGODB
+  # Deckard's DECKARD_STORAGE_URI environment variable.
+  # By default this chart will use the deployed MongoDB's URI
+  # If you change mongodb chart values you will need to set URI manually
+  # TODO: deal with different MongoDB deployments to generate the correct URI
+  uri: ""
+  mongodb:
+    # Deckard's DECKARD_MONGODB_DATABASE environment variable
+    database: "deckard"
+    # Deckard's DECKARD_MONGODB_COLLECTION environment variable
+    collection: "queue"
+    # Deckard's DECKARD_MONGODB_QUEUE_CONFIGURATION_COLLECTION environment variable
+    queue_configuration_collection: "queue_configuration"
+
+# See available options here: https://github.com/bitnami/charts/tree/main/bitnami/mongodb
+mongodb:
+  # When enabled this chart will also deploy a MongoDB
+  enabled: true
+  auth:
+    enabled: true
+    # In a production environment prefer setting all passwords and configurations using mongodb's existingSecret chart field
+    rootUser: deckard
+    rootPassword: deckard
+  architecture: standalone
+  # If you change storage.mongodb.database or storage.mongodb.collection you will need to update this script or create indexes manually
+  initdbScripts:
+    init_database.js: |
+      db = db.getSiblingDB("deckard");
+
+      db.queue.createIndex({ "expiry_date": 1 });
+      db.queue.createIndex({ "queue": 1, "expiry_date": 1 });
+      db.queue.createIndex({ "id": 1, "queue": 1, "score": 1 });
+      db.queue.createIndex({ "queue_prefix": 1, "last_usage": 1 });
+      db.queue.createIndex({ "id": 1, "queue": 1 }, { unique: true });
+
+cache:
+  # Deckard's DECKARD_REDIS_TYPE environment variable
+  # Available options: REDIS, MEMORY
+  # Remember to set the redis.enabled to false if you want to use a self-deployed Redis or a Memory storage
+  type: REDIS
+  # Deckard's DECKARD_CACHE_URI environment variable.
+  # By default this chart will use the deployed Redis's URI
+  # If you change redis chart values you will need to set URI manually
+  # TODO: deal with different Redis deployments to generate the correct URI
+  uri: ""
+  redis:
+    # Deckard's DECKARD_REDIS_DB environment variable
+    database: 0
+
+# See available options here: https://github.com/bitnami/charts/tree/main/bitnami/redis
+redis:
+  # When enabled this chart will also deploy a Redis
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: true
+    # In a production environment prefer setting all passwords using redis's existingSecret chart field
+    password: deckard
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 8081
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  # hosts:
+    # - host: deckard.local
+      # paths:
+        # - path: /
+          # pathType: ImplementationSpecific
+  # tls: []
+  #  - secretName: deckard-tls
+  #    hosts:
+  #      - deckard.local
+
+resources: {}
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+# targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# To control deckard's housekeeer
+housekeeper:
+  # Defines if the housekeeper task will also run in the same pod as the deckard gRPC service
+  # Useful for development purposes when you don't want a separate deployment for the housekeeper.
+  # You must also set housekeeper.enabled to false if you want to change the default behavior
+  # Deckard's DECKARD_HOUSEKEEPER_ENABLED environment variable
+  self:
+    enabled: false
+
+  # If the housekeeper task will run in a separate deployment
+  enabled: true
+
+  image:
+    repository: blipai/deckard
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: ""
+
+  # The number of replicas for the housekeeper deployment
+  replicaCount: 1
+
+  labels: {}
+
+  podAnnotations: {}
+
+  podSecurityContext: {}
+
+  securityContext: {}
+
+  env: []
+
+  resources: {}
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+
+  service:
+    enabled: true
+    type: ClusterIP
+    port: 8081
+
+  storage:
+    # By default the housekeeper will use same uri as the Deckard gRPC instance.
+    # You can use this field to modify the housekeeper storage uri
+    uri: ""
+
+  cache:
+    # By default the housekeeper will use same uri as the Deckard gRPC instance.
+    # You can use this field to modify the housekeeper cache uri
+    uri: ""

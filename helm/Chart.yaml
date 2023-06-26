@@ -1,0 +1,54 @@
+annotations:
+  category: Queue
+  licenses: MIT
+  artifacthub.io/license: MIT
+  artifacthub.io/links: |
+    - name: helm chart
+      url: https://github.com/takenet/deckard/tree/main/helm/deckard
+    - name: source code
+      url: https://github.com/takenet/deckard
+    - name: Blip company
+      url: https://www.blip.ai/
+
+apiVersion: v2
+name: deckard
+description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+type: application
+
+# This is the chart version. This version number should be incremented each time you make changes
+# to the chart and its templates, including the app version.
+# Versions are expected to follow Semantic Versioning (https://semver.org/)
+version: 0.0.11-SNAPSHOT
+
+# This is the version number of the application being deployed. This version number should be
+# incremented each time you make changes to the application. Versions are not expected to
+# follow Semantic Versioning. They should reflect the version the application is using.
+# It is recommended to use it with quotes.
+appVersion: "0.0.11-SNAPSHOT"
+
+keywords:
+  - deckard
+  - queue
+  - messaging
+  - priority
+
+home: https://www.blip.ai/
+
+maintainers:
+  - name: Blip
+    url: https://github.com/takenet
+  - name: lucasoares
+    url: https://github.com/lucasoares
+
+dependencies:
+  - name: mongodb
+    version: 13.15.3
+    repository: https://charts.bitnami.com/bitnami
+    condition: mongodb.enabled
+  - name: redis
+    version: 17.11.6
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+
+sources:
+  - https://github.com/takenet/deckard/tree/main/helm/deckard

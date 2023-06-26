@@ -5,9 +5,28 @@ var CacheType = Create(&ViperConfigKey{
 	Default: "MEMORY",
 })
 
-var RedisUri = Create(&ViperConfigKey{
-	Key: "redis.uri",
+var CacheUri = Create(&ViperConfigKey{
+	Key:     "cache.uri",
+	Aliases: []string{"redis.uri"},
+	Default: nil,
 })
+
+var CacheConnectionRetryEnabled = Create(&ViperConfigKey{
+	Key:     "cache.connection.retry.enabled",
+	Default: true,
+})
+
+var CacheConnectionRetryAttempts = Create(&ViperConfigKey{
+	Key:     "cache.connection.retry.attempts",
+	Default: 10,
+})
+
+var CacheConnectionRetryDelay = Create(&ViperConfigKey{
+	Key:     "cache.connection.retry.delay",
+	Default: "5s",
+})
+
+// Redis Configurations
 
 var RedisPassword = Create(&ViperConfigKey{
 	Key: "redis.password",

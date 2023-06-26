@@ -45,19 +45,18 @@ var LOCK_ACK_POOL_REGEX = regexp.MustCompile("(.+)" + LOCK_ACK_SUFFIX + "$")
 var LOCK_NACK_POOL_REGEX = regexp.MustCompile("(.+)" + LOCK_NACK_SUFFIX + "$")
 
 func NewRedisCache(ctx context.Context) (*RedisCache, error) {
-	address := fmt.Sprint(config.RedisAddress.Get(), ":", config.RedisPort.GetInt())
+	uri := config.CacheUri.Get()
 
-	logger.S(ctx).Info("Connecting to ", address, ".")
+	var options *redis.Options
+	if uri == "" {
+		address := fmt.Sprint(config.RedisAddress.Get(), ":", config.RedisPort.GetInt())
 
-	uri := config.RedisUri.Get()
-
-	options := &redis.Options{
-		Addr:     address,
-		Password: config.RedisPassword.Get(),
-		DB:       config.RedisDB.GetInt(),
-	}
-
-	if uri != "" {
+		options = &redis.Options{
+			Addr:     address,
+			Password: config.RedisPassword.Get(),
+			DB:       config.RedisDB.GetInt(),
+		}
+	} else {
 		var err error
 		options, err = redis.ParseURL(uri)
 
@@ -66,16 +65,16 @@ func NewRedisCache(ctx context.Context) (*RedisCache, error) {
 		}
 	}
 
-	redisClient := redis.NewClient(options)
+	logger.S(ctx).Debug("Connecting to ", options.Addr, " Redis instance")
 
-	// OpenTelemetry APM
-	redisClient.AddHook(redisotel.NewTracingHook())
+	start := time.Now()
 
-	pingResult, err := redisClient.Ping(context.Background()).Result()
-
-	if err != nil || pingResult != "PONG" {
+	redisClient, err := waitForClient(options)
+	if err != nil {
 		return nil, err
 	}
+
+	logger.S(ctx).Debug("Connected to Redis cache in ", time.Since(start))
 
 	return &RedisCache{
 		Client: redisClient,
@@ -88,6 +87,30 @@ func NewRedisCache(ctx context.Context) (*RedisCache, error) {
 			containsElement:      redis.NewScript(containsElementScript),
 		},
 	}, nil
+}
+
+func waitForClient(options *redis.Options) (*redis.Client, error) {
+	var err error
+
+	redisClient := redis.NewClient(options)
+
+	// OpenTelemetry APM
+	redisClient.AddHook(redisotel.NewTracingHook())
+
+	for i := 1; i <= config.CacheConnectionRetryAttempts.GetInt(); i++ {
+		var pingResult string
+		pingResult, err = redisClient.Ping(context.Background()).Result()
+
+		if (err == nil && pingResult == "PONG") || !config.CacheConnectionRetryEnabled.GetBool() {
+			break
+		}
+
+		logger.S(context.Background()).Warnf("Failed to connect to Redis (%d times). Trying again in %s.", i, config.CacheConnectionRetryDelay.GetDuration())
+
+		<-time.After(config.CacheConnectionRetryDelay.GetDuration())
+	}
+
+	return redisClient, err
 }
 
 func (cache *RedisCache) Flush(ctx context.Context) {

@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/takenet/deckard/internal/config"
@@ -67,8 +68,9 @@ func TestNewStorageWithoutServerShouldErrorIntegration(t *testing.T) {
 		t.Skip()
 	}
 
-	config.MongoAddresses.Set("localhost:41343")
-	config.MongoDatabase.Set("unit_test")
+	defer viper.Reset()
+	config.StorageConnectionRetryEnabled.Set(false)
+	config.StorageUri.Set("mongodb://localhost:41343/unit_test?connectTimeoutMS=200&socketTimeoutMS=200")
 
 	_, err := NewMongoStorage(context.Background())
 

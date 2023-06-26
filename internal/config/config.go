@@ -13,6 +13,7 @@ type ConfigKey interface {
 	GetKey() string
 	GetDefault() any
 	Set(any)
+	GetAliases() []string
 
 	Get() string
 	GetBool() bool
@@ -52,6 +53,10 @@ func Configure(reset ...bool) {
 	// Default configuration values
 	for _, config := range defaultConfigs {
 		viper.SetDefault(config.GetKey(), config.GetDefault())
+
+		for _, alias := range config.GetAliases() {
+			viper.SetDefault(alias, config.GetDefault())
+		}
 	}
 
 	configured = true

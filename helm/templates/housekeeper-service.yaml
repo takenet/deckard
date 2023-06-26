@@ -1,0 +1,17 @@
+{{- if .Values.housekeeper.service.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "deckard.housekeeper.fullname" . }}
+  labels:
+    {{- include "deckard.housekeeper.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.housekeeper.service.type }}
+  ports:
+    - port: {{ .Values.housekeeper.service.port }}
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
+  selector:
+    {{- include "deckard.housekeeper.selectorLabels" . | nindent 4 }}
+{{- end }}
