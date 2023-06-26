@@ -61,8 +61,8 @@ Check the [values.yaml](https://github.com/takenet/deckard/blob/main/helm/values
 | `image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `image.tag` | Image tag (overrides appVersion) | `""` |
 | `imagePullSecrets` | Image pull secrets | `[]` |
-| `nameOverride` | Override the name of the chart | `\"\"` |
-| `fullnameOverride` | Override the full name of the chart | `\"\"` |
+| `nameOverride` | Override the name of the chart | `""` |
+| `fullnameOverride` | Override the full name of the chart | `""` |
 | `labels` | Additional labels | `{}` |
 | `audit.enabled` | Enable Deckard's audit system | `false` |
 | `env` | Additional environment variables | `[]` |
@@ -73,7 +73,7 @@ Check the [values.yaml](https://github.com/takenet/deckard/blob/main/helm/values
 | `service.type` | Kubernetes service type | `ClusterIP` |
 | `service.port` | Kubernetes service port | `8081` |
 | `ingress.enabled` | Enable ingress | `false` |
-| `ingress.className` | Ingress class name | `\"\"` |
+| `ingress.className` | Ingress class name | `""` |
 | `ingress.annotations` | Ingress annotations | `{}` |
 | `ingress.tls` | Ingress TLS configuration | `[]` |
 | `resources` | Resource requests and limits | `{}` |
@@ -93,7 +93,7 @@ Check the [values.yaml](https://github.com/takenet/deckard/blob/main/helm/values
 | `housekeeper.enabled` | Deploy a separate housekeeper deployment | `true` |
 | `housekeeper.image.repository` | Housekeeper image repository | `blipai/deckard` |
 | `housekeeper.image.pullPolicy` | Housekeeper image pull policy | `IfNotPresent` |
-| `housekeeper.image.tag` | Housekeeper image tag (overrides appVersion) | `\"\"` |
+| `housekeeper.image.tag` | Housekeeper image tag (overrides appVersion) | `""` |
 | `housekeeper.replicaCount` | Number of replicas for the housekeeper deployment | `1` |
 | `housekeeper.labels` | Additional labels for the housekeeper deployment | `{}` |
 | `housekeeper.podAnnotations` | Additional pod annotations for the housekeeper deployment | `{}` |
@@ -107,15 +107,15 @@ Check the [values.yaml](https://github.com/takenet/deckard/blob/main/helm/values
 | `housekeeper.service.enabled` | Enable Kubernetes service for the housekeeper deployment | `true` |
 | `housekeeper.service.type` | Kubernetes service type for the housekeeper deployment | `ClusterIP` |
 | `housekeeper.service.port` | Kubernetes service port for the housekeeper deployment | `8081` |
-| `housekeeper.storage.uri` | Housekeeper storage URI | `\"\"` |
-| `housekeeper.cache.uri` | Housekeeper cache URI | `\"\"` |
+| `housekeeper.storage.uri` | Housekeeper storage URI | `""` |
+| `housekeeper.cache.uri` | Housekeeper cache URI | `""` |
 
 ### Deckard's storage configuration
 
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
 | `storage.type` | Deckard storage type (MONGODB, MEMORY) | `MONGODB` |
-| `storage.uri` | Deckard storage URI | `\"\"` |
+| `storage.uri` | Deckard storage URI | `""` |
 | `storage.mongodb.database` | MongoDB database name for Deckard to use | `deckard` |
 | `storage.mongodb.collection` | MongoDB collection name for Deckard to use | `queue` |
 | `storage.mongodb.queue_configuration_collection` | MongoDB queue configuration collection name for Deckard to use | `queue_configuration` |
@@ -125,7 +125,7 @@ Check the [values.yaml](https://github.com/takenet/deckard/blob/main/helm/values
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
 | `cache.type` | Deckard cache type (REDIS, MEMORY) | `REDIS` |
-| `cache.uri` | Deckard cache URI | `\"\"` |
+| `cache.uri` | Deckard cache URI | `""` |
 | `cache.redis.database` | Redis database for Deckard to use | `0` |
 
 ### Redis' Chart configuration
@@ -137,7 +137,7 @@ For more `redis` configurations check [bitnami's chart available configurations]
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
 | `redis.enabled` | Deploy a Redis using the bitnami chart | `true` |
-| `redis.architecture` | Redis architecture (standalone) | `standalone` |
+| `redis.architecture` | Redis architecture | `standalone` |
 | `redis.auth.enabled` | Enable Redis authentication | `true` |
 | `redis.auth.password` | Redis password | `deckard` |
 
@@ -153,7 +153,7 @@ For more `mongodb` configurations check [bitnami's chart available configuration
 | `mongodb.auth.enabled` | Enable MongoDB authentication | `true` |
 | `mongodb.auth.rootUser` | MongoDB root username | `deckard` |
 | `mongodb.auth.rootPassword` | MongoDB root password | `deckard` |
-| `mongodb.architecture` | MongoDB architecture (standalone) | `standalone` |
+| `mongodb.architecture` | MongoDB architectur | `standalone` |
 
 ## Contributing
 
