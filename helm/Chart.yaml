@@ -1,6 +1,12 @@
 annotations:
   category: Queue
   licenses: MIT
+  artifacthub.io/images: |
+    - name: deckard
+      image: blipai/deckard:latest
+      platforms:
+        - linux/amd64
+  artifacthub.io/category: streaming-messaging
   artifacthub.io/license: MIT
   artifacthub.io/links: |
     - name: helm chart
@@ -9,6 +15,9 @@ annotations:
       url: https://github.com/takenet/deckard
     - name: Blip company
       url: https://www.blip.ai/
+  artifacthub.io/maintainers: |
+    - name: Lucas Soares
+      email: lucas.soares@blip.ai
 
 apiVersion: v2
 name: deckard
