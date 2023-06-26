@@ -30,6 +30,8 @@ jobs:
         uses: actions/configure-pages@v3
       - name: Setup Helm
         uses: azure/setup-helm@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Setup bitnami repo
         run: helm repo add bitnami https://charts.bitnami.com/bitnami
       - name: Build chart dependencies
