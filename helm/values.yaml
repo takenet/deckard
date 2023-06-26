@@ -1,6 +1,7 @@
 # Default values for deckard.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
+# TODO: allow configuring the /metrics endpoint/port to be used by prometheus
 
 replicaCount: 1
 
