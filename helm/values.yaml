@@ -73,7 +73,7 @@ mongodb:
   service:
     ports:
       mongodb: 27017
-  architecture: replicaset
+  architecture: standalone
   # If you change storage.mongodb.database or storage.mongodb.collection you will need to update this script or create indexes manually
   initdbScripts:
     init_database.js: |
@@ -102,7 +102,7 @@ cache:
 redis:
   # When enabled this chart will also deploy a Redis
   enabled: true
-  architecture: replication
+  architecture: standalone
   service:
     ports:
       redis: 6379
