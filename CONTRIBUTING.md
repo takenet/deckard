@@ -53,7 +53,7 @@ To contribute with Deckard you need to follow these steps:
 * Clone your forked repo locally.
 
 ```shell
-git clone git@github.com:yourname/deckard.git``
+git clone git@github.com:yourname/deckard.git
 ```
 
 * Always create a new issue when you plan to work on a bug or new feature and wait for other devs input before start coding.
