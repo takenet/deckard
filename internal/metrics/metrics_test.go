@@ -98,27 +98,39 @@ func TestListenAndServe(t *testing.T) {
 	// Start the HTTP server in a separate goroutine
 	go ListenAndServe()
 
+	var err error
+	var resp *http.Response
+	var body []byte
+
 	// Retry 10 times to wait for the HTTP server to start
 	for i := 0; i < 10; i++ {
 		<-time.After(5 * time.Millisecond)
 
 		// Send a GET request to the metrics endpoint
-		resp, err := http.Get(fmt.Sprintf("http://localhost:%d%s", config.MetricsPort.GetInt(), config.MetricsPath.Get()))
+		resp, err = http.Get(fmt.Sprintf("http://localhost:%d%s", config.MetricsPort.GetInt(), config.MetricsPath.Get()))
 		if err != nil {
-			t.Fatalf("Error sending request to metrics endpoint: %v", err)
+			continue
 		}
 		defer resp.Body.Close()
 
 		// Check if the response status code is 200 OK
 		if resp.StatusCode != http.StatusOK {
-			t.Errorf("Unexpected status code: got %v, want %v", resp.StatusCode, http.StatusOK)
+			continue
 		}
 
-		body, err := ioutil.ReadAll(resp.Body)
-		require.NoError(t, err)
-
-		require.Contains(t, string(body), "target_info")
+		body, _ = ioutil.ReadAll(resp.Body)
 
 		break
 	}
+
+	if err != nil {
+		t.Fatalf("Error sending request to metrics endpoint: %v", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Unexpected status code: got %v, want %v", resp.StatusCode, http.StatusOK)
+	}
+
+	require.Contains(t, string(body), "target_info")
+
 }
