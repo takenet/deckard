@@ -67,8 +67,6 @@ func TestNowMs(t *testing.T) {
 	// Get the current time in milliseconds
 	now := time.Now().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
 
-	<-time.After(1 * time.Millisecond)
-
 	// Call the NowMs function
 	got := NowMs()
 
