@@ -32,12 +32,16 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.housekeeper.image.pullPolicy }}
           env:
-            {{- if .Values.housekeeper.env }}
             {{- range $name, $item := .Values.housekeeper.env }}
             - name: {{ $name }}
               {{- $item | toYaml | nindent 14 }}
             {{- end }}
-            {{- end }}
+            - name: DECKARD_METRICS_ENABLED
+              value: {{ quote .Values.metrics.enabled }}
+            - name: DECKARD_METRICS_PORT
+              value: {{ quote .Values.metrics.port }}
+            - name: DECKARD_METRICS_PATH
+              value: {{ quote .Values.metrics.path }}
             - name: DECKARD_GRPC_PORT
               value: {{ quote .Values.housekeeper.service.port }}
             - name: DECKARD_CACHE_TYPE
@@ -48,30 +52,27 @@ spec:
               value: {{ quote .Values.audit.enabled }}
             - name: DECKARD_HOUSEKEEPER_ENABLED
               value: "true"
-            {{- if eq .Values.storage.type "MONGODB" }}
-            {{- if and (.Values.mongodb.enabled) (eq .Values.mongodb.architecture "standalone") }}
-            # TODO: improve storage URI handling without hardcoded port and other architectures
             - name: DECKARD_STORAGE_URI
-              value: "mongodb://{{ .Values.mongodb.auth.rootUser }}:{{ .Values.mongodb.auth.rootPassword }}@{{ include "deckard.fullname" . }}-mongodb.{{ .Release.Namespace }}.svc:27017/admin?ssl=false"
-            {{- else }}
-            - name: DECKARD_STORAGE_URI
-              value: {{ .Values.housekeeper.storage.uri | default .Values.storage.uri }}
-            {{- end }}
-            {{- end }}
-            {{- if eq .Values.cache.type "REDIS" }}
-            {{- if and (.Values.redis.enabled) (eq .Values.redis.architecture "standalone") }}
-            # TODO: improve cache URI handling without hardcoded port and other architectures
+              value: {{ include "deckard.storage.uri" . | quote }}
             - name: DECKARD_CACHE_URI
-              value: redis://:{{ .Values.redis.auth.password }}@{{ include "deckard.fullname" . }}-redis-master.{{ .Release.Namespace }}.svc:6379/{{ .Values.cache.redis.database }}
-            {{- else }}
-            - name: DECKARD_CACHE_URI
-              value: {{ .Values.housekeeper.cache.uri | default .Values.cache.uri }}
-            {{- end }}
-            {{- end }}
+              value: {{ include "deckard.cache.uri" . | quote }}
+            - name: DECKARD_REDIS_DB
+              value: {{ quote .Values.cache.redis.database }}
           ports:
             - name: grpc
               containerPort: {{ .Values.housekeeper.service.port }}
               protocol: TCP
+            {{- if .Values.metrics.enabled }}
+            - name: metrics
+              containerPort: {{ .Values.metrics.port }}
+              protocol: TCP
+            {{- end }}
+            {{- if .Values.housekeeper.containerPorts }}
+            {{- range $name, $item := .Values.housekeeper.containerPorts }}
+            - name: {{ $name }}
+              {{- $item | toYaml | nindent 14 }}
+            {{- end }}
+            {{- end }}
           # TODO: Improve housekeeper liveness/readiness/startup probes
           # Currently it is using the same as the Deckard gRPC service but we could disable gRPC service for the housekeeper deployment
           livenessProbe:

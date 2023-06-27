@@ -16,6 +16,10 @@ func StrToInt64(data string) (int64, error) {
 	return strconv.ParseInt(data, 10, 64)
 }
 
+func StrToFloat(data string) (float64, error) {
+	return strconv.ParseFloat(data, 64)
+}
+
 func MsPrecision(t *time.Time) time.Time {
 	return MsToTime(TimeToMs(t))
 }

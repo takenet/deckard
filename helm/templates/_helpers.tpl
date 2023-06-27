@@ -82,3 +82,37 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{ toYaml .Values.housekeeper.labels }}
 {{- end }}
 {{- end }}
+
+{{/*
+Define Cache URI
+*/}}
+{{- define "deckard.cache.uri" -}}
+{{- if eq .Values.cache.type "REDIS" }}
+{{- if .Values.redis.enabled }}
+{{- if eq .Values.redis.architecture "standalone" }}
+{{- printf "redis://:%s@%s-redis-master.%s.svc:%s/%s" .Values.redis.auth.password (include "deckard.fullname" .) .Release.Namespace (toString .Values.redis.service.ports.redis) (toString .Values.cache.redis.database) }}
+{{- else }}
+{{- printf "redis://:%s@%s-redis-headless.%s.svc:%s/%s" .Values.redis.auth.password (include "deckard.fullname" .) .Release.Namespace (toString .Values.redis.service.ports.redis) (toString .Values.cache.redis.database) }}
+{{- end }}
+{{- else }}
+{{- .Values.cache.uri }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+Define Storage URI
+*/}}
+{{- define "deckard.storage.uri" -}}
+{{- if eq .Values.storage.type "MONGODB" }}
+{{- if .Values.mongodb.enabled }}
+{{- if eq .Values.mongodb.architecture "standalone" }}
+{{- printf "mongodb://%s:%s@%s-mongodb.%s.svc:%s/admin?ssl=false" .Values.mongodb.auth.rootUser .Values.mongodb.auth.rootPassword (include "deckard.fullname" .) .Release.Namespace (toString .Values.mongodb.service.ports.mongodb) }}
+{{- else }}
+{{- printf "mongodb://%s:%s@%s-mongodb-headless.%s.svc:%s/admin?ssl=false" .Values.mongodb.auth.rootUser .Values.mongodb.auth.rootPassword (include "deckard.fullname" .) .Release.Namespace (toString .Values.mongodb.service.ports.mongodb) }}
+{{- end }}
+{{- else }}
+{{- .Values.storage.uri }}
+{{- end }}
+{{- end }}
+{{- end }}

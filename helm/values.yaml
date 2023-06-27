@@ -17,11 +17,22 @@ fullnameOverride: ""
 
 labels: {}
 
-# Configure the audit system using environment variables.
-# Check Deckard's configuration documentation for more information.
+# Configure the audit system for all Deckard's deployments using environment variables.
 audit:
   # Deckard's DECKARD_AUDIT_ENABLED environment variable
   enabled: false
+
+# Configure the metrics system for all Deckard's deployments using environment variables.
+metrics:
+  # Enables the metrics endpoint.
+  # Used as the DECKARD_METRICS_ENABLED environment variable
+  # To enable prometheus scraping you must set valid podAnnotations for both the deckard and housekeeper deployments
+  enabled: true
+  # Defines the port of the metrics endpoint
+  # Used in the deployment to configure the container port and also as the DECKARD_METRICS_PORT environment variable
+  port: 9090
+  # Defines the path to access metrics
+  path: /metrics
 
 env: []
 
@@ -31,6 +42,8 @@ podSecurityContext: {}
 
 securityContext: {}
 
+containerPorts: []
+
 storage:
   # Deckard's DECKARD_STORAGE_TYPE environment variable
   # Available options: MONGODB, MEMORY
@@ -38,8 +51,7 @@ storage:
   type: MONGODB
   # Deckard's DECKARD_STORAGE_URI environment variable.
   # By default this chart will use the deployed MongoDB's URI
-  # If you change mongodb chart values you will need to set URI manually
-  # TODO: deal with different MongoDB deployments to generate the correct URI
+  # Recommendation: Set the DECKARD_STORAGE_URI environment variable using the 'env' field using secret values
   uri: ""
   mongodb:
     # Deckard's DECKARD_MONGODB_DATABASE environment variable
@@ -58,7 +70,10 @@ mongodb:
     # In a production environment prefer setting all passwords and configurations using mongodb's existingSecret chart field
     rootUser: deckard
     rootPassword: deckard
-  architecture: standalone
+  service:
+    ports:
+      mongodb: 27017
+  architecture: replicaset
   # If you change storage.mongodb.database or storage.mongodb.collection you will need to update this script or create indexes manually
   initdbScripts:
     init_database.js: |
@@ -77,8 +92,7 @@ cache:
   type: REDIS
   # Deckard's DECKARD_CACHE_URI environment variable.
   # By default this chart will use the deployed Redis's URI
-  # If you change redis chart values you will need to set URI manually
-  # TODO: deal with different Redis deployments to generate the correct URI
+  # Recommendation: Set the DECKARD_CACHE_URI environment variable using the 'env' field using secret values
   uri: ""
   redis:
     # Deckard's DECKARD_REDIS_DB environment variable
@@ -88,7 +102,10 @@ cache:
 redis:
   # When enabled this chart will also deploy a Redis
   enabled: true
-  architecture: standalone
+  architecture: replication
+  service:
+    ports:
+      redis: 6379
   auth:
     enabled: true
     # In a production environment prefer setting all passwords using redis's existingSecret chart field
@@ -160,6 +177,8 @@ housekeeper:
   securityContext: {}
 
   env: []
+
+  containerPorts: []
 
   resources: {}
 

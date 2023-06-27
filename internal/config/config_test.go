@@ -5,9 +5,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"github.com/takenet/deckard/internal/project"
 )
+
+func TestSetSetNilDefaultShouldResultEmpty(t *testing.T) {
+	viper.Set(CacheUri.GetKey(), CacheUri.GetDefault())
+
+	require.Nil(t, CacheUri.GetDefault())
+	require.Empty(t, CacheUri.Get())
+}
 
 func TestLoadConfigShouldResetBeforeConfiguring(t *testing.T) {
 	Configure(true)

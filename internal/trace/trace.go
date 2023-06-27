@@ -21,7 +21,7 @@ func Init() error {
 	ctx := context.Background()
 
 	if os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") == "" && os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") == "" {
-		logger.S(ctx).Warn("Tracing is disabled. Enabled it configuring OpenTelemetry environment variables.")
+		logger.S(ctx).Debug("Tracing is disabled. Enabled it configuring OpenTelemetry environment variables.")
 
 		return nil
 	}

@@ -8,7 +8,7 @@ Check the [Deckard's github](https://github.com/takenet/deckard) for more inform
 
 ## Prerequisites
 
-- Kubernetes 1.16+
+- Kubernetes 1.24+ (gRPC probes requires Kubernetes 1.24+)
 - Helm 3+
 
 ## Installing the Chart
