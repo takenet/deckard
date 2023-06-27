@@ -65,6 +65,7 @@ func TestElapsedTime(t *testing.T) {
 
 func TestNowMs(t *testing.T) {
 	// Get the current time in milliseconds
+	// This is the exact implementation of NowMS, this test only guarantees that the implementation result doesn't change
 	now := time.Now().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
 
 	// Call the NowMs function
