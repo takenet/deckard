@@ -1,6 +1,6 @@
 # Contribute
 
-You can help this project by reporting problems, suggestions, localizing it or contributing to the code.
+You can help this project by reporting problems, suggestions or contributing to the code.
 
 ## Report a problem or suggestion
 
