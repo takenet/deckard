@@ -2,6 +2,8 @@ package audit
 
 //go:generate mockgen -destination=../mocks/mock_audit.go -package=mocks -source=audit.go
 
+// TODO: Make possible to send audit to other places instead of ElasticSearch, like Kafka
+
 import (
 	"context"
 	"encoding/json"
@@ -144,6 +146,11 @@ func (a *AuditorImpl) send(ctx context.Context, entries ...Entry) {
 		return
 	}
 
+	start := time.Now()
+	defer func() {
+		metrics.AuditorStoreLatency.Record(ctx, utils.ElapsedTime(start))
+	}()
+
 	body := ""
 
 	for i, entry := range entries {
@@ -195,9 +202,8 @@ func (a *AuditorImpl) Store(ctx context.Context, entry Entry) {
 		entry.QueueSuffix = queueSuffix
 	}
 
-	now := time.Now()
 	defer func() {
-		metrics.AuditorAddToStoreLatency.Record(ctx, utils.ElapsedTime(now))
+		metrics.AuditorAddToStoreLatency.Record(ctx, utils.ElapsedTime(entry.Timestamp))
 	}()
 
 	a.entries <- entry

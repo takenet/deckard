@@ -64,6 +64,8 @@ Please refer to our [issues](https://github.com/takenet/deckard/issues) section 
 
 To quickly get started with Deckard, please consult our [getting started guide](/docs/getting-started.md), which provides step-by-step instructions. Additionally, we have provided [client documentation](/docs/using.md) for various programming languages to assist you in integrating Deckard into your projects.
 
+You can also access our documentation on Deckard's components [here](docs/components.md). More details on the project structure can be found [here](CONTRIBUTING.md).
+
 ### Running Deckard
 
 Here's a quick guide on how to run Deckard. You should check the [getting started guide](/docs/getting-started.md) for more details.
@@ -156,6 +158,16 @@ All available environment variables are listed below:
 | `DECKARD_ELASTIC_ADDRESS` | `http://localhost:9200/` | A ElasticSearch address to connect to store audit information.  |
 | `DECKARD_ELASTIC_PASSWORD` |  | A ElasticSearch password to connect to store audit information.  |
 | `DECKARD_ELASTIC_USER` |  | A ElasticSearch user to connect to store audit information.  |
+
+### Metrics Configuration
+
+| Environment Variable         | Default | Description |
+|------------------------------|---------|-------------|
+| `DECKARD_METRICS_ENABLED` | `true` | To enable exporting metrics to the metrics endpoint. |
+| `DECKARD_METRICS_PORT` | `22022` | The metrics http port to listn. |
+| `DECKARD_METRICS_PATH` | `/metrics` | The metrics http path to expose metrics. |
+| `DECKARD_METRICS_HISTOGRAM_BUCKETS` | `0,1,2,5,10,15,20,30,35,50,100,200,400,600,800,1000,1500,2000,5000,10000` | The histogram buckets to use to expose metrics. |
+| `DECKARD_METRICS_OPENMETRICS_ENABLED` | `true` | If true, the OpenMetrics encoding is added to the possible options during content negotiation. |
 
 ### TLS Configuration
 

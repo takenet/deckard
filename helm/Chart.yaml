@@ -26,7 +26,7 @@ type: application
 
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
-# Versions are expected to follow Semantic Versioning (https://semver.org/)
+# Versions are expected to follow Semantic Versioning (https://semver.org/) but in the main branch they will be a SNAPSHOT version.
 version: 0.0.16-SNAPSHOT
 
 # This is the version number of the application being deployed. This version number should be

@@ -33,12 +33,16 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
-            {{- if .Values.env }}
             {{- range $name, $item := .Values.env }}
             - name: {{ $name }}
               {{- $item | toYaml | nindent 14 }}
             {{- end }}
-            {{- end }}
+            - name: DECKARD_METRICS_ENABLED
+              value: {{ quote .Values.metrics.enabled }}
+            - name: DECKARD_METRICS_PORT
+              value: {{ quote .Values.metrics.port }}
+            - name: DECKARD_METRICS_PATH
+              value: {{ quote .Values.metrics.path }}
             - name: DECKARD_GRPC_PORT
               value: {{ quote .Values.service.port }}
             - name: DECKARD_CACHE_TYPE
@@ -49,30 +53,27 @@ spec:
               value: {{ quote .Values.audit.enabled }}
             - name: DECKARD_HOUSEKEEPER_ENABLED
               value: {{ quote .Values.housekeeper.self.enabled }}
-            {{- if eq .Values.storage.type "MONGODB" }}
-            {{- if and (.Values.mongodb.enabled) (eq .Values.mongodb.architecture "standalone") }}
-            # TODO: improve storage URI handling without hardcoded port and other architectures
             - name: DECKARD_STORAGE_URI
-              value: "mongodb://{{ .Values.mongodb.auth.rootUser }}:{{ .Values.mongodb.auth.rootPassword }}@{{ include "deckard.fullname" . }}-mongodb.{{ .Release.Namespace }}.svc:27017/admin?ssl=false"
-            {{- else }}
-            - name: DECKARD_STORAGE_URI
-              value: {{ .Values.storage.uri }}
-            {{- end }}
-            {{- end }}
-            {{- if eq .Values.cache.type "REDIS" }}
-            {{- if and (.Values.redis.enabled) (eq .Values.redis.architecture "standalone") }}
-            # TODO: improve cache URI handling without hardcoded port and other architectures
+              value: {{ include "deckard.storage.uri" . | quote }}
             - name: DECKARD_CACHE_URI
-              value: redis://:{{ .Values.redis.auth.password }}@{{ include "deckard.fullname" . }}-redis-master.{{ .Release.Namespace }}.svc:6379/{{ .Values.cache.redis.database }}
-            {{- else }}
-            - name: DECKARD_CACHE_URI
-              value: {{ .Values.cache.uri }}
-            {{- end }}
-            {{- end }}
+              value: {{ include "deckard.cache.uri" . | quote }}
+            - name: DECKARD_REDIS_DB
+              value: {{ quote .Values.cache.redis.database }}
           ports:
             - name: grpc
               containerPort: {{ .Values.service.port }}
               protocol: TCP
+            {{- if .Values.metrics.enabled }}
+            - name: metrics
+              containerPort: {{ .Values.metrics.port }}
+              protocol: TCP
+            {{- end }}
+            {{- if .Values.containerPorts }}
+            {{- range $name, $item := .Values.containerPorts }}
+            - name: {{ $name }}
+              {{- $item | toYaml | nindent 14 }}
+            {{- end }}
+            {{- end }}
           livenessProbe:
             grpc:
               port: {{ .Values.service.port }}

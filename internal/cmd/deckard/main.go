@@ -50,6 +50,7 @@ func main() {
 
 	config.Configure()
 	logger.ConfigureLogger()
+	go metrics.ListenAndServe()
 
 	err := trace.Init()
 	if err != nil {

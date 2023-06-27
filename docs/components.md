@@ -55,6 +55,35 @@ Metrics will be exposed in the `/metrics` endpoint and traces must be exported t
 
 A Grafana dashboard template is also provided in the [grafana.json](dashboards/grafana.json) file.
 
+Deckard currently exports the following metrics:
+
+| Name | Type | Description | Labels |
+| ---- | ---- | ----------- | ---- |
+| deckard_exceeding_messages_removed | Counter | Number of messages removed from storage for exceeding maximum queue size | `queue` |
+| deckard_exceeding_messages_cache_removed | Counter | Number of messages removed from cache for exceeding maximum queue size | `queue` |
+| deckard_housekeeper_task_latency | Histogram | Time in milliseconds to complete a housekeeper task. | `task`` |
+| deckard_oldest_message | Gauge | Time the oldest queue message was used. This is the time the message was last acknoledged with success or added to the queue. | `queue` |
+| deckard_total_messages | Gauge | Number of messages a queue has. | `queue` |
+| deckard_ttl_messages_removed | Counter | Number of messages removed from storage for ttl | `queue` |
+| deckard_ttl_messages_cache_removed | Counter | Number of messages removed from cache for ttl | `queue` |
+| deckard_message_unlock | Counter | Number of unlocked messages. | `queue`, `lock_type` |
+| deckard_message_timeout | Counter | Number of message timeouts | `queue` |
+| deckard_ack | Counter | Number of acks received | `queue`, `reason` |
+| deckard_nack | Counter | Number of nacks received | `queue`, `reason` |
+| deckard_messages_empty_queue | Counter | Number of times a pull is made against an empty queue. | `queue` |
+| deckard_storage_latency | Histogram | Storage access latency | `op`, `retry` |
+| deckard_cache_latency | Histogram | Cache access latency | `op` |
+| deckard_auditor_store_add_latency | Histogram | Latency to add an entry to be saved by storer sender | |
+| deckard_auditor_store_latency | Histogram | Latency sending elements to the audit database | |
+
+Deckard has other metrics used for diagnostic purposes. All metrics are defined in the `createMetrics` function of the [metrics.go](../internal/metrics/metrics.go) file.
+
+> Histogram metrics are exported with millisecond precision.
+>
+> Default buckets are: `[0, 1, 2, 5, 10, 15, 20, 30, 35, 50, 100, 200, 400, 600, 800, 1000, 1500, 2000, 5000, 10000]`
+>
+> To change buckets you must set the `DECKARD_METRICS_HISTOGRAM_BUCKETS` environment variable with a comma separated list of values.
+
 Grafana dashboard images:
 
 ![Grafana Dashboard 1](grafana/grafana1.png)

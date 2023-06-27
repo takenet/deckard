@@ -3,6 +3,12 @@ CURRENT_VERSION := $(shell cat internal/project/project.go | sed -Ee 's/const Ve
 build:
 	go build -o exec/deckard internal/cmd/deckard/main.go
 
+lint:
+	make gen-mocks
+	@if ! command -v golangci-lint > /dev/null; then echo "Installing golangci-lint" && go install -a -v github.com/golang/golangci/golangci-lint@latest; fi;
+
+	golangci-lint run ./...
+
 build-image:
 	@echo Building imagem. Version: $(CURRENT_VERSION)
 	export SOURCE_DATE_EPOCH=$(shell date +%s);\

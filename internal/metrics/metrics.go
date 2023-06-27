@@ -2,14 +2,18 @@ package metrics
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 
 	prometheusclient "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	dto "github.com/prometheus/client_model/go"
+	"github.com/takenet/deckard/internal/config"
 	"github.com/takenet/deckard/internal/logger"
+	"github.com/takenet/deckard/internal/messagepool/utils"
 	"github.com/takenet/deckard/internal/project"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/prometheus"
@@ -20,10 +24,12 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/aggregation"
 	"go.opentelemetry.io/otel/sdk/resource"
+	"go.uber.org/zap"
 )
 
 var (
 	prometheusStarted bool
+	mutex             = sync.Mutex{}
 
 	meter      otelmetric.Meter
 	MetricsMap *MessagePoolMetricsMap
@@ -80,7 +86,7 @@ func init() {
 			switch ik {
 			case metric.InstrumentKindHistogram:
 				return aggregation.ExplicitBucketHistogram{
-					Boundaries: []float64{0, 1, 2, 5, 10, 15, 20, 30, 35, 50, 100, 200, 400, 600, 800, 1000, 1500, 2000, 5000, 10000, 15000, 50000},
+					Boundaries: getHistogramBuckets(),
 					NoMinMax:   false,
 				}
 			}
@@ -100,21 +106,30 @@ func init() {
 	global.SetMeterProvider(provider)
 
 	createMetrics()
+}
 
-	if !prometheusStarted {
-		prometheusStarted = true
+func ListenAndServe() {
+	if !config.MetricsEnabled.GetBool() || prometheusStarted {
+		return
+	}
 
-		http.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{
-			EnableOpenMetrics: true,
-		}))
+	mutex.Lock()
+	defer mutex.Unlock()
 
-		go func() {
-			err := http.ListenAndServe(":22022", nil)
+	http.Handle(config.MetricsPath.Get(), promhttp.HandlerFor(registry, promhttp.HandlerOpts{
+		EnableOpenMetrics: config.MetricsOpenMetricsEnabled.GetBool(),
+	}))
 
-			if err != nil {
-				logger.S(context.Background()).Error("Error starting prometheus exporter.", err)
-			}
-		}()
+	prometheusStarted = true
+
+	port := fmt.Sprintf(":%d", config.MetricsPort.GetInt())
+
+	logger.S(context.Background()).Debugf("Listening to metrics at %s%s", port, config.MetricsPath.Get())
+
+	err := http.ListenAndServe(port, nil)
+
+	if err != nil {
+		logger.S(context.Background()).Error("Error starting prometheus exporter.", err)
 	}
 }
 
@@ -285,9 +300,10 @@ func createMetrics() {
 	panicInstrumentationError(err)
 
 	// Auditor
+
 	AuditorAddToStoreLatency, err = meter.Int64Histogram(
 		"deckard_auditor_store_add_latency",
-		instrument.WithDescription("Latency to add an entry to be saved by storer sender"),
+		instrument.WithDescription("Latency to add an entry to be saved by the audit storer"),
 		instrument.WithUnit(unit.Milliseconds),
 	)
 	panicInstrumentationError(err)
@@ -314,4 +330,36 @@ func metrify(obs instrument.Int64Observer, data *map[string]int64) error {
 	}
 
 	return nil
+}
+
+func getHistogramBuckets() []float64 {
+	buckets, err := parseHistogramBuckets(config.MetricsHistogramBuckets.Get())
+
+	if len(buckets) == 0 || err != nil {
+		logger.L(context.Background()).Error("Error parsing buckets. Using default", zap.Error(err))
+
+		buckets, _ = parseHistogramBuckets(config.MetricsHistogramBuckets.GetDefault().(string))
+	}
+
+	return buckets
+}
+
+func parseHistogramBuckets(data string) ([]float64, error) {
+	if data == "" {
+		return []float64{}, nil
+	}
+
+	buckets := strings.Split(data, ",")
+	bucketsFloat := make([]float64, len(buckets))
+
+	for i, value := range buckets {
+		var err error
+		bucketsFloat[i], err = utils.StrToFloat64(strings.TrimSpace(value))
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return bucketsFloat, nil
 }
