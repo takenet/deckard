@@ -1,8 +1,12 @@
 package metrics
 
 import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/takenet/deckard/internal/config"
@@ -87,5 +91,34 @@ func TestGetHistogramBuckets(t *testing.T) {
 				t.Errorf("%s getHistogramBuckets() = %v, expected %v", tt.name, got, tt.expected)
 			}
 		})
+	}
+}
+
+func TestListenAndServe(t *testing.T) {
+	// Start the HTTP server in a separate goroutine
+	go ListenAndServe()
+
+	// Retry 10 times to wait for the HTTP server to start
+	for i := 0; i < 10; i++ {
+		<-time.After(5 * time.Millisecond)
+
+		// Send a GET request to the metrics endpoint
+		resp, err := http.Get(fmt.Sprintf("http://localhost:%d%s", config.MetricsPort.GetInt(), config.MetricsPath.Get()))
+		if err != nil {
+			t.Fatalf("Error sending request to metrics endpoint: %v", err)
+		}
+		defer resp.Body.Close()
+
+		// Check if the response status code is 200 OK
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("Unexpected status code: got %v, want %v", resp.StatusCode, http.StatusOK)
+		}
+
+		body, err := ioutil.ReadAll(resp.Body)
+		require.NoError(t, err)
+
+		require.Contains(t, string(body), "target_info")
+
+		break
 	}
 }
