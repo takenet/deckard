@@ -1,9 +1,6 @@
 # Default values for deckard.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
-# TODO: allow configuring the /metrics endpoint/port to be used by prometheus
-
-replicaCount: 1
 
 image:
   repository: blipai/deckard
@@ -134,10 +131,12 @@ ingress:
 
 resources: {}
 
+#replicaCount: 1
+
 autoscaling:
-  enabled: false
+  enabled: true
   minReplicas: 1
-  maxReplicas: 10
+  maxReplicas: 2
   targetCPUUtilizationPercentage: 80
 # targetMemoryUtilizationPercentage: 80
 
@@ -166,6 +165,7 @@ housekeeper:
     tag: ""
 
   # The number of replicas for the housekeeper deployment
+  # See https://github.com/takenet/deckard/issues/21
   replicaCount: 1
 
   labels: {}

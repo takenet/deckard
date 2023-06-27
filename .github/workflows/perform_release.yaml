@@ -32,10 +32,10 @@ jobs:
         sed -i -E "s/    <PackageVersion>[0-9]+\.[0-9]+\.[0-9]+-SNAPSHOT<\/PackageVersion>/    <PackageVersion>$NEW_VERSION<\/PackageVersion>/" csharp/Deckard.csproj
 
         # Replace app version in Helm Chart.yaml file
-        sed -i -E "s/appVersion: \"[0-9]+\.[0-9]+\.[0-9]+-SNAPSHOT\"/appVersion: \"$NEW_VERSION\"/" helm/Chart.yaml
+        sed -i -E "s/appVersion: \"[0-9]+\.[0-9]+\.[0-9]+\"/appVersion: \"$NEW_VERSION\"/" helm/Chart.yaml
 
         # Replace chart version in Helm Chart.yaml file
-        sed -i -E "s/^version: [0-9]+\.[0-9]+\.[0-9]+-SNAPSHOT/version: $NEW_VERSION/" helm/Chart.yaml
+        sed -i -E "s/^version: [0-9]+\.[0-9]+\.[0-9]+/version: $NEW_VERSION/" helm/Chart.yaml
 
         echo "deckard_new_version=$NEW_VERSION" >> $GITHUB_ENV
         echo "deckard_old_version=$VERSION" >> $GITHUB_ENV
@@ -75,16 +75,10 @@ jobs:
         # Replace version in .NET Deckard.csproj file
         sed -i -E "s/    <PackageVersion>[0-9]+\.[0-9]+\.[0-9]+<\/PackageVersion>/    <PackageVersion>$NEW_SNAPSHOT_VERSION<\/PackageVersion>/" csharp/Deckard.csproj
 
-        # Replace app version in Helm Chart.yaml file
-        sed -i -E "s/appVersion: \"[0-9]+\.[0-9]+\.[0-9]+\"/appVersion: \"$NEW_SNAPSHOT_VERSION\"/" helm/Chart.yaml
-
-        # Replace chart version in Helm Chart.yaml file
-        sed -i -E "s/^version: [0-9]+\.[0-9]+\.[0-9]+/version: $NEW_SNAPSHOT_VERSION/" helm/Chart.yaml
-
         echo "deckard_new_snapshot_version=$NEW_SNAPSHOT_VERSION" >> $GITHUB_ENV
 
     - name: Commit changes
       uses: stefanzweifel/git-auto-commit-action@v4
       with:
         commit_message: 'chore: ${{ env.deckard_new_snapshot_version }}'
-        file_pattern: 'internal/project/project.go java/pom.xml csharp/Deckard.csproj helm/Chart.yaml'
+        file_pattern: 'internal/project/project.go java/pom.xml csharp/Deckard.csproj'

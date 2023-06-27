@@ -42,6 +42,9 @@ client.Ack(new AckRequest {
     Id = response.Messages[0].Id,
     Queue = "queue",
 
+    // Remove the message from the queue
+    RemoveMessage: true,
+
     // Lock message for 10 seconds before it can be pulled again
-    LockMs = 10000
+    //LockMs = 10000
 });

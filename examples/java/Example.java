@@ -43,9 +43,10 @@ public class Example {
         AckRequest.newBuilder()
             .setId(response.getMessages(0).getId())
             .setQueue("queue")
-
+            // Remove message from queue
+            .setRemoveMessage(true)
             // Lock message for 10 seconds before it can be pulled again
-            .setLockMs(10000L)
+            //.setLockMs(10000L)
             .build());
   }
 }

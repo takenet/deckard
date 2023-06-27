@@ -12,7 +12,7 @@ import (
 
 func main() {
 	// Dial the connection
-	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*200)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
 	// Example using Insecure credentials
@@ -26,12 +26,13 @@ func main() {
 	defer conn.Close()
 
 	// Create a new message
-	response, err := client.Add(ctx, &deckard.AddRequest{
+	response, err := client.Add(context.Background(), &deckard.AddRequest{
 		Messages: []*deckard.AddMessage{
 			{
-				Id:       "1",
-				Queue:    "queue",
-				Metadata: map[string]string{"key": "value"},
+				Id:         "1",
+				Queue:      "queue",
+				TtlMinutes: 10,
+				Metadata:   map[string]string{"key": "value"},
 			},
 		},
 	})
@@ -44,7 +45,7 @@ func main() {
 	}
 
 	// Pull messages from the queue
-	pullResponse, err := client.Pull(ctx, &deckard.PullRequest{Queue: "queue", Amount: 1})
+	pullResponse, err := client.Pull(context.Background(), &deckard.PullRequest{Queue: "queue", Amount: 1})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -53,11 +54,14 @@ func main() {
 	log.Println(pullResponse.Messages[0].Score)
 
 	// Ack message
-	client.Ack(ctx, &deckard.AckRequest{
+	client.Ack(context.Background(), &deckard.AckRequest{
 		Id:    pullResponse.Messages[0].Id,
 		Queue: "queue",
 
+		// Remove the message from the queue
+		RemoveMessage: true,
+
 		// Lock message for 10 seconds before it can be pulled again
-		LockMs: 10000,
+		//LockMs: 10000,
 	})
 }
