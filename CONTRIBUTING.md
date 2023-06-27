@@ -52,7 +52,7 @@ To contribute with Deckard you need to follow these steps:
 * Fork this repo using the button at the top.
 * Clone your forked repo locally.
 
-``shell
+```shell
 git clone git@github.com:yourname/deckard.git``
 ```
 
