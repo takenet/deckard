@@ -354,7 +354,7 @@ func parseHistogramBuckets(data string) ([]float64, error) {
 
 	for i, value := range buckets {
 		var err error
-		bucketsFloat[i], err = utils.StrToFloat(strings.TrimSpace(value))
+		bucketsFloat[i], err = utils.StrToFloat64(strings.TrimSpace(value))
 
 		if err != nil {
 			return nil, err
