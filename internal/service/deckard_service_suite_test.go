@@ -78,6 +78,48 @@ func (suite *DeckardIntegrationTestSuite) TestAddMessageIntegration() {
 	}, message)
 }
 
+func (suite *DeckardIntegrationTestSuite) TestAddMessageWithScoreIntegration() {
+	response, err := suite.deckard.Add(ctx, &deckard.AddRequest{
+		Messages: []*deckard.AddMessage{
+			{
+				Id:       "123",
+				Queue:    "test",
+				Score:    100,
+				Timeless: true,
+			},
+		},
+	})
+	require.NoError(suite.T(), err)
+	require.Equal(suite.T(), int64(1), response.CreatedCount)
+
+	// Validate stored message
+	messages, err := suite.deckardQueue.GetStorageMessages(ctx, &storage.FindOptions{
+		InternalFilter: &storage.InternalFilter{
+			Queue: "test",
+			Ids:   &[]string{"123"},
+		},
+	})
+	require.NoError(suite.T(), err)
+	require.Len(suite.T(), messages, 1)
+	require.Equal(suite.T(), float64(100), messages[0].Score)
+
+	result, err := suite.deckard.Pull(ctx, &deckard.PullRequest{
+		Queue:  "test",
+		Amount: 1,
+	})
+
+	require.NoError(suite.T(), err)
+
+	message := result.Messages[0]
+	require.Equal(suite.T(), float64(100), message.Score)
+
+	message.Score = 0
+	require.Equal(suite.T(), &deckard.Message{
+		Id:    "123",
+		Queue: "test",
+	}, message)
+}
+
 func (suite *DeckardIntegrationTestSuite) TestGetMessageIntegration() {
 	start := time.Now()
 

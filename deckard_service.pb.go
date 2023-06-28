@@ -278,8 +278,12 @@ type PullRequest struct {
 	// Deprecated: Marked as deprecated in deckard_service.proto.
 	ScoreFilter int64 `protobuf:"varint,3,opt,name=score_filter,json=scoreFilter,proto3" json:"score_filter,omitempty"`
 	// Sets the upper threshold for the priority score of a message to be returned in the pull request.
+	//
 	// Only messages with a priority score equal to or lower than the max_score value will be returned.
-	// The maximum score accepted by Deckard is 9007199254740992
+	//
+	// The maximum score accepted by Deckard is 9007199254740992, any value higher than this will be considered as the maximum score.
+	// To set this value to the minimum score accepted by Deckard, use any negative number.
+	// This parameter will be ignored if set to 0 (default value).
 	MaxScore float64 `protobuf:"fixed64,4,opt,name=max_score,json=maxScore,proto3" json:"max_score,omitempty"`
 	// Sets the lower threshold for the priority score required for a message to be returned.
 	// Only messages with a priority score equal to or higher than the min_score value will be returned.
@@ -696,6 +700,7 @@ type AddMessage struct {
 	// Score represents the priority score the message currently have in the queue.
 	// The score is used to determine the order of the messages returned in a pull request.
 	// The lower the score, the higher the priority.
+	//
 	// If the score is not set, the value will be set with the current timestamp in milliseconds at the moment of the message creation.
 	//
 	// The maximum score accepted by Deckard is 9007199254740992 and the minimum is 0

@@ -228,6 +228,7 @@ message AddMessage {
   // Score represents the priority score the message currently have in the queue.
   // The score is used to determine the order of the messages returned in a pull request.
   // The lower the score, the higher the priority.
+  //
   // If the score is not set, the value will be set with the current timestamp in milliseconds at the moment of the message creation.
   //
   // The maximum score accepted by Deckard is 9007199254740992 and the minimum is 0

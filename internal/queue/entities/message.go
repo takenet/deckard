@@ -90,6 +90,7 @@ func (q *Message) UpdateScore() {
 
 // GetScore returns the seconds since the unix epoch of the last usage minus the last score subtract.
 // The idea here is to give priority to messages that have not been used for a long time and also allow users to modify personalize the priority algorithm.
+// TODO: FIXME: remove this function
 func GetScore(usageTime *time.Time, scoreSubtract float64) float64 {
 	if usageTime == nil {
 		return MaxScore()

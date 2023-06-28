@@ -308,8 +308,6 @@ func (d *Deckard) Add(ctx context.Context, request *deckard.AddRequest) (*deckar
 	for i, m := range request.Messages {
 		t := time.Now()
 
-		score := entities.GetScore(&t, 0)
-
 		if m.TtlMinutes != 0 {
 			t = t.Add(time.Minute * time.Duration(m.TtlMinutes))
 		}
@@ -325,7 +323,7 @@ func (d *Deckard) Add(ctx context.Context, request *deckard.AddRequest) (*deckar
 			ID:            m.Id,
 			Queue:         m.Queue,
 			Timeless:      m.Timeless,
-			Score:         score,
+			Score:         score.GetAddScore(m.Score),
 			Description:   m.Description,
 			ExpiryDate:    t,
 			Payload:       m.Payload,
