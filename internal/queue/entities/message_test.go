@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/takenet/deckard/internal/messagepool/utils"
+	"github.com/takenet/deckard/internal/queue/utils"
 )
 
 func TestMaxScore(t *testing.T) {

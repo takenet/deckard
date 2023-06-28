@@ -8,8 +8,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"github.com/takenet/deckard/internal/messagepool/entities"
-	"github.com/takenet/deckard/internal/messagepool/utils"
+	"github.com/takenet/deckard/internal/queue/entities"
+	"github.com/takenet/deckard/internal/queue/utils"
 )
 
 var ctx, cancel = context.WithCancel(context.Background())

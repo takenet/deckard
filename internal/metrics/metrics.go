@@ -13,8 +13,8 @@ import (
 	dto "github.com/prometheus/client_model/go"
 	"github.com/takenet/deckard/internal/config"
 	"github.com/takenet/deckard/internal/logger"
-	"github.com/takenet/deckard/internal/messagepool/utils"
 	"github.com/takenet/deckard/internal/project"
+	"github.com/takenet/deckard/internal/queue/utils"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	otelmetric "go.opentelemetry.io/otel/metric"
@@ -32,7 +32,7 @@ var (
 	mutex             = sync.Mutex{}
 
 	meter      otelmetric.Meter
-	MetricsMap *MessagePoolMetricsMap
+	MetricsMap *QueueMetricsMap
 
 	// Keep tracking of features used by clients to be able to deprecate them
 	CodeUsage instrument.Int64Counter
@@ -48,12 +48,12 @@ var (
 	HousekeeperTotalElements           instrument.Int64ObservableGauge
 
 	// Message Pool
-	MessagePoolTimeout           instrument.Int64Counter
-	MessagePoolAck               instrument.Int64Counter
-	MessagePoolNack              instrument.Int64Counter
-	MessagePoolEmptyQueue        instrument.Int64Counter
-	MessagePoolEmptyQueueStorage instrument.Int64Counter
-	MessagePoolNotFoundInStorage instrument.Int64Counter
+	QueueTimeout           instrument.Int64Counter
+	QueueAck               instrument.Int64Counter
+	QueueNack              instrument.Int64Counter
+	QueueEmptyQueue        instrument.Int64Counter
+	QueueEmptyQueueStorage instrument.Int64Counter
+	QueueNotFoundInStorage instrument.Int64Counter
 
 	// Storage
 	StorageLatency instrument.Int64Histogram
@@ -178,7 +178,7 @@ func createDefaultMetrics() []*dto.LabelPair {
 func createMetrics() {
 	meter = global.MeterProvider().Meter(project.Name)
 
-	MetricsMap = NewMessagePoolMetricsMap()
+	MetricsMap = NewQueueMetricsMap()
 
 	// Housekeeper
 
@@ -243,39 +243,39 @@ func createMetrics() {
 	)
 	panicInstrumentationError(err)
 
-	// MessagePool
+	// Queue
 
-	MessagePoolTimeout, err = meter.Int64Counter(
+	QueueTimeout, err = meter.Int64Counter(
 		"deckard_message_timeout",
 		instrument.WithDescription("Number of message timeouts"),
 	)
 	panicInstrumentationError(err)
 
-	MessagePoolAck, err = meter.Int64Counter(
+	QueueAck, err = meter.Int64Counter(
 		"deckard_ack",
 		instrument.WithDescription("Number of acks received"),
 	)
 	panicInstrumentationError(err)
 
-	MessagePoolNack, err = meter.Int64Counter(
+	QueueNack, err = meter.Int64Counter(
 		"deckard_nack",
 		instrument.WithDescription("Number of nacks received"),
 	)
 	panicInstrumentationError(err)
 
-	MessagePoolEmptyQueue, err = meter.Int64Counter(
+	QueueEmptyQueue, err = meter.Int64Counter(
 		"deckard_messages_empty_queue",
 		instrument.WithDescription("Number of times a pull is made against an empty queue."),
 	)
 	panicInstrumentationError(err)
 
-	MessagePoolEmptyQueueStorage, err = meter.Int64Counter(
+	QueueEmptyQueueStorage, err = meter.Int64Counter(
 		"deckard_messages_empty_queue_not_found_storage",
 		instrument.WithDescription("Number of times a pull is made against an empty queue because the messages were not found in the storage."),
 	)
 	panicInstrumentationError(err)
 
-	MessagePoolNotFoundInStorage, err = meter.Int64Counter(
+	QueueNotFoundInStorage, err = meter.Int64Counter(
 		"deckard_messages_not_found_in_storage",
 		instrument.WithDescription("Number of messages in cache but not found in the storage."),
 	)

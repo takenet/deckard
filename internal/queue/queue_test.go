@@ -1,4 +1,4 @@
-package messagepool
+package queue
 
 import (
 	"context"
@@ -11,11 +11,10 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"github.com/takenet/deckard/internal/audit"
-	"github.com/takenet/deckard/internal/messagepool/cache"
-	"github.com/takenet/deckard/internal/messagepool/entities"
-	"github.com/takenet/deckard/internal/messagepool/queue"
-	"github.com/takenet/deckard/internal/messagepool/storage"
 	"github.com/takenet/deckard/internal/mocks"
+	"github.com/takenet/deckard/internal/queue/cache"
+	"github.com/takenet/deckard/internal/queue/entities"
+	"github.com/takenet/deckard/internal/queue/storage"
 )
 
 var ctx = context.Background()
@@ -47,7 +46,7 @@ func TestPull(t *testing.T) {
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().PullMessages(gomock.Any(), "test", int64(1), int64(0)).Return([]string{"123"}, nil)
 
-	q := NewMessagePool(nil, mockStorage, nil, mockCache)
+	q := NewQueue(nil, mockStorage, nil, mockCache)
 
 	messages, err := q.Pull(ctx, "test", 1, 0)
 
@@ -73,7 +72,7 @@ func TestAckStorageErrorShouldResultError(t *testing.T) {
 	}).Return(int64(0), errors.New("ack_error"))
 	mockCache := mocks.NewMockCache(mockCtrl)
 
-	q := NewMessagePool(nil, mockStorage, nil, mockCache)
+	q := NewQueue(nil, mockStorage, nil, mockCache)
 
 	result, err := q.Ack(ctx, &entities.Message{
 		ID:    "id",
@@ -103,7 +102,7 @@ func TestAckMakeAvailableErrorShouldResultError(t *testing.T) {
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().MakeAvailable(gomock.Any(), message).Return(false, errors.New("make available error"))
 
-	q := NewMessagePool(nil, mockStorage, nil, mockCache)
+	q := NewQueue(nil, mockStorage, nil, mockCache)
 
 	result, err := q.Ack(ctx, &entities.Message{
 		ID:    "id",
@@ -144,7 +143,7 @@ func TestAckSuccessfulShouldAudit(t *testing.T) {
 		Reason:            "reason",
 	})
 
-	q := NewMessagePool(mockAuditor, mockStorage, nil, mockCache)
+	q := NewQueue(mockAuditor, mockStorage, nil, mockCache)
 
 	result, err := q.Ack(ctx, &entities.Message{
 		ID:    "id",
@@ -158,7 +157,7 @@ func TestAckSuccessfulShouldAudit(t *testing.T) {
 func TestAckNilMessage(t *testing.T) {
 	t.Parallel()
 
-	q := NewMessagePool(nil, nil, nil, nil)
+	q := NewQueue(nil, nil, nil, nil)
 
 	result, err := q.Ack(ctx, nil, time.Time{}, "")
 
@@ -169,7 +168,7 @@ func TestAckNilMessage(t *testing.T) {
 func TestAckWithoutQueue(t *testing.T) {
 	t.Parallel()
 
-	q := NewMessagePool(nil, nil, nil, nil)
+	q := NewQueue(nil, nil, nil, nil)
 
 	result, err := q.Ack(ctx, &entities.Message{ID: "1"}, time.Time{}, "")
 
@@ -180,7 +179,7 @@ func TestAckWithoutQueue(t *testing.T) {
 func TestAckWithoutId(t *testing.T) {
 	t.Parallel()
 
-	q := NewMessagePool(nil, nil, nil, nil)
+	q := NewQueue(nil, nil, nil, nil)
 
 	result, err := q.Ack(ctx, &entities.Message{Queue: "queue"}, time.Time{}, "")
 
@@ -206,7 +205,7 @@ func TestNackMakeAvailableErrorShouldResultError(t *testing.T) {
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().MakeAvailable(gomock.Any(), message).Return(false, errors.New("make available error"))
 
-	q := NewMessagePool(nil, mockStorage, nil, mockCache)
+	q := NewQueue(nil, mockStorage, nil, mockCache)
 
 	result, err := q.Nack(ctx, &entities.Message{
 		ID:    "id",
@@ -245,7 +244,7 @@ func TestNackSuccessfulShouldAudit(t *testing.T) {
 		Reason:            "reason",
 	})
 
-	q := NewMessagePool(mockAuditor, mockStorage, nil, mockCache)
+	q := NewQueue(mockAuditor, mockStorage, nil, mockCache)
 
 	result, err := q.Nack(ctx, &entities.Message{
 		ID:    "id",
@@ -259,7 +258,7 @@ func TestNackSuccessfulShouldAudit(t *testing.T) {
 func TestNackNilMessage(t *testing.T) {
 	t.Parallel()
 
-	q := NewMessagePool(nil, nil, nil, nil)
+	q := NewQueue(nil, nil, nil, nil)
 
 	result, err := q.Nack(ctx, nil, time.Now(), "")
 
@@ -270,7 +269,7 @@ func TestNackNilMessage(t *testing.T) {
 func TestNackWithoutQueue(t *testing.T) {
 	t.Parallel()
 
-	q := NewMessagePool(nil, nil, nil, nil)
+	q := NewQueue(nil, nil, nil, nil)
 
 	result, err := q.Nack(ctx, &entities.Message{ID: "1"}, time.Now(), "")
 
@@ -281,7 +280,7 @@ func TestNackWithoutQueue(t *testing.T) {
 func TestNackWithoutId(t *testing.T) {
 	t.Parallel()
 
-	q := NewMessagePool(nil, nil, nil, nil)
+	q := NewQueue(nil, nil, nil, nil)
 
 	result, err := q.Nack(ctx, &entities.Message{Queue: "queue"}, time.Now(), "")
 
@@ -337,7 +336,7 @@ func TestPullShouldDeleteNotFoundInStorageAndReturnRemaining(t *testing.T) {
 		Queue:  "test",
 		Signal: audit.MISSING_STORAGE,
 	})
-	q := NewMessagePool(mockAuditor, mockStorage, nil, mockCache)
+	q := NewQueue(mockAuditor, mockStorage, nil, mockCache)
 
 	messages, err := q.Pull(ctx, "test", 3, 0)
 
@@ -391,7 +390,7 @@ func TestPullElementsFromRetryShouldNotAuditMissingElements(t *testing.T) {
 
 	mockAuditor := mocks.NewMockAuditor(mockCtrl)
 
-	q := NewMessagePool(mockAuditor, mockStorage, nil, mockCache)
+	q := NewQueue(mockAuditor, mockStorage, nil, mockCache)
 
 	messages, err := q.Pull(ctx, "test", 3, 0)
 
@@ -449,7 +448,7 @@ func TestPullElementsFromBothFirstTryAndRetryShouldMergeElementsAndKeepScoreOrde
 
 	mockAuditor := mocks.NewMockAuditor(mockCtrl)
 
-	q := NewMessagePool(mockAuditor, mockStorage, nil, mockCache)
+	q := NewQueue(mockAuditor, mockStorage, nil, mockCache)
 
 	messages, err := q.Pull(ctx, "test", 3, 0)
 
@@ -510,7 +509,7 @@ func TestPullNothingFoundOnStorage(t *testing.T) {
 		Queue:  "test",
 		Signal: audit.MISSING_STORAGE,
 	})
-	q := NewMessagePool(mockAuditor, mockStorage, nil, mockCache)
+	q := NewQueue(mockAuditor, mockStorage, nil, mockCache)
 
 	messages, err := q.Pull(ctx, "test", 3, 0)
 
@@ -527,7 +526,7 @@ func TestPullCacheError(t *testing.T) {
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().PullMessages(gomock.Any(), "test", int64(1), int64(0)).Return(nil, errors.New("cache_error"))
 
-	q := NewMessagePool(nil, nil, nil, mockCache)
+	q := NewQueue(nil, nil, nil, mockCache)
 
 	messages, err := q.Pull(ctx, "test", 1, 0)
 
@@ -544,7 +543,7 @@ func TestPullCacheNoResults(t *testing.T) {
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().PullMessages(gomock.Any(), "test", int64(1), int64(0)).Return(nil, nil)
 
-	q := NewMessagePool(nil, nil, nil, mockCache)
+	q := NewQueue(nil, nil, nil, mockCache)
 
 	messages, err := q.Pull(ctx, "test", 1, 0)
 
@@ -578,7 +577,7 @@ func (m isSameEntry) String() string {
 	return fmt.Sprintf("%v", m.value)
 }
 
-func TestMessagePoolTimeoutError(t *testing.T) {
+func TestQueueTimeoutError(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
@@ -587,14 +586,14 @@ func TestMessagePoolTimeoutError(t *testing.T) {
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().TimeoutMessages(gomock.Any(), "queue_test", cache.DefaultCacheTimeout).Return(nil, errors.New("test_error"))
 
-	q := NewMessagePool(nil, nil, nil, mockCache)
+	q := NewQueue(nil, nil, nil, mockCache)
 
 	_, err := q.TimeoutMessages(ctx, "queue_test")
 
 	require.Error(t, err)
 }
 
-func TestMessagePoolRemoveShouldRemoveFromCacheAndStorage(t *testing.T) {
+func TestQueueRemoveShouldRemoveFromCacheAndStorage(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
@@ -619,7 +618,7 @@ func TestMessagePoolRemoveShouldRemoveFromCacheAndStorage(t *testing.T) {
 		Reason: "",
 	})
 
-	q := NewMessagePool(mockAuditor, mockStorage, nil, mockCache)
+	q := NewQueue(mockAuditor, mockStorage, nil, mockCache)
 
 	cacheRemoved, storageRemoved, err := q.Remove(ctx, "queue_test", "", "1", "2")
 	require.NoError(t, err)
@@ -627,7 +626,7 @@ func TestMessagePoolRemoveShouldRemoveFromCacheAndStorage(t *testing.T) {
 	require.Equal(t, int64(2), storageRemoved)
 }
 
-func TestMessagePoolRemoveCacheError(t *testing.T) {
+func TestQueueRemoveCacheError(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
@@ -636,7 +635,7 @@ func TestMessagePoolRemoveCacheError(t *testing.T) {
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().Remove(gomock.Any(), "queue_test", "1").Return(int64(0), errors.New("cache_error"))
 
-	q := NewMessagePool(nil, nil, nil, mockCache)
+	q := NewQueue(nil, nil, nil, mockCache)
 
 	cacheRemoved, storageRemoved, err := q.Remove(ctx, "queue_test", "", "1")
 	require.Error(t, err)
@@ -644,7 +643,7 @@ func TestMessagePoolRemoveCacheError(t *testing.T) {
 	require.Equal(t, int64(0), storageRemoved)
 }
 
-func TestMessagePoolRemoveStorageError(t *testing.T) {
+func TestQueueRemoveStorageError(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
@@ -656,7 +655,7 @@ func TestMessagePoolRemoveStorageError(t *testing.T) {
 	mockStorage := mocks.NewMockStorage(mockCtrl)
 	mockStorage.EXPECT().Remove(gomock.Any(), "queue_test", "1").Return(int64(0), errors.New("storage_error"))
 
-	q := NewMessagePool(nil, mockStorage, nil, mockCache)
+	q := NewQueue(nil, mockStorage, nil, mockCache)
 
 	cacheRemoved, storageRemoved, err := q.Remove(ctx, "queue_test", "", "1")
 	require.Error(t, err)
@@ -664,7 +663,7 @@ func TestMessagePoolRemoveStorageError(t *testing.T) {
 	require.Equal(t, int64(0), storageRemoved)
 }
 
-func TestMessagePoolTimeout(t *testing.T) {
+func TestQueueTimeout(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
@@ -686,7 +685,7 @@ func TestMessagePoolTimeout(t *testing.T) {
 		Queue:  "queue_test",
 	}}).Times(1)
 
-	q := NewMessagePool(mockAuditor, nil, nil, mockCache)
+	q := NewQueue(mockAuditor, nil, nil, mockCache)
 
 	ids, err := q.TimeoutMessages(ctx, "queue_test")
 
@@ -738,7 +737,7 @@ func TestAddMessagesToCacheSameIdInSameRequestShouldSetLastElementScore(t *testi
 		Signal: audit.INSERT_CACHE,
 	}).MinTimes(2)
 
-	q := NewMessagePool(mockAuditor, nil, nil, mockCache)
+	q := NewQueue(mockAuditor, nil, nil, mockCache)
 
 	messages := []*entities.Message{{
 		ID:        "id",
@@ -790,7 +789,7 @@ func TestAddMessagesToStorageWithoutEditingQueueConfiguration(t *testing.T) {
 	mockStorage := mocks.NewMockStorage(mockCtrl)
 	mockStorage.EXPECT().Insert(gomock.Any(), messages).Return(int64(2), int64(0), nil)
 
-	q := NewMessagePool(nil, mockStorage, nil, nil)
+	q := NewQueue(nil, mockStorage, nil, nil)
 
 	inserted, updated, err := q.AddMessagesToStorage(ctx, messages...)
 
@@ -817,7 +816,7 @@ func TestAddMessagesError(t *testing.T) {
 		},
 	}).Return(nil, errors.New("insert error"))
 
-	q := NewMessagePool(nil, nil, nil, mockCache)
+	q := NewQueue(nil, nil, nil, mockCache)
 
 	messages := []*entities.Message{{
 		ID:        "id",
@@ -839,7 +838,7 @@ func TestRemoveExceedingMessagesQueueZeroMaxElementsShouldDoNothing(t *testing.T
 	mockStorage := mocks.NewMockStorage(mockCtrl)
 	mockCache := mocks.NewMockCache(mockCtrl)
 
-	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, queue.NewConfigurationService(ctx, mockStorage), mockCache)
+	q := NewQueue(&audit.AuditorImpl{}, mockStorage, NewQueueConfigurationService(ctx, mockStorage), mockCache)
 
 	require.NoError(t, q.removeExceedingMessagesFromQueue(ctx, &entities.QueueConfiguration{MaxElements: 0, Queue: "q1"}))
 }
@@ -852,14 +851,14 @@ func TestRemoveExceedingMessagesEmptyQueueShouldDoNothing(t *testing.T) {
 
 	mockStorage := mocks.NewMockStorage(mockCtrl)
 
-	configuration := &entities.QueueConfiguration{MaxElements: 2, Queue: "q1"}
+	queueConfiguration := &entities.QueueConfiguration{MaxElements: 2, Queue: "q1"}
 	mockStorage.EXPECT().Count(gomock.Any(), &storage.FindOptions{InternalFilter: &storage.InternalFilter{Queue: "q1"}}).Return(int64(0), nil)
 
 	mockCache := mocks.NewMockCache(mockCtrl)
 
-	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, queue.NewConfigurationService(ctx, mockStorage), mockCache)
+	q := NewQueue(&audit.AuditorImpl{}, mockStorage, NewQueueConfigurationService(ctx, mockStorage), mockCache)
 
-	require.NoError(t, q.removeExceedingMessagesFromQueue(ctx, configuration))
+	require.NoError(t, q.removeExceedingMessagesFromQueue(ctx, queueConfiguration))
 }
 
 func TestRemoveExceedingMessagesErrorCountingShouldReturnError(t *testing.T) {
@@ -868,16 +867,16 @@ func TestRemoveExceedingMessagesErrorCountingShouldReturnError(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	configuration := &entities.QueueConfiguration{MaxElements: 2, Queue: "q1"}
+	queueConfiguration := &entities.QueueConfiguration{MaxElements: 2, Queue: "q1"}
 
 	mockStorage := mocks.NewMockStorage(mockCtrl)
 	mockStorage.EXPECT().Count(gomock.Any(), &storage.FindOptions{InternalFilter: &storage.InternalFilter{Queue: "q1"}}).Return(int64(0), fmt.Errorf("anyerr"))
 
 	mockCache := mocks.NewMockCache(mockCtrl)
 
-	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, queue.NewConfigurationService(ctx, mockStorage), mockCache)
+	q := NewQueue(&audit.AuditorImpl{}, mockStorage, NewQueueConfigurationService(ctx, mockStorage), mockCache)
 
-	require.Error(t, q.removeExceedingMessagesFromQueue(ctx, configuration))
+	require.Error(t, q.removeExceedingMessagesFromQueue(ctx, queueConfiguration))
 }
 
 func TestRemoveExceedingMessagesShouldRemoveExceedingElements(t *testing.T) {
@@ -891,7 +890,7 @@ func TestRemoveExceedingMessagesShouldRemoveExceedingElements(t *testing.T) {
 	maxElements := int64(2)
 	count := int64(5)
 
-	configuration := &entities.QueueConfiguration{MaxElements: maxElements, Queue: "q1"}
+	queueConfiguration := &entities.QueueConfiguration{MaxElements: maxElements, Queue: "q1"}
 
 	mockStorage.EXPECT().Count(gomock.Any(), &storage.FindOptions{InternalFilter: &storage.InternalFilter{Queue: "q1"}}).Return(count, nil)
 
@@ -915,9 +914,9 @@ func TestRemoveExceedingMessagesShouldRemoveExceedingElements(t *testing.T) {
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().Remove(gomock.Any(), "q1", []string{"1", "2"}).Return(int64(2), nil)
 
-	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, queue.NewConfigurationService(ctx, mockStorage), mockCache)
+	q := NewQueue(&audit.AuditorImpl{}, mockStorage, NewQueueConfigurationService(ctx, mockStorage), mockCache)
 
-	require.NoError(t, q.removeExceedingMessagesFromQueue(ctx, configuration))
+	require.NoError(t, q.removeExceedingMessagesFromQueue(ctx, queueConfiguration))
 }
 
 func TestRemoveExceedingMessagesFindErrorShouldRemoveResultError(t *testing.T) {
@@ -931,7 +930,7 @@ func TestRemoveExceedingMessagesFindErrorShouldRemoveResultError(t *testing.T) {
 	maxElements := int64(2)
 	count := int64(5)
 
-	configuration := &entities.QueueConfiguration{MaxElements: maxElements, Queue: "q1"}
+	queueConfiguration := &entities.QueueConfiguration{MaxElements: maxElements, Queue: "q1"}
 
 	mockStorage.EXPECT().Count(gomock.Any(), &storage.FindOptions{InternalFilter: &storage.InternalFilter{Queue: "q1"}}).Return(count, nil)
 
@@ -942,9 +941,9 @@ func TestRemoveExceedingMessagesFindErrorShouldRemoveResultError(t *testing.T) {
 
 	mockCache := mocks.NewMockCache(mockCtrl)
 
-	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, queue.NewConfigurationService(ctx, mockStorage), mockCache)
+	q := NewQueue(&audit.AuditorImpl{}, mockStorage, NewQueueConfigurationService(ctx, mockStorage), mockCache)
 
-	require.Error(t, q.removeExceedingMessagesFromQueue(ctx, configuration))
+	require.Error(t, q.removeExceedingMessagesFromQueue(ctx, queueConfiguration))
 }
 
 func TestRemoveExceedingMessagesRemoveErrorShouldResultError(t *testing.T) {
@@ -958,7 +957,7 @@ func TestRemoveExceedingMessagesRemoveErrorShouldResultError(t *testing.T) {
 	maxElements := int64(2)
 	count := int64(5)
 
-	configuration := &entities.QueueConfiguration{MaxElements: maxElements, Queue: "q1"}
+	queueConfiguration := &entities.QueueConfiguration{MaxElements: maxElements, Queue: "q1"}
 
 	mockStorage.EXPECT().Count(gomock.Any(), &storage.FindOptions{InternalFilter: &storage.InternalFilter{Queue: "q1"}}).Return(count, nil)
 
@@ -971,9 +970,9 @@ func TestRemoveExceedingMessagesRemoveErrorShouldResultError(t *testing.T) {
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().Remove(gomock.Any(), "q1", []string{"1", "2"}).Return(int64(2), nil)
 
-	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, queue.NewConfigurationService(ctx, mockStorage), mockCache)
+	q := NewQueue(&audit.AuditorImpl{}, mockStorage, NewQueueConfigurationService(ctx, mockStorage), mockCache)
 
-	require.Error(t, q.removeExceedingMessagesFromQueue(ctx, configuration))
+	require.Error(t, q.removeExceedingMessagesFromQueue(ctx, queueConfiguration))
 }
 
 func TestCountShouldCallStorage(t *testing.T) {
@@ -988,7 +987,7 @@ func TestCountShouldCallStorage(t *testing.T) {
 	mockStorage.EXPECT().Count(ctx, opts).Return(int64(12), nil)
 	mockCache := mocks.NewMockCache(mockCtrl)
 
-	q := NewMessagePool(nil, mockStorage, nil, mockCache)
+	q := NewQueue(nil, mockStorage, nil, mockCache)
 
 	result, err := q.Count(ctx, opts)
 
@@ -1008,7 +1007,7 @@ func TestNilOptsShouldCreateEmptyOpts(t *testing.T) {
 	mockStorage.EXPECT().Count(ctx, opts).Return(int64(12), nil)
 	mockCache := mocks.NewMockCache(mockCtrl)
 
-	q := NewMessagePool(nil, mockStorage, nil, mockCache)
+	q := NewQueue(nil, mockStorage, nil, mockCache)
 
 	result, err := q.Count(ctx, nil)
 
@@ -1028,7 +1027,7 @@ func TestCountStorageErrorShouldResultError(t *testing.T) {
 	mockStorage.EXPECT().Count(ctx, opts).Return(int64(0), fmt.Errorf("error"))
 	mockCache := mocks.NewMockCache(mockCtrl)
 
-	q := NewMessagePool(nil, mockStorage, nil, mockCache)
+	q := NewQueue(nil, mockStorage, nil, mockCache)
 
 	result, err := q.Count(ctx, nil)
 
@@ -1068,7 +1067,7 @@ func TestAckWithLockShouldLock(t *testing.T) {
 		LockMs:            10,
 	})
 
-	q := NewMessagePool(mockAuditor, mockStorage, nil, mockCache)
+	q := NewQueue(mockAuditor, mockStorage, nil, mockCache)
 
 	result, err := q.Ack(ctx, &entities.Message{
 		ID:        "id",
@@ -1104,7 +1103,7 @@ func TestAckWithLockErrorShouldResultError(t *testing.T) {
 
 	mockAuditor := mocks.NewMockAuditor(mockCtrl)
 
-	q := NewMessagePool(mockAuditor, mockStorage, nil, mockCache)
+	q := NewQueue(mockAuditor, mockStorage, nil, mockCache)
 
 	result, err := q.Ack(ctx, &entities.Message{
 		ID:        "id",
@@ -1147,7 +1146,7 @@ func TestNackWithLockShouldLock(t *testing.T) {
 		LockMs:            10,
 	})
 
-	q := NewMessagePool(mockAuditor, mockStorage, nil, mockCache)
+	q := NewQueue(mockAuditor, mockStorage, nil, mockCache)
 
 	result, err := q.Nack(ctx, &entities.Message{
 		ID:     "id",
@@ -1180,7 +1179,7 @@ func TestNackWithLockErrorShouldResultError(t *testing.T) {
 
 	mockAuditor := mocks.NewMockAuditor(mockCtrl)
 
-	q := NewMessagePool(mockAuditor, mockStorage, nil, mockCache)
+	q := NewQueue(mockAuditor, mockStorage, nil, mockCache)
 
 	result, err := q.Nack(ctx, &entities.Message{
 		ID:     "id",

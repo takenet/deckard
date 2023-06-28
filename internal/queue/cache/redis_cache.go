@@ -13,9 +13,9 @@ import (
 	"github.com/meirf/gopart"
 	"github.com/takenet/deckard/internal/config"
 	"github.com/takenet/deckard/internal/logger"
-	"github.com/takenet/deckard/internal/messagepool/entities"
-	"github.com/takenet/deckard/internal/messagepool/utils"
 	"github.com/takenet/deckard/internal/metrics"
+	"github.com/takenet/deckard/internal/queue/entities"
+	"github.com/takenet/deckard/internal/queue/utils"
 	"go.opentelemetry.io/otel/attribute"
 )
 

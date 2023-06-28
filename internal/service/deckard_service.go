@@ -13,10 +13,9 @@ import (
 	"github.com/takenet/deckard"
 	"github.com/takenet/deckard/internal/config"
 	"github.com/takenet/deckard/internal/logger"
-	"github.com/takenet/deckard/internal/messagepool"
-	"github.com/takenet/deckard/internal/messagepool/entities"
-	"github.com/takenet/deckard/internal/messagepool/queue"
-	"github.com/takenet/deckard/internal/messagepool/storage"
+	"github.com/takenet/deckard/internal/queue"
+	"github.com/takenet/deckard/internal/queue/entities"
+	"github.com/takenet/deckard/internal/queue/storage"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -31,8 +30,8 @@ import (
 )
 
 type Deckard struct {
-	pool                      messagepool.DeckardMessagePool
-	queueConfigurationService queue.ConfigurationService
+	pool                      queue.DeckardQueue
+	queueConfigurationService queue.QueueConfigurationService
 	memoryInstance            bool
 
 	healthServer *health.Server
@@ -43,7 +42,7 @@ type Deckard struct {
 
 var _ deckard.DeckardServer = (*Deckard)(nil)
 
-func NewDeckardInstance(qpool messagepool.DeckardMessagePool, queueConfigurationService queue.ConfigurationService, memoryInstance bool) *Deckard {
+func NewDeckardInstance(qpool queue.DeckardQueue, queueConfigurationService queue.QueueConfigurationService, memoryInstance bool) *Deckard {
 	return &Deckard{
 		pool:                      qpool,
 		queueConfigurationService: queueConfigurationService,
@@ -53,12 +52,12 @@ func NewDeckardInstance(qpool messagepool.DeckardMessagePool, queueConfiguration
 }
 
 // Creates a memory deckard service
-func NewMemoryDeckardService(qpool messagepool.DeckardMessagePool, queueConfigurationService queue.ConfigurationService) *Deckard {
+func NewMemoryDeckardService(qpool queue.DeckardQueue, queueConfigurationService queue.QueueConfigurationService) *Deckard {
 	return NewDeckardInstance(qpool, queueConfigurationService, true)
 }
 
 // Creates a non-memory deckard service
-func NewDeckardService(qpool messagepool.DeckardMessagePool, queueConfigurationService queue.ConfigurationService) *Deckard {
+func NewDeckardService(qpool queue.DeckardQueue, queueConfigurationService queue.QueueConfigurationService) *Deckard {
 	return NewDeckardInstance(qpool, queueConfigurationService, false)
 }
 

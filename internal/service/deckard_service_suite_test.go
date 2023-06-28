@@ -7,18 +7,18 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/takenet/deckard"
-	"github.com/takenet/deckard/internal/messagepool"
-	"github.com/takenet/deckard/internal/messagepool/cache"
-	"github.com/takenet/deckard/internal/messagepool/entities"
-	"github.com/takenet/deckard/internal/messagepool/storage"
+	"github.com/takenet/deckard/internal/queue"
+	"github.com/takenet/deckard/internal/queue/cache"
+	"github.com/takenet/deckard/internal/queue/entities"
+	"github.com/takenet/deckard/internal/queue/storage"
 )
 
 type DeckardIntegrationTestSuite struct {
 	suite.Suite
-	deckard            deckard.DeckardServer
-	deckardMessagePool messagepool.DeckardMessagePool
-	deckardCache       cache.Cache
-	deckardStorage     storage.Storage
+	deckard        deckard.DeckardServer
+	deckardQueue   queue.DeckardQueue
+	deckardCache   cache.Cache
+	deckardStorage storage.Storage
 }
 
 func (suite *DeckardIntegrationTestSuite) AfterTest(_, _ string) {
@@ -47,7 +47,7 @@ func (suite *DeckardIntegrationTestSuite) TestAddMessageIntegration() {
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), int64(1), response.CreatedCount)
 
-	messages, err := suite.deckardMessagePool.GetStorageMessages(ctx, &storage.FindOptions{
+	messages, err := suite.deckardQueue.GetStorageMessages(ctx, &storage.FindOptions{
 		InternalFilter: &storage.InternalFilter{
 			Ids: &[]string{"123"},
 		},
@@ -97,13 +97,13 @@ func (suite *DeckardIntegrationTestSuite) TestGetMessageIntegration() {
 
 	require.NoError(suite.T(), err)
 
-	count, err := suite.deckardMessagePool.Count(ctx, nil)
+	count, err := suite.deckardQueue.Count(ctx, nil)
 
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), int64(1), count)
 	require.Equal(suite.T(), int64(1), res.CreatedCount)
 
-	messages, err := suite.deckardMessagePool.GetStorageMessages(ctx, &storage.FindOptions{
+	messages, err := suite.deckardQueue.GetStorageMessages(ctx, &storage.FindOptions{
 		InternalFilter: &storage.InternalFilter{
 			Ids: &[]string{"123"},
 		},
@@ -140,7 +140,7 @@ func (suite *DeckardIntegrationTestSuite) TestGetMessageShouldResultMostScoreFir
 	require.Equal(suite.T(), int64(3), response.CreatedCount)
 	require.Equal(suite.T(), int64(0), response.UpdatedCount)
 
-	count, err := suite.deckardMessagePool.Count(ctx, nil)
+	count, err := suite.deckardQueue.Count(ctx, nil)
 	require.Equal(suite.T(), int64(3), count)
 	require.NoError(suite.T(), err)
 
@@ -223,7 +223,7 @@ func testMessageRemoval(suite *DeckardIntegrationTestSuite, ackOrNack AckNackAct
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), int64(1), response.CreatedCount)
 
-	messages, err := suite.deckardMessagePool.GetStorageMessages(ctx, &storage.FindOptions{
+	messages, err := suite.deckardQueue.GetStorageMessages(ctx, &storage.FindOptions{
 		InternalFilter: &storage.InternalFilter{
 			Ids: &[]string{"-1"},
 		},

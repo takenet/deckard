@@ -17,12 +17,11 @@ import (
 	"github.com/takenet/deckard"
 	"github.com/takenet/deckard/internal/audit"
 	"github.com/takenet/deckard/internal/config"
-	"github.com/takenet/deckard/internal/messagepool"
-	"github.com/takenet/deckard/internal/messagepool/cache"
-	"github.com/takenet/deckard/internal/messagepool/entities"
-	"github.com/takenet/deckard/internal/messagepool/queue"
-	"github.com/takenet/deckard/internal/messagepool/storage"
 	"github.com/takenet/deckard/internal/mocks"
+	"github.com/takenet/deckard/internal/queue"
+	"github.com/takenet/deckard/internal/queue/cache"
+	"github.com/takenet/deckard/internal/queue/entities"
+	"github.com/takenet/deckard/internal/queue/storage"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
@@ -42,11 +41,11 @@ func TestMemoryDeckardGRPCServeIntegration(t *testing.T) {
 	storage := storage.NewMemoryStorage(ctx)
 	cache := cache.NewMemoryCache()
 
-	queueService := queue.NewConfigurationService(ctx, storage)
+	queueService := queue.NewQueueConfigurationService(ctx, storage)
 
-	messagePool := messagepool.NewMessagePool(&audit.AuditorImpl{}, storage, queueService, cache)
+	queue := queue.NewQueue(&audit.AuditorImpl{}, storage, queueService, cache)
 
-	srv := NewMemoryDeckardService(messagePool, queueService)
+	srv := NewMemoryDeckardService(queue, queueService)
 
 	server, err := srv.ServeGRPCServer(ctx)
 	require.NoError(t, err)
@@ -97,11 +96,11 @@ func TestDeckardServerTLS(t *testing.T) {
 	storage := storage.NewMemoryStorage(ctx)
 	cache := cache.NewMemoryCache()
 
-	queueService := queue.NewConfigurationService(ctx, storage)
+	queueService := queue.NewQueueConfigurationService(ctx, storage)
 
-	messagePool := messagepool.NewMessagePool(&audit.AuditorImpl{}, storage, queueService, cache)
+	queue := queue.NewQueue(&audit.AuditorImpl{}, storage, queueService, cache)
 
-	srv := NewMemoryDeckardService(messagePool, queueService)
+	srv := NewMemoryDeckardService(queue, queueService)
 
 	server, err := srv.ServeGRPCServer(ctx)
 	require.NoError(t, err)
@@ -152,11 +151,11 @@ func TestDeckardMutualTLS(t *testing.T) {
 	storage := storage.NewMemoryStorage(ctx)
 	cache := cache.NewMemoryCache()
 
-	queueService := queue.NewConfigurationService(ctx, storage)
+	queueService := queue.NewQueueConfigurationService(ctx, storage)
 
-	messagePool := messagepool.NewMessagePool(&audit.AuditorImpl{}, storage, queueService, cache)
+	queue := queue.NewQueue(&audit.AuditorImpl{}, storage, queueService, cache)
 
-	srv := NewMemoryDeckardService(messagePool, queueService)
+	srv := NewMemoryDeckardService(queue, queueService)
 
 	server, err := srv.ServeGRPCServer(ctx)
 	require.NoError(t, err)
@@ -201,17 +200,17 @@ func TestMemoryDeckardIntegration(t *testing.T) {
 	storage := storage.NewMemoryStorage(ctx)
 	cache := cache.NewMemoryCache()
 
-	queueService := queue.NewConfigurationService(ctx, storage)
+	queueService := queue.NewQueueConfigurationService(ctx, storage)
 
-	messagePool := messagepool.NewMessagePool(&audit.AuditorImpl{}, storage, queueService, cache)
+	queue := queue.NewQueue(&audit.AuditorImpl{}, storage, queueService, cache)
 
-	srv := NewMemoryDeckardService(messagePool, queueService)
+	srv := NewMemoryDeckardService(queue, queueService)
 
 	suite.Run(t, &DeckardIntegrationTestSuite{
-		deckard:            srv,
-		deckardMessagePool: messagePool,
-		deckardCache:       cache,
-		deckardStorage:     storage,
+		deckard:        srv,
+		deckardQueue:   queue,
+		deckardCache:   cache,
+		deckardStorage: storage,
 	})
 }
 
@@ -232,17 +231,17 @@ func TestRedisAndMongoDeckardIntegration(t *testing.T) {
 
 	require.NoError(t, err)
 
-	queueService := queue.NewConfigurationService(ctx, storage)
+	queueService := queue.NewQueueConfigurationService(ctx, storage)
 
-	messagePool := messagepool.NewMessagePool(&audit.AuditorImpl{}, storage, queueService, cache)
+	queue := queue.NewQueue(&audit.AuditorImpl{}, storage, queueService, cache)
 
-	srv := NewDeckardService(messagePool, queueService)
+	srv := NewDeckardService(queue, queueService)
 
 	suite.Run(t, &DeckardIntegrationTestSuite{
-		deckard:            srv,
-		deckardMessagePool: messagePool,
-		deckardCache:       cache,
-		deckardStorage:     storage,
+		deckard:        srv,
+		deckardQueue:   queue,
+		deckardCache:   cache,
+		deckardStorage: storage,
 	})
 }
 
@@ -254,11 +253,11 @@ func TestFlushMemoryDeckardIntegration(t *testing.T) {
 	storage := storage.NewMemoryStorage(ctx)
 	cache := cache.NewMemoryCache()
 
-	queueService := queue.NewConfigurationService(ctx, storage)
+	queueService := queue.NewQueueConfigurationService(ctx, storage)
 
-	messagePool := messagepool.NewMessagePool(&audit.AuditorImpl{}, storage, queueService, cache)
+	queue := queue.NewQueue(&audit.AuditorImpl{}, storage, queueService, cache)
 
-	srv := NewMemoryDeckardService(messagePool, queueService)
+	srv := NewMemoryDeckardService(queue, queueService)
 
 	_, err := srv.Add(ctx, &deckard.AddRequest{
 		Messages: []*deckard.AddMessage{
@@ -273,7 +272,7 @@ func TestFlushMemoryDeckardIntegration(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	count, err := messagePool.Count(ctx, nil)
+	count, err := queue.Count(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, int64(1), count)
 
@@ -281,7 +280,7 @@ func TestFlushMemoryDeckardIntegration(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, result.Success)
 
-	count, err = messagePool.Count(ctx, nil)
+	count, err = queue.Count(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, int64(0), count)
 }
@@ -295,19 +294,19 @@ func TestFlushOnNonMemoryDeckardShouldNotSuccess(t *testing.T) {
 	require.False(t, result.Success)
 }
 
-func TestGetMessagePoolError(t *testing.T) {
+func TestGetQueueError(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	mockMessagePool := mocks.NewMockDeckardMessagePool(mockCtrl)
-	mockMessagePool.EXPECT().Pull(
+	mockQueue := mocks.NewMockDeckardQueue(mockCtrl)
+	mockQueue.EXPECT().Pull(
 		ctx,
 		"queue",
 		int64(1000),
 		int64(34),
 	).Return(nil, errors.New("pool error"))
 
-	_, err := NewDeckardService(mockMessagePool, nil).Pull(ctx, &deckard.PullRequest{
+	_, err := NewDeckardService(mockQueue, nil).Pull(ctx, &deckard.PullRequest{
 		Queue:       "queue",
 		Amount:      1234,
 		ScoreFilter: 34,
@@ -316,19 +315,19 @@ func TestGetMessagePoolError(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestGetMessagePoolNoMessages(t *testing.T) {
+func TestGetQueueNoMessages(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	mockMessagePool := mocks.NewMockDeckardMessagePool(mockCtrl)
-	mockMessagePool.EXPECT().Pull(
+	mockQueue := mocks.NewMockDeckardQueue(mockCtrl)
+	mockQueue.EXPECT().Pull(
 		ctx,
 		"queue",
 		int64(1000),
 		int64(34),
 	).Return(nil, nil)
 
-	response, err := NewDeckardService(mockMessagePool, nil).Pull(ctx, &deckard.PullRequest{
+	response, err := NewDeckardService(mockQueue, nil).Pull(ctx, &deckard.PullRequest{
 		Queue:       "queue",
 		Amount:      1234,
 		ScoreFilter: 34,
@@ -342,8 +341,8 @@ func TestAck(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	mockMessagePool := mocks.NewMockDeckardMessagePool(mockCtrl)
-	mockMessagePool.EXPECT().Ack(
+	mockQueue := mocks.NewMockDeckardQueue(mockCtrl)
+	mockQueue.EXPECT().Ack(
 		ctx,
 		&entities.Message{
 			ID:                "1234567",
@@ -355,7 +354,7 @@ func TestAck(t *testing.T) {
 		"reason_test",
 	).Return(true, nil)
 
-	response, err := NewDeckardService(mockMessagePool, nil).Ack(ctx, &deckard.AckRequest{
+	response, err := NewDeckardService(mockQueue, nil).Ack(ctx, &deckard.AckRequest{
 		Id:            "1234567",
 		Queue:         "queue",
 		Reason:        "reason_test",
@@ -371,8 +370,8 @@ func TestAckPoolError(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	mockMessagePool := mocks.NewMockDeckardMessagePool(mockCtrl)
-	mockMessagePool.EXPECT().Ack(
+	mockQueue := mocks.NewMockDeckardQueue(mockCtrl)
+	mockQueue.EXPECT().Ack(
 		ctx,
 		&entities.Message{
 			ID:                "1234567",
@@ -384,7 +383,7 @@ func TestAckPoolError(t *testing.T) {
 		"reason_test",
 	).Return(false, errors.New("pool error"))
 
-	result, err := NewDeckardService(mockMessagePool, nil).Ack(ctx, &deckard.AckRequest{
+	result, err := NewDeckardService(mockQueue, nil).Ack(ctx, &deckard.AckRequest{
 		Id:            "1234567",
 		Queue:         "queue",
 		Reason:        "reason_test",
@@ -400,8 +399,8 @@ func TestNack(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	mockMessagePool := mocks.NewMockDeckardMessagePool(mockCtrl)
-	mockMessagePool.EXPECT().Nack(
+	mockQueue := mocks.NewMockDeckardQueue(mockCtrl)
+	mockQueue.EXPECT().Nack(
 		ctx,
 		&entities.Message{
 			ID:                "1234567",
@@ -413,7 +412,7 @@ func TestNack(t *testing.T) {
 		"reason_test",
 	).Return(true, nil)
 
-	response, err := NewDeckardService(mockMessagePool, nil).Nack(ctx, &deckard.AckRequest{
+	response, err := NewDeckardService(mockQueue, nil).Nack(ctx, &deckard.AckRequest{
 		Id:            "1234567",
 		Queue:         "queue",
 		Reason:        "reason_test",
@@ -429,8 +428,8 @@ func TestNackPoolError(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	mockMessagePool := mocks.NewMockDeckardMessagePool(mockCtrl)
-	mockMessagePool.EXPECT().Nack(
+	mockQueue := mocks.NewMockDeckardQueue(mockCtrl)
+	mockQueue.EXPECT().Nack(
 		ctx,
 		&entities.Message{
 			ID:                "1234567",
@@ -442,7 +441,7 @@ func TestNackPoolError(t *testing.T) {
 		"reason_test",
 	).Return(false, errors.New("pool error"))
 
-	response, err := NewDeckardService(mockMessagePool, nil).Nack(ctx, &deckard.AckRequest{
+	response, err := NewDeckardService(mockQueue, nil).Nack(ctx, &deckard.AckRequest{
 		Id:            "1234567",
 		Queue:         "queue",
 		Reason:        "reason_test",
@@ -458,15 +457,15 @@ func TestCountMessage(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	mockMessagePool := mocks.NewMockDeckardMessagePool(mockCtrl)
+	mockQueue := mocks.NewMockDeckardQueue(mockCtrl)
 
-	mockMessagePool.EXPECT().Count(ctx, &storage.FindOptions{
+	mockQueue.EXPECT().Count(ctx, &storage.FindOptions{
 		InternalFilter: &storage.InternalFilter{
 			Queue: "queue",
 		},
 	}).Return(int64(543), nil)
 
-	response, err := NewDeckardService(mockMessagePool, nil).Count(ctx, &deckard.CountRequest{
+	response, err := NewDeckardService(mockQueue, nil).Count(ctx, &deckard.CountRequest{
 		Queue: "queue",
 	})
 
@@ -478,15 +477,15 @@ func TestCountMessageStorageError(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	mockMessagePool := mocks.NewMockDeckardMessagePool(mockCtrl)
+	mockQueue := mocks.NewMockDeckardQueue(mockCtrl)
 
-	mockMessagePool.EXPECT().Count(ctx, &storage.FindOptions{
+	mockQueue.EXPECT().Count(ctx, &storage.FindOptions{
 		InternalFilter: &storage.InternalFilter{
 			Queue: "queue",
 		},
 	}).Return(int64(0), errors.New("storage error"))
 
-	_, err := NewDeckardService(mockMessagePool, nil).Count(ctx, &deckard.CountRequest{
+	_, err := NewDeckardService(mockQueue, nil).Count(ctx, &deckard.CountRequest{
 		Queue: "queue",
 	})
 
@@ -497,10 +496,10 @@ func TestRemoveMessage(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	mockMessagePool := mocks.NewMockDeckardMessagePool(mockCtrl)
-	mockMessagePool.EXPECT().Remove(ctx, "queue", "REQUEST", []string{"1", "2", "3"}).Return(int64(3), int64(2), nil)
+	mockQueue := mocks.NewMockDeckardQueue(mockCtrl)
+	mockQueue.EXPECT().Remove(ctx, "queue", "REQUEST", []string{"1", "2", "3"}).Return(int64(3), int64(2), nil)
 
-	response, err := NewDeckardService(mockMessagePool, nil).Remove(ctx, &deckard.RemoveRequest{
+	response, err := NewDeckardService(mockQueue, nil).Remove(ctx, &deckard.RemoveRequest{
 		Queue: "queue",
 		Ids:   []string{"1", "2", "3"},
 	})
@@ -510,14 +509,14 @@ func TestRemoveMessage(t *testing.T) {
 	require.Equal(t, int64(2), response.GetStorageRemoved())
 }
 
-func TestRemoveMessagePoolError(t *testing.T) {
+func TestRemoveQueueError(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	mockMessagePool := mocks.NewMockDeckardMessagePool(mockCtrl)
-	mockMessagePool.EXPECT().Remove(ctx, "queue", "REQUEST", []string{"1", "2", "3"}).Return(int64(0), int64(0), errors.New("pool error"))
+	mockQueue := mocks.NewMockDeckardQueue(mockCtrl)
+	mockQueue.EXPECT().Remove(ctx, "queue", "REQUEST", []string{"1", "2", "3"}).Return(int64(0), int64(0), errors.New("pool error"))
 
-	_, err := NewDeckardService(mockMessagePool, nil).Remove(ctx, &deckard.RemoveRequest{
+	_, err := NewDeckardService(mockQueue, nil).Remove(ctx, &deckard.RemoveRequest{
 		Queue: "queue",
 		Ids:   []string{"1", "2", "3"},
 	})
@@ -529,8 +528,8 @@ func TestRemoveMessageRequestWithoutIds(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	mockMessagePool := mocks.NewMockDeckardMessagePool(mockCtrl)
-	response, err := NewDeckardService(mockMessagePool, nil).Remove(ctx, &deckard.RemoveRequest{
+	mockQueue := mocks.NewMockDeckardQueue(mockCtrl)
+	response, err := NewDeckardService(mockQueue, nil).Remove(ctx, &deckard.RemoveRequest{
 		Queue: "queue",
 		Ids:   []string{},
 	})
@@ -544,9 +543,9 @@ func TestGetMessageByIdInvalidId(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	mockMessagePool := mocks.NewMockDeckardMessagePool(mockCtrl)
+	mockQueue := mocks.NewMockDeckardQueue(mockCtrl)
 
-	_, err := NewDeckardService(mockMessagePool, nil).GetById(ctx, &deckard.GetByIdRequest{
+	_, err := NewDeckardService(mockQueue, nil).GetById(ctx, &deckard.GetByIdRequest{
 		Queue: "queue",
 		Id:    "",
 	})
@@ -558,9 +557,9 @@ func TestGetMessageByIdInvalidQueue(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	mockMessagePool := mocks.NewMockDeckardMessagePool(mockCtrl)
+	mockQueue := mocks.NewMockDeckardQueue(mockCtrl)
 
-	_, err := NewDeckardService(mockMessagePool, nil).GetById(ctx, &deckard.GetByIdRequest{
+	_, err := NewDeckardService(mockQueue, nil).GetById(ctx, &deckard.GetByIdRequest{
 		Queue: "",
 		Id:    "fasdfads",
 	})
@@ -572,9 +571,9 @@ func TestGetMessageById(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	mockMessagePool := mocks.NewMockDeckardMessagePool(mockCtrl)
+	mockQueue := mocks.NewMockDeckardQueue(mockCtrl)
 
-	mockMessagePool.EXPECT().GetStorageMessages(ctx, &storage.FindOptions{
+	mockQueue.EXPECT().GetStorageMessages(ctx, &storage.FindOptions{
 		Limit: 1,
 		InternalFilter: &storage.InternalFilter{
 			Ids:   &[]string{"123"},
@@ -590,7 +589,7 @@ func TestGetMessageById(t *testing.T) {
 		},
 	}}, nil)
 
-	response, err := NewDeckardService(mockMessagePool, nil).GetById(ctx, &deckard.GetByIdRequest{
+	response, err := NewDeckardService(mockQueue, nil).GetById(ctx, &deckard.GetByIdRequest{
 		Queue: "queue",
 		Id:    "123",
 	})
@@ -612,9 +611,9 @@ func TestGetMessageByIdNotFound(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	mockMessagePool := mocks.NewMockDeckardMessagePool(mockCtrl)
+	mockQueue := mocks.NewMockDeckardQueue(mockCtrl)
 
-	mockMessagePool.EXPECT().GetStorageMessages(ctx, &storage.FindOptions{
+	mockQueue.EXPECT().GetStorageMessages(ctx, &storage.FindOptions{
 		Limit: 1,
 		InternalFilter: &storage.InternalFilter{
 			Ids:   &[]string{"123"},
@@ -622,7 +621,7 @@ func TestGetMessageByIdNotFound(t *testing.T) {
 		},
 	}).Return(nil, nil)
 
-	response, err := NewDeckardService(mockMessagePool, nil).GetById(ctx, &deckard.GetByIdRequest{
+	response, err := NewDeckardService(mockQueue, nil).GetById(ctx, &deckard.GetByIdRequest{
 		Queue: "queue",
 		Id:    "123",
 	})
@@ -636,9 +635,9 @@ func TestGetMessageByIdStorageError(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	mockMessagePool := mocks.NewMockDeckardMessagePool(mockCtrl)
+	mockQueue := mocks.NewMockDeckardQueue(mockCtrl)
 
-	mockMessagePool.EXPECT().GetStorageMessages(ctx, &storage.FindOptions{
+	mockQueue.EXPECT().GetStorageMessages(ctx, &storage.FindOptions{
 		Limit: 1,
 		InternalFilter: &storage.InternalFilter{
 			Ids:   &[]string{"123"},
@@ -646,7 +645,7 @@ func TestGetMessageByIdStorageError(t *testing.T) {
 		},
 	}).Return(nil, errors.New("storage error"))
 
-	_, err := NewDeckardService(mockMessagePool, nil).GetById(ctx, &deckard.GetByIdRequest{
+	_, err := NewDeckardService(mockQueue, nil).GetById(ctx, &deckard.GetByIdRequest{
 		Queue: "queue",
 		Id:    "123",
 	})

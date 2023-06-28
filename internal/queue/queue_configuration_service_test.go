@@ -8,11 +8,11 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/patrickmn/go-cache"
 	"github.com/stretchr/testify/require"
-	"github.com/takenet/deckard/internal/messagepool/entities"
 	"github.com/takenet/deckard/internal/mocks"
+	"github.com/takenet/deckard/internal/queue/entities"
 )
 
-var ctx = context.Background()
+var configurationCtx = context.Background()
 
 func TestCreateQueueConfigurationShouldCreateCache(t *testing.T) {
 	t.Parallel()
@@ -22,7 +22,7 @@ func TestCreateQueueConfigurationShouldCreateCache(t *testing.T) {
 
 	mockStorage := mocks.NewMockStorage(mockCtrl)
 
-	configuration := NewConfigurationService(ctx, mockStorage)
+	configuration := NewQueueConfigurationService(configurationCtx, mockStorage)
 
 	require.NotNil(t, configuration.localCache)
 	require.NotNil(t, configuration.storage)
@@ -31,17 +31,17 @@ func TestCreateQueueConfigurationShouldCreateCache(t *testing.T) {
 func TestEditConfigurationNilConfigurationShouldDoNothing(t *testing.T) {
 	t.Parallel()
 
-	configuration := NewConfigurationService(ctx, nil)
+	configuration := NewQueueConfigurationService(configurationCtx, nil)
 
-	require.NoError(t, configuration.EditQueueConfiguration(ctx, nil))
+	require.NoError(t, configuration.EditQueueConfiguration(configurationCtx, nil))
 }
 
 func TestEditConfigurationMaxElementsZeroShouldDoNothing(t *testing.T) {
 	t.Parallel()
 
-	configuration := NewConfigurationService(ctx, nil)
+	configuration := NewQueueConfigurationService(configurationCtx, nil)
 
-	require.NoError(t, configuration.EditQueueConfiguration(ctx, &entities.QueueConfiguration{MaxElements: 0}))
+	require.NoError(t, configuration.EditQueueConfiguration(configurationCtx, &entities.QueueConfiguration{MaxElements: 0}))
 }
 
 func TestEditConfigurationCacheNotFoundShouldCallStorageEdit(t *testing.T) {
@@ -53,22 +53,22 @@ func TestEditConfigurationCacheNotFoundShouldCallStorageEdit(t *testing.T) {
 	config := &entities.QueueConfiguration{MaxElements: 321, Queue: "q1"}
 
 	mockStorage := mocks.NewMockStorage(mockCtrl)
-	mockStorage.EXPECT().EditQueueConfiguration(ctx, config).Return(nil)
-	configuration := NewConfigurationService(ctx, mockStorage)
+	mockStorage.EXPECT().EditQueueConfiguration(configurationCtx, config).Return(nil)
+	configuration := NewQueueConfigurationService(configurationCtx, mockStorage)
 
-	require.NoError(t, configuration.EditQueueConfiguration(ctx, config))
+	require.NoError(t, configuration.EditQueueConfiguration(configurationCtx, config))
 }
 
 func TestEditConfigurationCacheFoundWithSameConfigShouldDoNothing(t *testing.T) {
 	t.Parallel()
 
-	configuration := NewConfigurationService(ctx, nil)
+	configuration := NewQueueConfigurationService(configurationCtx, nil)
 
 	config := &entities.QueueConfiguration{MaxElements: 321, Queue: "q1"}
 
 	configuration.localCache.Set("q1", config, cache.DefaultExpiration)
 
-	require.NoError(t, configuration.EditQueueConfiguration(ctx, config))
+	require.NoError(t, configuration.EditQueueConfiguration(configurationCtx, config))
 }
 
 func TestEditConfigurationCacheFoundWithDifferentConfigShouldCallStorageAndDeleteCache(t *testing.T) {
@@ -80,13 +80,13 @@ func TestEditConfigurationCacheFoundWithDifferentConfigShouldCallStorageAndDelet
 	config := &entities.QueueConfiguration{MaxElements: 321, Queue: "q1"}
 
 	mockStorage := mocks.NewMockStorage(mockCtrl)
-	mockStorage.EXPECT().EditQueueConfiguration(ctx, config).Return(nil)
+	mockStorage.EXPECT().EditQueueConfiguration(configurationCtx, config).Return(nil)
 
-	configuration := NewConfigurationService(ctx, mockStorage)
+	configuration := NewQueueConfigurationService(configurationCtx, mockStorage)
 
 	configuration.localCache.Set("q1", &entities.QueueConfiguration{MaxElements: 123, Queue: "q1"}, cache.DefaultExpiration)
 
-	require.NoError(t, configuration.EditQueueConfiguration(ctx, config))
+	require.NoError(t, configuration.EditQueueConfiguration(configurationCtx, config))
 
 	result, found := configuration.localCache.Get("q1")
 	require.False(t, found)
@@ -98,11 +98,11 @@ func TestGetConfigurationFromCacheShouldResultFromCache(t *testing.T) {
 
 	config := &entities.QueueConfiguration{MaxElements: 321, Queue: "q1"}
 
-	configuration := NewConfigurationService(ctx, nil)
+	configuration := NewQueueConfigurationService(configurationCtx, nil)
 
 	configuration.localCache.Set("q1", config, cache.DefaultExpiration)
 
-	result, err := configuration.GetQueueConfiguration(ctx, "q1")
+	result, err := configuration.GetQueueConfiguration(configurationCtx, "q1")
 	require.NoError(t, err)
 	require.Same(t, config, result)
 }
@@ -114,11 +114,11 @@ func TestGetConfigurationCacheMissStorageErrorShouldResultError(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	mockStorage := mocks.NewMockStorage(mockCtrl)
-	mockStorage.EXPECT().GetQueueConfiguration(ctx, "q1").Return(nil, fmt.Errorf("anyerr"))
+	mockStorage.EXPECT().GetQueueConfiguration(configurationCtx, "q1").Return(nil, fmt.Errorf("anyerr"))
 
-	configuration := NewConfigurationService(ctx, mockStorage)
+	configuration := NewQueueConfigurationService(configurationCtx, mockStorage)
 
-	result, err := configuration.GetQueueConfiguration(ctx, "q1")
+	result, err := configuration.GetQueueConfiguration(configurationCtx, "q1")
 	require.Error(t, err)
 	require.Nil(t, result)
 }
@@ -130,14 +130,14 @@ func TestGetConfigurationCacheMissStorageNotFoundShouldResultDefaultConfiguratio
 	defer mockCtrl.Finish()
 
 	mockStorage := mocks.NewMockStorage(mockCtrl)
-	mockStorage.EXPECT().GetQueueConfiguration(ctx, "q1").Return(nil, nil)
+	mockStorage.EXPECT().GetQueueConfiguration(configurationCtx, "q1").Return(nil, nil)
 
-	configuration := NewConfigurationService(ctx, mockStorage)
+	configuration := NewQueueConfigurationService(configurationCtx, mockStorage)
 
 	_, found := configuration.localCache.Get("q1")
 	require.False(t, found)
 
-	result, err := configuration.GetQueueConfiguration(ctx, "q1")
+	result, err := configuration.GetQueueConfiguration(configurationCtx, "q1")
 	require.NoError(t, err)
 	require.Equal(t, &entities.QueueConfiguration{
 		Queue: "q1",
@@ -161,14 +161,14 @@ func TestGetConfigurationCacheMissStorageFoundShouldResultStorageConfigurationAn
 		Queue:       "q1",
 		MaxElements: 534,
 	}
-	mockStorage.EXPECT().GetQueueConfiguration(ctx, "q1").Return(storageConfig, nil)
+	mockStorage.EXPECT().GetQueueConfiguration(configurationCtx, "q1").Return(storageConfig, nil)
 
-	configuration := NewConfigurationService(ctx, mockStorage)
+	configuration := NewQueueConfigurationService(configurationCtx, mockStorage)
 
 	_, found := configuration.localCache.Get("q1")
 	require.False(t, found)
 
-	result, err := configuration.GetQueueConfiguration(ctx, "q1")
+	result, err := configuration.GetQueueConfiguration(configurationCtx, "q1")
 	require.NoError(t, err)
 	require.Same(t, storageConfig, result)
 

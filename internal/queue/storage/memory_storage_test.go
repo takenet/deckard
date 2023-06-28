@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/takenet/deckard/internal/config"
-	"github.com/takenet/deckard/internal/messagepool/entities"
+	"github.com/takenet/deckard/internal/queue/entities"
 )
 
 func TestMemoryStorage(t *testing.T) {
