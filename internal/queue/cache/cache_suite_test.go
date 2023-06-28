@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
@@ -39,7 +40,7 @@ func (suite *CacheIntegrationTestSuite) TestTimeoutMessagesShouldMakeAvailableWi
 	})
 	require.NoError(suite.T(), insertError)
 
-	_, pullError := suite.cache.PullMessages(ctx, "queue", 1, 0)
+	_, pullError := suite.cache.PullMessages(ctx, "queue", 1, nil, nil)
 	require.NoError(suite.T(), pullError)
 
 	select {
@@ -62,8 +63,10 @@ func (suite *CacheIntegrationTestSuite) TestTimeoutMessagesShouldMakeAvailableWi
 		})
 		require.NoError(suite.T(), insertError)
 
+		currentScore := float64(time.Now().Unix())
+
 		// Guarantee timeout message has the maximum score
-		messages, pullAfterTimeout := suite.cache.PullMessages(ctx, "queue", 1, time.Now().Unix())
+		messages, pullAfterTimeout := suite.cache.PullMessages(ctx, "queue", 1, nil, &currentScore)
 		require.NoError(suite.T(), pullAfterTimeout)
 		require.Len(suite.T(), messages, 1)
 		require.Equal(suite.T(), "id1", messages[0])
@@ -86,7 +89,7 @@ func (suite *CacheIntegrationTestSuite) TestFlush() {
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), "", breakpoint)
 
-	messages, pullError := suite.cache.PullMessages(ctx, "queue", 1, 0)
+	messages, pullError := suite.cache.PullMessages(ctx, "queue", 1, nil, nil)
 	require.NoError(suite.T(), pullError)
 	require.Len(suite.T(), messages, 0)
 }
@@ -109,11 +112,11 @@ func (suite *CacheIntegrationTestSuite) TestTimeoutMessagesShouldNotMakeAvailabl
 	})
 	require.NoError(suite.T(), insertError2)
 
-	messages, pullError := suite.cache.PullMessages(ctx, "queue", 2, 0)
+	messages, pullError := suite.cache.PullMessages(ctx, "queue", 2, nil, nil)
 	require.NoError(suite.T(), pullError)
 	require.Len(suite.T(), messages, 2)
 
-	noMessages, pullError := suite.cache.PullMessages(ctx, "queue", 1, 0)
+	noMessages, pullError := suite.cache.PullMessages(ctx, "queue", 1, nil, nil)
 	require.NoError(suite.T(), pullError)
 	require.Len(suite.T(), noMessages, 0)
 
@@ -121,7 +124,7 @@ func (suite *CacheIntegrationTestSuite) TestTimeoutMessagesShouldNotMakeAvailabl
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), 0, len(result))
 
-	messages, pullAfterTimeout := suite.cache.PullMessages(ctx, "queue", 1, 0)
+	messages, pullAfterTimeout := suite.cache.PullMessages(ctx, "queue", 1, nil, nil)
 	require.NoError(suite.T(), pullAfterTimeout)
 	require.Len(suite.T(), messages, 0)
 }
@@ -151,13 +154,13 @@ func (suite *CacheIntegrationTestSuite) TestInsertOneOkShouldNotBeAvailableAgain
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), []string{"id1"}, inserts)
 
-	messages, err := suite.cache.PullMessages(ctx, "queue", 1, 0)
+	messages, err := suite.cache.PullMessages(ctx, "queue", 1, nil, nil)
 
 	require.NoError(suite.T(), err)
 	require.Len(suite.T(), messages, 1)
 	require.Equal(suite.T(), []string{"id1"}, messages)
 
-	messagesAgain, err := suite.cache.PullMessages(ctx, "queue", 1, 0)
+	messagesAgain, err := suite.cache.PullMessages(ctx, "queue", 1, nil, nil)
 
 	require.NoError(suite.T(), err)
 	require.Len(suite.T(), messagesAgain, 0)
@@ -185,7 +188,7 @@ func (suite *CacheIntegrationTestSuite) TestPullShouldResultMaxScore() {
 	require.Equal(suite.T(), []string{"id1", "id2", "id3"}, inserts)
 
 	// Result should be id 2, id 3 and then id 1
-	messages, err := suite.cache.PullMessages(ctx, "queue", 100, 0)
+	messages, err := suite.cache.PullMessages(ctx, "queue", 100, nil, nil)
 
 	require.NoError(suite.T(), err)
 	require.Len(suite.T(), messages, 3)
@@ -212,7 +215,7 @@ func (suite *CacheIntegrationTestSuite) TestInsertOrderedPullShouldResultMaxScor
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), []string{"id1", "id2", "id3"}, inserts)
 
-	messages, err := suite.cache.PullMessages(ctx, "queue", 100, 0)
+	messages, err := suite.cache.PullMessages(ctx, "queue", 100, nil, nil)
 
 	require.NoError(suite.T(), err)
 	require.Len(suite.T(), messages, 3)
@@ -251,7 +254,7 @@ func (suite *CacheIntegrationTestSuite) TestInsertSameObjectTwiceShouldNotUpdate
 	require.Equal(suite.T(), []string{"id2"}, third)
 
 	// Now the element id2 has the best score
-	messages, err := suite.cache.PullMessages(ctx, "queue", 1, 0)
+	messages, err := suite.cache.PullMessages(ctx, "queue", 1, nil, nil)
 
 	require.NoError(suite.T(), err)
 	require.Len(suite.T(), messages, 1)
@@ -284,7 +287,7 @@ func (suite *CacheIntegrationTestSuite) TestInsertSameObjectInSameRequestShouldP
 	require.Equal(suite.T(), []string{"id2"}, third)
 
 	// Now the element id2 has the best score
-	messages, err := suite.cache.PullMessages(ctx, "queue", 1, 0)
+	messages, err := suite.cache.PullMessages(ctx, "queue", 1, nil, nil)
 
 	require.NoError(suite.T(), err)
 	require.Len(suite.T(), messages, 1)
@@ -311,7 +314,7 @@ func (suite *CacheIntegrationTestSuite) TestCacheShouldSupportLowScoreDifference
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), []string{"id2"}, secondInsert)
 
-	messages, err := suite.cache.PullMessages(ctx, "queue", 2, 0)
+	messages, err := suite.cache.PullMessages(ctx, "queue", 2, nil, nil)
 
 	require.NoError(suite.T(), err)
 	require.Len(suite.T(), messages, 2)
@@ -335,7 +338,7 @@ func (suite *CacheIntegrationTestSuite) TestPullMoreThanAvailable() {
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), []string{"id1", "id2", "id3"}, inserts)
 
-	messages, err := suite.cache.PullMessages(ctx, "queue", 100, 0)
+	messages, err := suite.cache.PullMessages(ctx, "queue", 100, nil, nil)
 
 	require.NoError(suite.T(), err)
 	require.Len(suite.T(), messages, 3)
@@ -355,7 +358,7 @@ func (suite *CacheIntegrationTestSuite) TestRemoveShouldDeleteFromProcessingQueu
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), []string{"id1"}, inserts)
 
-	_, pullError := suite.cache.PullMessages(ctx, "queue", 1, 0)
+	_, pullError := suite.cache.PullMessages(ctx, "queue", 1, nil, nil)
 	require.NoError(suite.T(), pullError)
 
 	result, err := suite.cache.IsProcessing(ctx, "queue", "id1")
@@ -387,12 +390,12 @@ func (suite *CacheIntegrationTestSuite) TestRemoveShouldDeleteOnlyCorrectId() {
 	_, opErr := suite.cache.Remove(ctx, "queue", "id1")
 	require.NoError(suite.T(), opErr)
 
-	messages, pullError := suite.cache.PullMessages(ctx, "queue", 1, 0)
+	messages, pullError := suite.cache.PullMessages(ctx, "queue", 1, nil, nil)
 	require.NoError(suite.T(), pullError)
 	require.Len(suite.T(), messages, 1)
 	require.Equal(suite.T(), "id2", messages[0])
 
-	noResult, pullError := suite.cache.PullMessages(ctx, "queue", 1, 0)
+	noResult, pullError := suite.cache.PullMessages(ctx, "queue", 1, nil, nil)
 	require.NoError(suite.T(), pullError)
 	require.Len(suite.T(), noResult, 0)
 }
@@ -408,7 +411,7 @@ func (suite *CacheIntegrationTestSuite) TestRemoveShouldDeleteFromActiveQueue() 
 	_, removeErr := suite.cache.Remove(ctx, "queue", "id1")
 	require.NoError(suite.T(), removeErr)
 
-	pullResult, err := suite.cache.PullMessages(ctx, "queue", 1, 0)
+	pullResult, err := suite.cache.PullMessages(ctx, "queue", 1, nil, nil)
 	require.NoError(suite.T(), err)
 	require.Len(suite.T(), pullResult, 0)
 }
@@ -433,7 +436,7 @@ func (suite *CacheIntegrationTestSuite) TestBulkElementsShouldNotError() {
 	require.NoError(suite.T(), opErr)
 	require.Equal(suite.T(), ids, insertedElements)
 
-	pullResult, err := suite.cache.PullMessages(ctx, "queue", 1, 0)
+	pullResult, err := suite.cache.PullMessages(ctx, "queue", 1, nil, nil)
 	require.NoError(suite.T(), err)
 	require.Len(suite.T(), pullResult, 1)
 
@@ -441,7 +444,7 @@ func (suite *CacheIntegrationTestSuite) TestBulkElementsShouldNotError() {
 	require.NoError(suite.T(), removeErr)
 	require.Equal(suite.T(), int64(100), count)
 
-	pullResult, err = suite.cache.PullMessages(ctx, "queue", 1, 0)
+	pullResult, err = suite.cache.PullMessages(ctx, "queue", 1, nil, nil)
 	require.NoError(suite.T(), err)
 	require.Len(suite.T(), pullResult, 0)
 }
@@ -467,7 +470,7 @@ func (suite *CacheIntegrationTestSuite) TestMakeAvailableAfterPull() {
 	_, opErr := suite.cache.Insert(ctx, "queue", message)
 	require.NoError(suite.T(), opErr)
 
-	messages, err := suite.cache.PullMessages(ctx, "queue", 1, 0)
+	messages, err := suite.cache.PullMessages(ctx, "queue", 1, nil, nil)
 
 	require.NoError(suite.T(), err)
 	require.Len(suite.T(), messages, 1)
@@ -477,7 +480,7 @@ func (suite *CacheIntegrationTestSuite) TestMakeAvailableAfterPull() {
 	require.NoError(suite.T(), availableErr)
 	require.True(suite.T(), result)
 
-	messagesAgain, err := suite.cache.PullMessages(ctx, "queue", 1, 0)
+	messagesAgain, err := suite.cache.PullMessages(ctx, "queue", 1, nil, nil)
 
 	require.NoError(suite.T(), err)
 	require.Len(suite.T(), messagesAgain, 1)
@@ -503,7 +506,7 @@ func (suite *CacheIntegrationTestSuite) TestLockMessageAck() {
 		Queue:       "q1",
 	})
 
-	_, _ = suite.cache.PullMessages(ctx, "q1", 1, 0)
+	_, _ = suite.cache.PullMessages(ctx, "q1", 1, nil, nil)
 
 	result, makeErr := suite.cache.LockMessage(ctx, &entities.Message{
 		ID:          "id1",
@@ -566,7 +569,7 @@ func (suite *CacheIntegrationTestSuite) TestLockMessageNack() {
 		Queue:       "q1",
 	})
 
-	_, _ = suite.cache.PullMessages(ctx, "q1", 1, 0)
+	_, _ = suite.cache.PullMessages(ctx, "q1", 1, nil, nil)
 
 	result, makeErr := suite.cache.LockMessage(ctx, &entities.Message{
 		ID:          "id1",
@@ -709,7 +712,7 @@ func (suite *CacheIntegrationTestSuite) TestRemoveShouldRemoveFromAllPools() {
 	})
 
 	// Remove 3 elements from active
-	ids, err := suite.cache.PullMessages(ctx, "q1", 3, 0)
+	ids, err := suite.cache.PullMessages(ctx, "q1", 3, nil, nil)
 	require.NoError(suite.T(), err)
 	require.Len(suite.T(), ids, 3)
 
@@ -772,10 +775,10 @@ func (suite *CacheIntegrationTestSuite) TestUnlockMessagesFromAckPool() {
 	})
 
 	// Pull data
-	ids, _ := suite.cache.PullMessages(ctx, "q1", 2, 0)
+	ids, _ := suite.cache.PullMessages(ctx, "q1", 2, nil, nil)
 	require.Len(suite.T(), ids, 2)
 
-	ids, _ = suite.cache.PullMessages(ctx, "q2", 1, 0)
+	ids, _ = suite.cache.PullMessages(ctx, "q2", 1, nil, nil)
 	require.Len(suite.T(), ids, 1)
 
 	// Lock data
@@ -833,10 +836,10 @@ func (suite *CacheIntegrationTestSuite) TestUnlockMessagesFromNackPool() {
 	})
 
 	// Pull data
-	ids, _ := suite.cache.PullMessages(ctx, "q1", 2, 0)
+	ids, _ := suite.cache.PullMessages(ctx, "q1", 2, nil, nil)
 	require.Len(suite.T(), ids, 2)
 
-	ids, _ = suite.cache.PullMessages(ctx, "q2", 1, 0)
+	ids, _ = suite.cache.PullMessages(ctx, "q2", 1, nil, nil)
 	require.Len(suite.T(), ids, 1)
 
 	// Lock data
@@ -893,10 +896,10 @@ func (suite *CacheIntegrationTestSuite) TestUnlockTiming() {
 	})
 
 	// Pull data
-	ids, _ := suite.cache.PullMessages(ctx, "q1", 2, 0)
+	ids, _ := suite.cache.PullMessages(ctx, "q1", 2, nil, nil)
 	require.Len(suite.T(), ids, 2)
 
-	ids, _ = suite.cache.PullMessages(ctx, "q2", 1, 0)
+	ids, _ = suite.cache.PullMessages(ctx, "q2", 1, nil, nil)
 	require.Len(suite.T(), ids, 1)
 
 	// Lock data
@@ -946,4 +949,65 @@ func (suite *CacheIntegrationTestSuite) TestUnlockTiming() {
 	messages, err = suite.cache.UnlockMessages(ctx, "q2", LOCK_NACK)
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), []string{"id3"}, messages)
+}
+
+func (suite *CacheIntegrationTestSuite) TestPullMessagesScoreFiltering() {
+	tests := []struct {
+		name     string
+		minScore *float64
+		maxScore *float64
+		wantIDs  []string
+	}{
+		{
+			name:     "no minScore or maxScore",
+			minScore: nil,
+			maxScore: nil,
+			wantIDs:  []string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"},
+		},
+		{
+			name:     "minScore only",
+			minScore: float64Ptr(5),
+			maxScore: nil,
+			wantIDs:  []string{"5", "6", "7", "8", "9"},
+		},
+		{
+			name:     "maxScore only",
+			minScore: nil,
+			maxScore: float64Ptr(5),
+			wantIDs:  []string{"0", "1", "2", "3", "4", "5"},
+		},
+		{
+			name:     "minScore and maxScore",
+			minScore: float64Ptr(3),
+			maxScore: float64Ptr(7),
+			wantIDs:  []string{"3", "4", "5", "6", "7"},
+		},
+	}
+
+	for _, tt := range tests {
+		suite.T().Run(tt.name, func(t *testing.T) {
+			for i := 0; i < 10; i++ {
+				suite.cache.Insert(context.Background(), "test_queue", &entities.Message{
+					ID:    fmt.Sprintf("%d", i),
+					Queue: "test_queue",
+					Score: float64(i),
+				})
+			}
+
+			defer suite.cache.Flush(ctx)
+
+			gotIDs, err := suite.cache.PullMessages(context.Background(), "test_queue", 10, tt.minScore, tt.maxScore)
+			require.NoError(t, err)
+
+			require.Equal(t, len(tt.wantIDs), len(gotIDs))
+
+			for _, wantID := range tt.wantIDs {
+				require.Contains(t, gotIDs, wantID)
+			}
+		})
+	}
+}
+
+func float64Ptr(f float64) *float64 {
+	return &f
 }

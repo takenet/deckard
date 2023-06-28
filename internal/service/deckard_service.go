@@ -16,6 +16,8 @@ import (
 	"github.com/takenet/deckard/internal/queue"
 	"github.com/takenet/deckard/internal/queue/entities"
 	"github.com/takenet/deckard/internal/queue/storage"
+	"github.com/takenet/deckard/internal/queue/utils"
+	"github.com/takenet/deckard/internal/score"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -380,7 +382,12 @@ func (d *Deckard) Pull(ctx context.Context, request *deckard.PullRequest) (*deck
 		request.Amount = 1000
 	}
 
-	messages, err := d.pool.Pull(ctx, request.Queue, int64(request.Amount), request.ScoreFilter)
+	// Compatibility with old clients using ScoreFilter
+	if request.MaxScore == 0 && request.ScoreFilter > 0 {
+		request.MaxScore = float64(utils.NowMs() - request.ScoreFilter)
+	}
+
+	messages, err := d.pool.Pull(ctx, request.Queue, int64(request.Amount), score.GetPullMinScore(request.MinScore), score.GetPullMaxScore(request.MaxScore))
 	if err != nil {
 		return nil, status.Error(codes.Internal, "error pulling messages")
 	}

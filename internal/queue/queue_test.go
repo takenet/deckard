@@ -44,11 +44,11 @@ func TestPull(t *testing.T) {
 	}, nil)
 
 	mockCache := mocks.NewMockCache(mockCtrl)
-	mockCache.EXPECT().PullMessages(gomock.Any(), "test", int64(1), int64(0)).Return([]string{"123"}, nil)
+	mockCache.EXPECT().PullMessages(gomock.Any(), "test", int64(1), nil, nil).Return([]string{"123"}, nil)
 
 	q := NewQueue(nil, mockStorage, nil, mockCache)
 
-	messages, err := q.Pull(ctx, "test", 1, 0)
+	messages, err := q.Pull(ctx, "test", 1, nil, nil)
 
 	require.NoError(t, err)
 	require.Len(t, *messages, 1, "expected one message")
@@ -322,7 +322,7 @@ func TestPullShouldDeleteNotFoundInStorageAndReturnRemaining(t *testing.T) {
 	}).Return([]entities.Message{}, nil)
 
 	mockCache := mocks.NewMockCache(mockCtrl)
-	mockCache.EXPECT().PullMessages(gomock.Any(), "test", int64(3), int64(0)).Return([]string{"1", "2", "3"}, nil)
+	mockCache.EXPECT().PullMessages(gomock.Any(), "test", int64(3), nil, nil).Return([]string{"1", "2", "3"}, nil)
 	mockCache.EXPECT().Remove(gomock.Any(), "test", "2", "3").Return(int64(2), nil)
 
 	mockAuditor := mocks.NewMockAuditor(mockCtrl)
@@ -338,7 +338,7 @@ func TestPullShouldDeleteNotFoundInStorageAndReturnRemaining(t *testing.T) {
 	})
 	q := NewQueue(mockAuditor, mockStorage, nil, mockCache)
 
-	messages, err := q.Pull(ctx, "test", 3, 0)
+	messages, err := q.Pull(ctx, "test", 3, nil, nil)
 
 	require.NoError(t, err)
 	require.Len(t, *messages, 1, "expected one message")
@@ -386,13 +386,13 @@ func TestPullElementsFromRetryShouldNotAuditMissingElements(t *testing.T) {
 	}, nil)
 
 	mockCache := mocks.NewMockCache(mockCtrl)
-	mockCache.EXPECT().PullMessages(gomock.Any(), "test", int64(3), int64(0)).Return([]string{"1", "2", "3"}, nil)
+	mockCache.EXPECT().PullMessages(gomock.Any(), "test", int64(3), nil, nil).Return([]string{"1", "2", "3"}, nil)
 
 	mockAuditor := mocks.NewMockAuditor(mockCtrl)
 
 	q := NewQueue(mockAuditor, mockStorage, nil, mockCache)
 
-	messages, err := q.Pull(ctx, "test", 3, 0)
+	messages, err := q.Pull(ctx, "test", 3, nil, nil)
 
 	require.NoError(t, err)
 	require.Len(t, *messages, 3)
@@ -444,13 +444,13 @@ func TestPullElementsFromBothFirstTryAndRetryShouldMergeElementsAndKeepScoreOrde
 	}, nil)
 
 	mockCache := mocks.NewMockCache(mockCtrl)
-	mockCache.EXPECT().PullMessages(gomock.Any(), "test", int64(3), int64(0)).Return([]string{"1", "2", "3"}, nil)
+	mockCache.EXPECT().PullMessages(gomock.Any(), "test", int64(3), nil, nil).Return([]string{"1", "2", "3"}, nil)
 
 	mockAuditor := mocks.NewMockAuditor(mockCtrl)
 
 	q := NewQueue(mockAuditor, mockStorage, nil, mockCache)
 
-	messages, err := q.Pull(ctx, "test", 3, 0)
+	messages, err := q.Pull(ctx, "test", 3, nil, nil)
 
 	require.NoError(t, err)
 	require.Len(t, *messages, 3)
@@ -490,7 +490,7 @@ func TestPullNothingFoundOnStorage(t *testing.T) {
 	}).Return(nil, nil)
 
 	mockCache := mocks.NewMockCache(mockCtrl)
-	mockCache.EXPECT().PullMessages(gomock.Any(), "test", int64(3), int64(0)).Return([]string{"1", "2", "3"}, nil)
+	mockCache.EXPECT().PullMessages(gomock.Any(), "test", int64(3), nil, nil).Return([]string{"1", "2", "3"}, nil)
 	mockCache.EXPECT().Remove(gomock.Any(), "test", "1", "2", "3").Return(int64(3), nil)
 
 	mockAuditor := mocks.NewMockAuditor(mockCtrl)
@@ -511,7 +511,7 @@ func TestPullNothingFoundOnStorage(t *testing.T) {
 	})
 	q := NewQueue(mockAuditor, mockStorage, nil, mockCache)
 
-	messages, err := q.Pull(ctx, "test", 3, 0)
+	messages, err := q.Pull(ctx, "test", 3, nil, nil)
 
 	require.NoError(t, err)
 	require.Nil(t, messages)
@@ -524,11 +524,11 @@ func TestPullCacheError(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	mockCache := mocks.NewMockCache(mockCtrl)
-	mockCache.EXPECT().PullMessages(gomock.Any(), "test", int64(1), int64(0)).Return(nil, errors.New("cache_error"))
+	mockCache.EXPECT().PullMessages(gomock.Any(), "test", int64(1), nil, nil).Return(nil, errors.New("cache_error"))
 
 	q := NewQueue(nil, nil, nil, mockCache)
 
-	messages, err := q.Pull(ctx, "test", 1, 0)
+	messages, err := q.Pull(ctx, "test", 1, nil, nil)
 
 	require.Error(t, err)
 	require.Nil(t, messages)
@@ -541,11 +541,11 @@ func TestPullCacheNoResults(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	mockCache := mocks.NewMockCache(mockCtrl)
-	mockCache.EXPECT().PullMessages(gomock.Any(), "test", int64(1), int64(0)).Return(nil, nil)
+	mockCache.EXPECT().PullMessages(gomock.Any(), "test", int64(1), nil, nil).Return(nil, nil)
 
 	q := NewQueue(nil, nil, nil, mockCache)
 
-	messages, err := q.Pull(ctx, "test", 1, 0)
+	messages, err := q.Pull(ctx, "test", 1, nil, nil)
 
 	require.NoError(t, err)
 	require.Nil(t, messages)

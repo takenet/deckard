@@ -127,13 +127,15 @@ return elements
 //
 // ARGV[2] -> value to use as new score in the destination sorted set
 //
-// ARGV[3] -> value to filter elements by score
+// ARGV[3] -> min score to filter
+//
+// ARGV[4] -> max score to filter
 const pullElementsScript = `
 local elements
-if ARGV[3] == '0' then
+if ARGV[3] == '-inf' and ARGV[4] == '+inf' then
 	elements = redis.call('ZRANGE', KEYS[1], '0', tostring(tonumber(ARGV[1]) - 1))
 else
-	elements = redis.call('ZRANGEBYSCORE', KEYS[1], '0', ARGV[3], 'LIMIT', '0', tostring(ARGV[1]))
+	elements = redis.call('ZRANGE', KEYS[1], ARGV[3], ARGV[4], 'BYSCORE', 'LIMIT', '0', tostring(ARGV[1]))
 end
 if next(elements) == nil then
     return ''

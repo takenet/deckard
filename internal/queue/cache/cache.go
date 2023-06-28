@@ -29,7 +29,7 @@ const (
 type Cache interface {
 	MakeAvailable(ctx context.Context, message *entities.Message) (bool, error)
 	IsProcessing(ctx context.Context, queue string, id string) (bool, error)
-	PullMessages(ctx context.Context, queue string, n int64, scoreFilter int64) (ids []string, err error)
+	PullMessages(ctx context.Context, queue string, n int64, minScore *float64, maxScore *float64) (ids []string, err error)
 	TimeoutMessages(ctx context.Context, queue string, timeout time.Duration) (ids []string, err error)
 
 	// Locks a message for message.LockMs milliseconds.

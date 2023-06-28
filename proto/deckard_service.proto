@@ -112,8 +112,12 @@ message PullRequest {
   int64 score_filter = 3 [deprecated=true];
 
   // Sets the upper threshold for the priority score of a message to be returned in the pull request.
+  //
   // Only messages with a priority score equal to or lower than the max_score value will be returned.
-  // The maximum score accepted by Deckard is 9007199254740992
+  //
+  // The maximum score accepted by Deckard is 9007199254740992, any value higher than this will be considered as the maximum score.
+  // To set this value to the minimum score accepted by Deckard, use any negative number.
+  // This parameter will be ignored if set to 0 (default value).
   double max_score = 4;
 
   // Sets the lower threshold for the priority score required for a message to be returned.

@@ -240,7 +240,7 @@ func (cache *MemoryCache) UnlockMessages(ctx context.Context, queue string, lock
 	return unlockedMessages, nil
 }
 
-func (cache *MemoryCache) PullMessages(ctx context.Context, queue string, n int64, scoreFilter int64) (ids []string, err error) {
+func (cache *MemoryCache) PullMessages(ctx context.Context, queue string, n int64, minScore *float64, maxScore *float64) (ids []string, err error) {
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
 
@@ -252,20 +252,25 @@ func (cache *MemoryCache) PullMessages(ctx context.Context, queue string, n int6
 
 	result := make([]string, 0, utils.MinInt64(n, total))
 
-	// TODO implement score filter
-	//now := time.Now().Unix()
-	//
-	//score := int64(0)
-	//if scoreFilter > 0 {
-	//	score = now - scoreFilter
-	//}
-
+	filteredOut := make([]*MemoryMessageEntry, 0)
 	for i := int64(0); i < n && i < total && cache.queues[queue].Len() != 0; i++ {
 		element := cache.queues[queue].Front()
 
 		entry := element.Value.(*MemoryMessageEntry)
 
 		cache.queues[queue], _ = removeEntry(entry, cache.queues[queue])
+
+		if minScore != nil && entry.score < *minScore {
+			filteredOut = append(filteredOut, entry)
+
+			continue
+		}
+
+		if maxScore != nil && entry.score > *maxScore {
+			filteredOut = append(filteredOut, entry)
+
+			continue
+		}
 
 		processingEntry := &MemoryMessageEntry{
 			id:    entry.id,
@@ -275,6 +280,10 @@ func (cache *MemoryCache) PullMessages(ctx context.Context, queue string, n int6
 		cache.processingQueues[queue], _ = insertEntry(processingEntry, cache.processingQueues[queue])
 
 		result = append(result, entry.id)
+	}
+
+	for _, entry := range filteredOut {
+		cache.queues[queue], _ = insertEntry(entry, cache.queues[queue])
 	}
 
 	return result, nil

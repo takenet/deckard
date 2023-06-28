@@ -303,13 +303,13 @@ func TestGetQueueError(t *testing.T) {
 		ctx,
 		"queue",
 		int64(1000),
-		int64(34),
+		nil,
+		nil,
 	).Return(nil, errors.New("pool error"))
 
 	_, err := NewDeckardService(mockQueue, nil).Pull(ctx, &deckard.PullRequest{
-		Queue:       "queue",
-		Amount:      1234,
-		ScoreFilter: 34,
+		Queue:  "queue",
+		Amount: 1234,
 	})
 
 	require.Error(t, err)
@@ -324,13 +324,13 @@ func TestGetQueueNoMessages(t *testing.T) {
 		ctx,
 		"queue",
 		int64(1000),
-		int64(34),
+		nil,
+		nil,
 	).Return(nil, nil)
 
 	response, err := NewDeckardService(mockQueue, nil).Pull(ctx, &deckard.PullRequest{
-		Queue:       "queue",
-		Amount:      1234,
-		ScoreFilter: 34,
+		Queue:  "queue",
+		Amount: 1234,
 	})
 
 	require.NoError(t, err)

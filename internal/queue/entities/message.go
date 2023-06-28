@@ -79,6 +79,7 @@ type Message struct {
 
 // MaxScore is the biggest possible score a message could have.
 // Since our base implementation is the Redis, its sorted set are ascendant and 0 is the biggest score.
+// FIXME: TODO: remove this function
 func MaxScore() float64 {
 	return 0
 }

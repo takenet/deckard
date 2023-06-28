@@ -321,27 +321,35 @@ func (cache *RedisCache) UnlockMessages(ctx context.Context, queue string, lockT
 	return parseResult(cmd)
 }
 
-func (cache *RedisCache) PullMessages(ctx context.Context, queue string, n int64, scoreFilter int64) (ids []string, err error) {
+func (cache *RedisCache) PullMessages(ctx context.Context, queue string, n int64, minScore *float64, maxScore *float64) (ids []string, err error) {
 	var cmd *redis.Cmd
 
 	now := time.Now()
-	nowMs := utils.TimeToMs(&now)
+	defer func() {
+		metrics.CacheLatency.Record(ctx, utils.ElapsedTime(now), attribute.String("op", "pull"))
+	}()
 
-	score := int64(entities.MaxScore())
-	if scoreFilter > 0 {
-		score = nowMs - scoreFilter
+	args := []any{
+		n, utils.TimeToMs(&now),
 	}
 
-	execStart := time.Now()
-	defer func() {
-		metrics.CacheLatency.Record(ctx, utils.ElapsedTime(execStart), attribute.String("op", "pull"))
-	}()
+	if minScore != nil {
+		args = append(args, *minScore)
+	} else {
+		args = append(args, "-inf")
+	}
+
+	if maxScore != nil {
+		args = append(args, *maxScore)
+	} else {
+		args = append(args, "+inf")
+	}
 
 	cmd = cache.scripts[pullElement].Run(
 		context.Background(),
 		cache.Client,
 		[]string{cache.activePool(queue), cache.processingPool(queue)},
-		n, nowMs, score,
+		args...,
 	)
 
 	return parseResult(cmd)
