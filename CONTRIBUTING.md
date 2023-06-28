@@ -140,6 +140,22 @@ You may also download the latest release from the [releases](https://github.com/
 >
 > To change the default configuration see the [configuration section](/README.md?#configuration).
 
+### Mocks
+
+We use the [GoMock](https://github.com/golang/mock) project to generate mocks.
+
+To update the mocks you must run the following command:
+```shell
+make gen-mocks
+```
+
+Mocks are generated in the [/internal/mocks](/internal/mocks) folder.
+
+When creating interfaces with the need to generate mocks, you must add the following directive to the interface file:
+```go
+//go:generate mockgen -destination=<path_to_mocks>/mock_<file>.go -package=mocks -source=<file>.go
+```
+
 ## Running tests
 
 To run project tests you must first generate all mock files with the following command:
@@ -201,22 +217,6 @@ make gen-cert
 > Use `openssl version` to check if it is already installed.
 >
 > Check the [generation script](/internal/service/cert/gen.sh) for more details.
-
-### Mocks
-
-We use the [GoMock](https://github.com/golang/mock) project to generate mocks.
-
-To update the mocks you must run the following command:
-```shell
-make gen-mocks
-```
-
-Mocks are generated in the [/internal/mocks](/internal/mocks) folder.
-
-When creating interfaces with the need to generate mocks, you must add the following directive to the interface file:
-```go
-//go:generate mockgen -destination=<path_to_mocks>/mock_<file>.go -package=mocks -source=<file>.go
-```
 
 ## Docker Image
 

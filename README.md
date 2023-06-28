@@ -8,17 +8,17 @@
 
 [![Slack](https://img.shields.io/badge/slack-Gophers_%28Deckard%29-blue?logo=slack&link=https://gophers.slack.com/archives/C05E1TMS1FY)](https://gophers.slack.com/archives/C05E1TMS1FY)
 
-Deckard is a priority queue system inspired by projects such as Google Cloud PubSub, Nats, Kafka, and others. Its main distinction lies in its ability to associate a priority with each message and have a queue that can be optionally cyclic. This means that messages can be delivered again after a user-managed time. Additionally, Deckard implements a locking mechanism to prevent message processing for a specified duration.
+Deckard is a priority queue system inspired by projects such as Google Cloud PubSub, Nats, Kafka, and others. Its main distinction lies in its ability to associate a priority score with each message and have a queue that can be optionally cyclic. This means that messages can be delivered again after a user-managed time. Additionally, Deckard implements a locking mechanism to prevent message processing for a specified duration.
 
 ![deckard](docs/deckard_cartoon.webp)
 
 Briefly:
-- An application inserts a message to be queued and its configuration (TTL, metadata, payload, etc).
-    - The message will be prioritized with a default timestamp-based algorithm. The priority can also be provided by the application.
+- An application inserts a message to be queued and its configuration (TTL, metadata, payload, priority score, etc).
+    - The message will be prioritized with a default timestamp-based algorithm if the provided score is 0 (the default value).
 - A worker application pull messages from Deckard at regular intervals and performs any processing.
     - When it finishes processing a message, the application must notify with the processing result.
     - When notifying, the application may provide a lock time, to lock the message for a certain duration of time before being requeued and delivered again.
-    - It is also possible to notify a message changing its priority.
+    - It is also possible to notify a message changing its priority score.
 - When the message's TTL is reached, it stops being delivered;
     - For some use cases the TTL can be set as infinite.
     - An application can also remove the message when notifying.
