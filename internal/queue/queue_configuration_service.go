@@ -5,22 +5,22 @@ import (
 	"time"
 
 	"github.com/patrickmn/go-cache"
-	"github.com/takenet/deckard/internal/messagepool/entities"
-	"github.com/takenet/deckard/internal/messagepool/storage"
+	"github.com/takenet/deckard/internal/queue/entities"
+	"github.com/takenet/deckard/internal/queue/storage"
 )
 
-type ConfigurationService interface {
+type QueueConfigurationService interface {
 	EditQueueConfiguration(ctx context.Context, configuration *entities.QueueConfiguration) error
 	GetQueueConfiguration(ctx context.Context, queue string) (*entities.QueueConfiguration, error)
 }
 
-type DefaultConfigurationService struct {
+type DefaultQueueConfigurationService struct {
 	storage    storage.Storage
 	localCache *cache.Cache
 }
 
-func NewConfigurationService(_ context.Context, storage storage.Storage) *DefaultConfigurationService {
-	service := &DefaultConfigurationService{}
+func NewQueueConfigurationService(_ context.Context, storage storage.Storage) *DefaultQueueConfigurationService {
+	service := &DefaultQueueConfigurationService{}
 
 	service.localCache = cache.New(9*time.Minute, 1*time.Minute)
 	service.storage = storage
@@ -28,9 +28,9 @@ func NewConfigurationService(_ context.Context, storage storage.Storage) *Defaul
 	return service
 }
 
-var _ ConfigurationService = &DefaultConfigurationService{}
+var _ QueueConfigurationService = &DefaultQueueConfigurationService{}
 
-func (queueService *DefaultConfigurationService) EditQueueConfiguration(ctx context.Context, cfg *entities.QueueConfiguration) error {
+func (queueService *DefaultQueueConfigurationService) EditQueueConfiguration(ctx context.Context, cfg *entities.QueueConfiguration) error {
 	if cfg == nil {
 		return nil
 	}
@@ -57,7 +57,7 @@ func (queueService *DefaultConfigurationService) EditQueueConfiguration(ctx cont
 	return nil
 }
 
-func (queueService *DefaultConfigurationService) GetQueueConfiguration(ctx context.Context, queue string) (*entities.QueueConfiguration, error) {
+func (queueService *DefaultQueueConfigurationService) GetQueueConfiguration(ctx context.Context, queue string) (*entities.QueueConfiguration, error) {
 	cacheConfig, found := queueService.localCache.Get(queue)
 
 	if found {

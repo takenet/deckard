@@ -7,7 +7,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/takenet/deckard/internal/messagepool/entities"
+	"github.com/takenet/deckard/internal/queue/entities"
 )
 
 type Type string

@@ -24,7 +24,7 @@ deckard                     # Root folder with project files and Golang service/
 │   ├── cmd                 # Executable main file for the Deckard service
 │   ├── config              # Configuration variables managed by viper
 │   ├── logger              # Logging configuration
-│   ├── messagepool         # Contains all main implementation files and housekeeping program logic
+│   ├── queue               # Contains all queue implementation files and housekeeping program logic
 │   │   ├── cache           # Caching implementation
 │   │   ├── entities        # Message and QueueConfiguration internal definitions
 │   │   ├── queue           # Queue definition

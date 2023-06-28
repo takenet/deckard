@@ -15,10 +15,10 @@ import (
 
 	"github.com/takenet/deckard/internal/config"
 	"github.com/takenet/deckard/internal/logger"
-	"github.com/takenet/deckard/internal/messagepool/entities"
-	"github.com/takenet/deckard/internal/messagepool/utils"
 	"github.com/takenet/deckard/internal/metrics"
 	"github.com/takenet/deckard/internal/project"
+	"github.com/takenet/deckard/internal/queue/entities"
+	"github.com/takenet/deckard/internal/queue/utils"
 	"go.uber.org/zap"
 
 	"github.com/elastic/go-elasticsearch/v7"

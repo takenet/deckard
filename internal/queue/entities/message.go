@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/takenet/deckard/internal/messagepool/utils"
+	"github.com/takenet/deckard/internal/queue/utils"
 	"google.golang.org/protobuf/types/known/anypb"
 )
 

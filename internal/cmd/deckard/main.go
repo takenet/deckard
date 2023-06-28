@@ -11,12 +11,11 @@ import (
 	"github.com/takenet/deckard/internal/audit"
 	"github.com/takenet/deckard/internal/config"
 	"github.com/takenet/deckard/internal/logger"
-	"github.com/takenet/deckard/internal/messagepool"
-	"github.com/takenet/deckard/internal/messagepool/cache"
-	"github.com/takenet/deckard/internal/messagepool/queue"
-	"github.com/takenet/deckard/internal/messagepool/storage"
-	"github.com/takenet/deckard/internal/messagepool/utils"
 	"github.com/takenet/deckard/internal/metrics"
+	"github.com/takenet/deckard/internal/queue"
+	"github.com/takenet/deckard/internal/queue/cache"
+	"github.com/takenet/deckard/internal/queue/storage"
+	"github.com/takenet/deckard/internal/queue/utils"
 	"github.com/takenet/deckard/internal/service"
 	"github.com/takenet/deckard/internal/shutdown"
 	"github.com/takenet/deckard/internal/trace"
@@ -88,16 +87,16 @@ func main() {
 	}
 	go auditor.StartSender(ctx)
 
-	queueService := queue.NewConfigurationService(ctx, dataStorage)
+	configurationService := queue.NewQueueConfigurationService(ctx, dataStorage)
 
-	messagePool := messagepool.NewMessagePool(auditor, dataStorage, queueService, dataCache)
+	queue := queue.NewQueue(auditor, dataStorage, configurationService, dataCache)
 
 	if config.GrpcEnabled.GetBool() {
-		server = startGrpcServer(messagePool, queueService)
+		server = startGrpcServer(queue, configurationService)
 	}
 
 	if config.HousekeeperEnabled.GetBool() {
-		startHouseKeeperJobs(messagePool)
+		startHouseKeeperJobs(queue)
 	}
 
 	// Handle sigterm and await termChan signal
@@ -113,8 +112,8 @@ func isMemoryInstance() bool {
 	return config.CacheType.Get() == string(cache.MEMORY) && config.StorageType.Get() == string(storage.MEMORY)
 }
 
-func startGrpcServer(messagepool *messagepool.MessagePool, queueService queue.ConfigurationService) *grpc.Server {
-	deckard := service.NewDeckardInstance(messagepool, queueService, isMemoryInstance())
+func startGrpcServer(queue *queue.Queue, queueService queue.QueueConfigurationService) *grpc.Server {
+	deckard := service.NewDeckardInstance(queue, queueService, isMemoryInstance())
 
 	server, err := deckard.ServeGRPCServer(ctx)
 	if err != nil {
@@ -125,14 +124,14 @@ func startGrpcServer(messagepool *messagepool.MessagePool, queueService queue.Co
 	return server
 }
 
-func startHouseKeeperJobs(pool *messagepool.MessagePool) {
+func startHouseKeeperJobs(pool *queue.Queue) {
 	go scheduleTask(
 		UNLOCK,
 		nil,
 		shutdown.WaitGroup,
 		config.HousekeeperTaskUnlockDelay.GetDuration(),
 		func() bool {
-			messagepool.ProcessLockPool(ctx, pool)
+			queue.ProcessLockPool(ctx, pool)
 
 			return true
 		},
@@ -144,7 +143,7 @@ func startHouseKeeperJobs(pool *messagepool.MessagePool) {
 		shutdown.WaitGroup,
 		config.HousekeeperTaskTimeoutDelay.GetDuration(),
 		func() bool {
-			_ = messagepool.ProcessTimeoutMessages(ctx, pool)
+			_ = queue.ProcessTimeoutMessages(ctx, pool)
 
 			return true
 		},
@@ -156,7 +155,7 @@ func startHouseKeeperJobs(pool *messagepool.MessagePool) {
 		shutdown.WaitGroup,
 		config.HousekeeperTaskMetricsDelay.GetDuration(),
 		func() bool {
-			messagepool.ComputeMetrics(ctx, pool)
+			queue.ComputeMetrics(ctx, pool)
 
 			return true
 		},
@@ -168,7 +167,7 @@ func startHouseKeeperJobs(pool *messagepool.MessagePool) {
 		shutdown.CriticalWaitGroup,
 		config.HousekeeperTaskUpdateDelay.GetDuration(),
 		func() bool {
-			return messagepool.RecoveryMessagesPool(ctx, pool)
+			return queue.RecoveryMessagesPool(ctx, pool)
 		},
 	)
 
@@ -178,7 +177,7 @@ func startHouseKeeperJobs(pool *messagepool.MessagePool) {
 		shutdown.WaitGroup,
 		config.HousekeeperTaskMaxElementsDelay.GetDuration(),
 		func() bool {
-			metrify, _ := messagepool.RemoveExceedingMessages(ctx, pool)
+			metrify, _ := queue.RemoveExceedingMessages(ctx, pool)
 
 			return metrify
 		},
@@ -192,7 +191,7 @@ func startHouseKeeperJobs(pool *messagepool.MessagePool) {
 		func() bool {
 			now := time.Now()
 
-			metrify, _ := messagepool.RemoveTTLMessages(ctx, pool, &now)
+			metrify, _ := queue.RemoveTTLMessages(ctx, pool, &now)
 
 			return metrify
 		},

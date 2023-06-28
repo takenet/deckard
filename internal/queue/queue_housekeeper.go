@@ -1,4 +1,4 @@
-package messagepool
+package queue
 
 import (
 	"context"
@@ -7,11 +7,11 @@ import (
 	"github.com/elliotchance/orderedmap/v2"
 	"github.com/takenet/deckard/internal/audit"
 	"github.com/takenet/deckard/internal/logger"
-	"github.com/takenet/deckard/internal/messagepool/cache"
-	"github.com/takenet/deckard/internal/messagepool/entities"
-	"github.com/takenet/deckard/internal/messagepool/storage"
-	"github.com/takenet/deckard/internal/messagepool/utils"
 	"github.com/takenet/deckard/internal/metrics"
+	"github.com/takenet/deckard/internal/queue/cache"
+	"github.com/takenet/deckard/internal/queue/entities"
+	"github.com/takenet/deckard/internal/queue/storage"
+	"github.com/takenet/deckard/internal/queue/utils"
 	"github.com/takenet/deckard/internal/shutdown"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -21,7 +21,7 @@ import (
 // TODO: allow each queue to have its own deadline for timeout.
 // TODO: change the behavior of this so it doesn't need to load all queue names in memory, we could use the storage to list queues with a cursor
 // TODO: we could even change the timeout mechanism to be not based on the queue name
-func ProcessTimeoutMessages(ctx context.Context, pool *MessagePool) error {
+func ProcessTimeoutMessages(ctx context.Context, pool *Queue) error {
 	t := time.Now()
 
 	queues, err := pool.cache.ListQueues(ctx, "*", entities.PROCESSING_POOL)
@@ -70,7 +70,7 @@ func ProcessTimeoutMessages(ctx context.Context, pool *MessagePool) error {
 }
 
 // processLockPool moves messages from the lock message pool to the message pool.
-func ProcessLockPool(ctx context.Context, pool *MessagePool) {
+func ProcessLockPool(ctx context.Context, pool *Queue) {
 	lockAckQueues, err := pool.cache.ListQueues(ctx, "*", entities.LOCK_ACK_POOL)
 
 	if err != nil {
@@ -96,7 +96,7 @@ func ProcessLockPool(ctx context.Context, pool *MessagePool) {
 	unlockMessages(ctx, pool, lockNackQueues, cache.LOCK_NACK)
 }
 
-func unlockMessages(ctx context.Context, pool *MessagePool, queues []string, lockType cache.LockType) {
+func unlockMessages(ctx context.Context, pool *Queue, queues []string, lockType cache.LockType) {
 	for i := range queues {
 		if shutdown.Ongoing() {
 			logger.S(ctx).Info("Shutdown started. Stopping unlock process.")
@@ -125,7 +125,7 @@ func unlockMessages(ctx context.Context, pool *MessagePool, queues []string, loc
 	}
 }
 
-func isRecovering(ctx context.Context, pool *MessagePool) (bool, error) {
+func isRecovering(ctx context.Context, pool *Queue) (bool, error) {
 	recovery, err := pool.cache.Get(ctx, cache.RECOVERY_RUNNING)
 	if err != nil {
 		logger.S(ctx).Error("Error to get full recovery status: ", err)
@@ -137,7 +137,7 @@ func isRecovering(ctx context.Context, pool *MessagePool) (bool, error) {
 }
 
 // RecoveryMessagesPool recover messages pool sending all storage data to cache
-func RecoveryMessagesPool(ctx context.Context, pool *MessagePool) (metrify bool) {
+func RecoveryMessagesPool(ctx context.Context, pool *Queue) (metrify bool) {
 	t := time.Now()
 
 	breakpoint, err := pool.cache.Get(ctx, cache.RECOVERY_STORAGE_BREAKPOINT_KEY)
@@ -223,7 +223,7 @@ func RecoveryMessagesPool(ctx context.Context, pool *MessagePool) (metrify bool)
 	return true
 }
 
-func tryToStartRecovery(ctx context.Context, pool *MessagePool) bool {
+func tryToStartRecovery(ctx context.Context, pool *Queue) bool {
 	logger.S(ctx).Info("Starting full cache recovery.")
 	err := pool.cache.Set(ctx, cache.RECOVERY_RUNNING, "true")
 
@@ -269,7 +269,7 @@ func tryToStartRecovery(ctx context.Context, pool *MessagePool) bool {
 }
 
 // Remove 10000 expired elements ordered by expiration date asc for each queue.
-func RemoveTTLMessages(ctx context.Context, pool *MessagePool, filterDate *time.Time) (bool, error) {
+func RemoveTTLMessages(ctx context.Context, pool *Queue, filterDate *time.Time) (bool, error) {
 	if isRecovering, err := isRecovering(ctx, pool); isRecovering || err != nil {
 		return false, err
 	}
@@ -332,7 +332,7 @@ func RemoveTTLMessages(ctx context.Context, pool *MessagePool, filterDate *time.
 // Checks if there is any queue with max_elements configuration and
 // then remove every exceeding messages using expiry_date to sort which elements will be removed
 // TODO manage message pool update individually by queue to avoid future bottlenecks
-func RemoveExceedingMessages(ctx context.Context, pool *MessagePool) (bool, error) {
+func RemoveExceedingMessages(ctx context.Context, pool *Queue) (bool, error) {
 	if isRecovering, err := isRecovering(ctx, pool); isRecovering || err != nil {
 		return false, err
 	}
@@ -358,7 +358,7 @@ func RemoveExceedingMessages(ctx context.Context, pool *MessagePool) (bool, erro
 	return true, nil
 }
 
-func (pool *MessagePool) removeExceedingMessagesFromQueue(ctx context.Context, queueConfiguration *entities.QueueConfiguration) error {
+func (pool *Queue) removeExceedingMessagesFromQueue(ctx context.Context, queueConfiguration *entities.QueueConfiguration) error {
 	if queueConfiguration == nil || queueConfiguration.MaxElements <= 0 {
 		return nil
 	}
@@ -420,7 +420,7 @@ func (pool *MessagePool) removeExceedingMessagesFromQueue(ctx context.Context, q
 	return nil
 }
 
-func ComputeMetrics(ctx context.Context, pool *MessagePool) {
+func ComputeMetrics(ctx context.Context, pool *Queue) {
 	queues, err := pool.storage.ListQueuePrefixes(ctx)
 
 	if err != nil {

@@ -1,4 +1,4 @@
-package messagepool
+package queue
 
 import (
 	"context"
@@ -12,16 +12,15 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"github.com/takenet/deckard/internal/audit"
-	"github.com/takenet/deckard/internal/messagepool/cache"
-	"github.com/takenet/deckard/internal/messagepool/entities"
-	"github.com/takenet/deckard/internal/messagepool/queue"
-	"github.com/takenet/deckard/internal/messagepool/storage"
 	"github.com/takenet/deckard/internal/metrics"
 	"github.com/takenet/deckard/internal/mocks"
+	"github.com/takenet/deckard/internal/queue/cache"
+	"github.com/takenet/deckard/internal/queue/entities"
+	"github.com/takenet/deckard/internal/queue/storage"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func TestUpdateOldestMessagePoolMap(t *testing.T) {
+func TestUpdateOldestQueueMap(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
@@ -70,7 +69,7 @@ func TestUpdateOldestMessagePoolMap(t *testing.T) {
 	}).Return(int64(11), nil)
 
 	mockAuditor := mocks.NewMockAuditor(mockCtrl)
-	q := NewMessagePool(mockAuditor, mockStorage, nil, mockCache)
+	q := NewQueue(mockAuditor, mockStorage, nil, mockCache)
 
 	ComputeMetrics(ctx, q)
 
@@ -103,7 +102,7 @@ func TestProcessLockPool(t *testing.T) {
 	mockStorage := mocks.NewMockStorage(mockCtrl)
 	mockAuditor := mocks.NewMockAuditor(mockCtrl)
 
-	q := NewMessagePool(mockAuditor, mockStorage, nil, mockCache)
+	q := NewQueue(mockAuditor, mockStorage, nil, mockCache)
 
 	ProcessLockPool(ctx, q)
 }
@@ -122,7 +121,7 @@ func TestProcessLockPoolAckListErrorShouldDoNothing(t *testing.T) {
 	mockStorage := mocks.NewMockStorage(mockCtrl)
 	mockAuditor := mocks.NewMockAuditor(mockCtrl)
 
-	q := NewMessagePool(mockAuditor, mockStorage, nil, mockCache)
+	q := NewQueue(mockAuditor, mockStorage, nil, mockCache)
 
 	ProcessLockPool(ctx, q)
 }
@@ -142,7 +141,7 @@ func TestProcessLockPoolNackAckListErrorShouldDoNothing(t *testing.T) {
 	mockStorage := mocks.NewMockStorage(mockCtrl)
 	mockAuditor := mocks.NewMockAuditor(mockCtrl)
 
-	q := NewMessagePool(mockAuditor, mockStorage, nil, mockCache)
+	q := NewQueue(mockAuditor, mockStorage, nil, mockCache)
 
 	ProcessLockPool(ctx, q)
 }
@@ -167,7 +166,7 @@ func TestProcessUnlockErrorShouldUnlockOthers(t *testing.T) {
 	mockStorage := mocks.NewMockStorage(mockCtrl)
 	mockAuditor := mocks.NewMockAuditor(mockCtrl)
 
-	q := NewMessagePool(mockAuditor, mockStorage, nil, mockCache)
+	q := NewQueue(mockAuditor, mockStorage, nil, mockCache)
 
 	ProcessLockPool(ctx, q)
 }
@@ -243,7 +242,7 @@ func TestRecoveryMessagesCacheError(t *testing.T) {
 		Limit: int64(4000),
 	}).Return(storageMessages, nil)
 
-	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
+	q := NewQueue(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
 
 	RecoveryMessagesPool(ctx, q)
 }
@@ -259,7 +258,7 @@ func TestCheckTimeoutMessagesListQueueErrorShouldDoNothing(t *testing.T) {
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().ListQueues(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("error list queues"))
 
-	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
+	q := NewQueue(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
 
 	_ = ProcessTimeoutMessages(ctx, q)
 }
@@ -277,7 +276,7 @@ func TestCheckTimeoutMessagesErrorForQueueShouldContinueOtherQueues(t *testing.T
 	mockCache.EXPECT().TimeoutMessages(gomock.Any(), "q1", cache.DefaultCacheTimeout).Return(nil, errors.New("error timeout messages"))
 	mockCache.EXPECT().TimeoutMessages(gomock.Any(), "q2", cache.DefaultCacheTimeout).Return([]string{"id2"}, nil)
 
-	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
+	q := NewQueue(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
 
 	_ = ProcessTimeoutMessages(ctx, q)
 }
@@ -365,7 +364,7 @@ func TestRecoveryMessagesPoolShouldAddMessagesAfterBreakpoint(t *testing.T) {
 		LastScoreSubtract: 23457,
 	}).Return("65456")
 
-	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
+	q := NewQueue(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
 
 	RecoveryMessagesPool(ctx, q)
 }
@@ -395,7 +394,7 @@ func TestRecoveryMessagesPoolInitWithEmptyStorageShouldNotStartRecovery(t *testi
 		Limit: int64(1),
 	}).Return([]entities.Message{}, nil)
 
-	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
+	q := NewQueue(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
 
 	RecoveryMessagesPool(ctx, q)
 }
@@ -472,7 +471,7 @@ func TestRecoveryMessagesPoolInitNonEmptyStorageShouldStartRecovery(t *testing.T
 	}).Return(storageMessages, nil)
 	mockStorage.EXPECT().GetStringInternalId(ctx, &storageMessages[len(storageMessages)-1]).Return(storageNotLast.Hex())
 
-	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
+	q := NewQueue(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
 
 	RecoveryMessagesPool(ctx, q)
 }
@@ -562,7 +561,7 @@ func TestRecoveryMessagesPoolAlreadyRunning(t *testing.T) {
 		LastScoreSubtract: 23457,
 	}).Return("65456")
 
-	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
+	q := NewQueue(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
 
 	RecoveryMessagesPool(ctx, q)
 }
@@ -577,7 +576,7 @@ func TestRecoveryMessagesPoolStorageBreakpointError(t *testing.T) {
 	mockCache.EXPECT().Get(ctx, cache.RECOVERY_STORAGE_BREAKPOINT_KEY).Return("", errors.New("storage breakpoint error"))
 	mockStorage := mocks.NewMockStorage(mockCtrl)
 
-	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
+	q := NewQueue(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
 
 	RecoveryMessagesPool(ctx, q)
 }
@@ -593,7 +592,7 @@ func TestRecoveryMessagesPoolRecoveryRunningError(t *testing.T) {
 	mockCache.EXPECT().Get(ctx, cache.RECOVERY_RUNNING).Return("", errors.New("recovery running error"))
 	mockStorage := mocks.NewMockStorage(mockCtrl)
 
-	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
+	q := NewQueue(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
 
 	RecoveryMessagesPool(ctx, q)
 }
@@ -610,7 +609,7 @@ func TestRecoveryMessagesPoolRecoveryBreakpointRunningError(t *testing.T) {
 	mockCache.EXPECT().Get(ctx, cache.RECOVERY_BREAKPOINT_KEY).Return("", errors.New("recovery running error"))
 	mockStorage := mocks.NewMockStorage(mockCtrl)
 
-	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
+	q := NewQueue(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
 
 	RecoveryMessagesPool(ctx, q)
 }
@@ -647,7 +646,7 @@ func TestRecoveryMessagesPoolStorageError(t *testing.T) {
 		Limit: int64(4000),
 	}).Return(nil, errors.New("storage errors"))
 
-	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
+	q := NewQueue(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
 
 	RecoveryMessagesPool(ctx, q)
 }
@@ -693,7 +692,7 @@ func TestRemoveTTLMessagesShouldRemoveExpiredElements(t *testing.T) {
 	mockCache.EXPECT().Remove(gomock.Any(), "q2", []string{"2"}).Return(int64(1), nil)
 	mockCache.EXPECT().Get(gomock.Any(), cache.RECOVERY_RUNNING).Return("", nil)
 
-	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, queue.NewConfigurationService(ctx, mockStorage), mockCache)
+	q := NewQueue(&audit.AuditorImpl{}, mockStorage, NewQueueConfigurationService(ctx, mockStorage), mockCache)
 
 	result, err := RemoveTTLMessages(ctx, q, &now)
 	require.NoError(t, err)
@@ -716,7 +715,7 @@ func TestCheckTimeoutMessagesShouldExecuteTimeoutToAllQueues(t *testing.T) {
 	mockCache.EXPECT().TimeoutMessages(gomock.Any(), "q1", cache.DefaultCacheTimeout).Return([]string{"id1"}, nil)
 	mockCache.EXPECT().TimeoutMessages(gomock.Any(), "q2", cache.DefaultCacheTimeout).Return([]string{"id2"}, nil)
 
-	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
+	q := NewQueue(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
 
 	_ = ProcessTimeoutMessages(ctx, q)
 }
@@ -733,7 +732,7 @@ func TestRemoveExceedingMessagesNoQueuesShouldDoNothing(t *testing.T) {
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().Get(gomock.Any(), cache.RECOVERY_RUNNING).Return("", nil)
 
-	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
+	q := NewQueue(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
 
 	_, _ = RemoveExceedingMessages(ctx, q)
 }
@@ -750,7 +749,7 @@ func TestRemoveExceedingMessagesListErrorShouldDoNothing(t *testing.T) {
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().Get(gomock.Any(), cache.RECOVERY_RUNNING).Return("", nil)
 
-	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
+	q := NewQueue(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
 
 	_, _ = RemoveExceedingMessages(ctx, q)
 }
@@ -767,7 +766,7 @@ func TestRemoveExceedingMessagesNoQueuesShouldCallRemoveMethodToEachQueue(t *tes
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().Get(gomock.Any(), cache.RECOVERY_RUNNING).Return("", nil)
 
-	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, queue.NewConfigurationService(ctx, mockStorage), mockCache)
+	q := NewQueue(&audit.AuditorImpl{}, mockStorage, NewQueueConfigurationService(ctx, mockStorage), mockCache)
 
 	_, _ = RemoveExceedingMessages(ctx, q)
 }
@@ -782,7 +781,7 @@ func TestRemoveExceedingMessagesRecoveryRunning(t *testing.T) {
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().Get(gomock.Any(), cache.RECOVERY_RUNNING).Return("true", nil)
 
-	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, queue.NewConfigurationService(ctx, mockStorage), mockCache)
+	q := NewQueue(&audit.AuditorImpl{}, mockStorage, NewQueueConfigurationService(ctx, mockStorage), mockCache)
 
 	_, _ = RemoveExceedingMessages(ctx, q)
 }
@@ -797,7 +796,7 @@ func TestRemoveTTLMessagesRecoveryRunning(t *testing.T) {
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().Get(gomock.Any(), cache.RECOVERY_RUNNING).Return("true", nil)
 
-	q := NewMessagePool(&audit.AuditorImpl{}, mockStorage, queue.NewConfigurationService(ctx, mockStorage), mockCache)
+	q := NewQueue(&audit.AuditorImpl{}, mockStorage, NewQueueConfigurationService(ctx, mockStorage), mockCache)
 
 	_, _ = RemoveTTLMessages(ctx, q, &time.Time{})
 }

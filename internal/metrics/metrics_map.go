@@ -1,23 +1,23 @@
 package metrics
 
 // Type to hold map of oldest queue elements
-type MessagePoolMetricsMap struct {
+type QueueMetricsMap struct {
 	OldestElement map[string]int64
 	TotalElements map[string]int64
 }
 
-func NewMessagePoolMetricsMap() *MessagePoolMetricsMap {
-	return &MessagePoolMetricsMap{
+func NewQueueMetricsMap() *QueueMetricsMap {
+	return &QueueMetricsMap{
 		OldestElement: make(map[string]int64, 0),
 		TotalElements: make(map[string]int64, 0),
 	}
 }
 
-func (oldestMap *MessagePoolMetricsMap) UpdateOldestElementMap(data map[string]int64) {
+func (oldestMap *QueueMetricsMap) UpdateOldestElementMap(data map[string]int64) {
 	oldestMap.OldestElement = mergeData(oldestMap.OldestElement, data)
 }
 
-func (oldestMap *MessagePoolMetricsMap) UpdateTotalElementsMap(data map[string]int64) {
+func (oldestMap *QueueMetricsMap) UpdateTotalElementsMap(data map[string]int64) {
 	oldestMap.TotalElements = mergeData(oldestMap.TotalElements, data)
 }
 

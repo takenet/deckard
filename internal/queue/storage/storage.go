@@ -9,7 +9,7 @@ import (
 
 	"github.com/elliotchance/orderedmap/v2"
 	"github.com/takenet/deckard/internal/logger"
-	"github.com/takenet/deckard/internal/messagepool/entities"
+	"github.com/takenet/deckard/internal/queue/entities"
 )
 
 type Type string

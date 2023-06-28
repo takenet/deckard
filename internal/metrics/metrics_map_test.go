@@ -7,7 +7,7 @@ import (
 )
 
 func TestChangeMapShouldChangeSuccessfully(t *testing.T) {
-	data := NewMessagePoolMetricsMap()
+	data := NewQueueMetricsMap()
 
 	require.Empty(t, data.OldestElement)
 
@@ -20,7 +20,7 @@ func TestChangeMapShouldChangeSuccessfully(t *testing.T) {
 }
 
 func TestChangeMapWithNilMapShouldEmptyMap(t *testing.T) {
-	data := NewMessagePoolMetricsMap()
+	data := NewQueueMetricsMap()
 
 	data.OldestElement["a"] = int64(123)
 
@@ -32,7 +32,7 @@ func TestChangeMapWithNilMapShouldEmptyMap(t *testing.T) {
 }
 
 func TestChangeMapWithMissingQueueShouldKeepElementAsZero(t *testing.T) {
-	data := NewMessagePoolMetricsMap()
+	data := NewQueueMetricsMap()
 
 	data.OldestElement["a"] = int64(123)
 	data.OldestElement["b"] = int64(432)

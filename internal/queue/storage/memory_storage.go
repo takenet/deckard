@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/takenet/deckard/internal/messagepool/entities"
-	"github.com/takenet/deckard/internal/messagepool/utils"
+	"github.com/takenet/deckard/internal/queue/entities"
+	"github.com/takenet/deckard/internal/queue/utils"
 )
 
 // MemoryStorage is an implementation of the Storage Interface using memory.
