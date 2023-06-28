@@ -113,10 +113,12 @@ message PullRequest {
 
   // Sets the upper threshold for the priority score of a message to be returned in the pull request.
   // Only messages with a priority score equal to or lower than the max_score value will be returned.
+  // The maximum score accepted by Deckard is 9007199254740992
   double max_score = 4;
 
   // Sets the lower threshold for the priority score required for a message to be returned.
   // Only messages with a priority score equal to or higher than the min_score value will be returned.
+  // The minimum score accepted by Deckard is 0
   double min_score = 5;
 }
 
@@ -149,6 +151,7 @@ message Message {
 
   // Score represents the priority score the message currently have in the queue.
   // The lower the score, the higher the priority.
+  // The maximum score accepted by Deckard is 9007199254740992 and the minimum is 0
   double score = 6;
 
   // Breakpoint is a field to be used as an auxiliar field for some specific use cases.
@@ -221,8 +224,10 @@ message AddMessage {
   // Score represents the priority score the message currently have in the queue.
   // The score is used to determine the order of the messages returned in a pull request.
   // The lower the score, the higher the priority.
-  // Negative scores are not allowed and will be converted to 0, the minimum score allowed.
   // If the score is not set, the value will be set with the current timestamp in milliseconds at the moment of the message creation.
+  //
+  // The maximum score accepted by Deckard is 9007199254740992 and the minimum is 0
+  // Negative scores are not allowed and will be converted to 0
   double score = 12;
 }
 
@@ -258,15 +263,13 @@ message EditQueueResponse {
 
 // The queue configuration does not change instantly and can take up to 10 minutes to complete update.
 message QueueConfiguration {
-  /*
-    Number of max elements the queue can have.
-
-    To apply a max elements to a queue, set a value greater than 0.
-    To remove the max elements from a queue, set the value to -1.
-    0 will be always ignored and the queue will not be updated.
-
-    All queues are unlimited by default.
-  */
+  // Number of max elements the queue can have.
+  // 
+  // To apply a max elements to a queue, set a value greater than 0.
+  // To remove the max elements from a queue, set the value to -1.
+  // 0 will be always ignored and the queue will not be updated.
+  // 
+  // All queues are unlimited by default.
   int64 max_elements = 1;
 }
 
@@ -285,7 +288,7 @@ message GetQueueResponse {
 }
 
 /*
-    Ack /Nack
+    Ack/Nack
 */
 
 message AckRequest {
@@ -296,20 +299,20 @@ message AckRequest {
   string queue = 2;
 
   // Reason of this result.
+  // 
   // Useful for audit, mostly on 'nack' signals.
   string reason = 5;
 
-  // Prefer to use 'score_decrease' instead.
-  // This field is deprecated and will be removed in the future.
-  //
+  // Prefer to use 'score_decrease' instead. This field is deprecated and will be removed in the future.
+  // 
   // The value to subtract the score and increase final message score.
   // For example if you want to make this message to have a better score you can add 10000 which will represent 10s of score benefit in the default score algorithm.
   // If you want to penalize the message you can send a negative number.
-  //
+  // 
   // IMPORTANT: The message will not be locked by, in the example, 10 seconds. This field is used only to increase or decrease the message priority in the priority queue.
   // 
   // This field is used only for ack requests (since in nack requests the message will be locked before returning to the queue).
-  // It will be ignored if used at the same time of 'lock_ms' field.
+  // It will be ignored if used at the same time of 'lock_ms', 'score_increase' or 'score_decrease' fields.
   double score_subtract = 3 [deprecated = true];
 
   // Breakpoint is a field to be used as an auxiliar field for some specific use cases.
@@ -339,6 +342,9 @@ message AckRequest {
   // This field is used only for ack requests because in nack requests the message will return to the queue with the maximum priority.
   //
   // It will be ignored if used at the same time of 'lock_ms' or `score` fields.
+  //
+  // If the resulting score is bigger than the maximum score allowed (9007199254740992), the message will be returned to the queue with the maximum score allowed.
+  // Negative numbers are not allowed and will be converted to 0, use the field 'score_decrease' instead
   double score_increase = 8;
 
   // Decrease the score of the message when ACKed.
@@ -350,15 +356,18 @@ message AckRequest {
   // If the the score result is negative, the message will be returned to the queue with the minimum score allowed (0).
   //
   // It will be ignored if used at the same time of 'lock_ms' or `score` fields.
+  // If the resulting score is lower than the minimum score allowed (0), the message will be returned to the queue with the minimum score allowed.
+  // Negative numbers are not allowed and will be converted to 0, use the field 'score_increase' instead
   double score_decrease = 9;
 
   // Sets the score of the message when ACKed, to override the default timestamp algorithm.
   //
   // This field is used only for ack requests because in nack requests the message will return to the queue with the maximum priority.
   //
-  // Negative scores are not allowed and will be converted to 0, the minimum score allowed.
-  //
   // If used at the same time with the 'lock_ms' attribute, the message will be locked for the specified time and then returned to the queue with the specified score.
+  //
+  // The maximum score accepted by Deckard is 9007199254740992 and the minimum is 0
+  // Negative scores are not allowed and will be converted to 0
   double score = 10;
 }
 
