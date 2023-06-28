@@ -298,7 +298,7 @@ message AckRequest {
   // Useful for audit, mostly on 'nack' signals.
   string reason = 5;
 
-  // Prefer to use 'priority_increase' instead.
+  // Prefer to use 'score_decrease' instead.
   // This field is deprecated and will be removed in the future.
   //
   // The value to subtract the score and increase final message score.
@@ -322,7 +322,7 @@ message AckRequest {
   // For nack requests the message will be locked before returning to first position in the priority queue.
   // For ack requests the message will be locked before returning to last position in the priority queue.
   //
-  // All 'score_subtract', 'priority_increase' and 'priority_decrease' fields will be ignored if this field is different than 0.
+  // All 'score_subtract', 'score_increase' and 'score_decrease' fields will be ignored if this field is different than 0.
   // 
   // IMPORTANT: Deckard checks for locked messages in a 1-second precision meaning the lock have a second precision and not milliseconds.
   // This field is in milliseconds because all duration units on deckard are expressed in milliseconds and the default score algorithm uses milliseconds as well.
@@ -331,21 +331,30 @@ message AckRequest {
   // Whether the message should be removed when acked/nacked
   bool removeMessage = 7;
 
-  // Increase in the priority of the message when ACKed.
-  // Use a positive value to lower the priority score, resulting in a higher priority.
-  // Has the same effect as using a negative values in 'priority_decrease' field.
+  // Increase the score of the message when ACKed.
+  // Use a positive value to increase the score, resulting in a lower priority.
+  // Has the same effect as using a negative values in 'score_decrease' field.
   //
   // This field is used only for ack requests because in nack requests the message will return to the queue with the maximum priority.
-  // It will be ignored if used at the same time of 'lock_ms' field.
-  double priority_increase = 8;
+  //
+  // It will be ignored if used at the same time of 'lock_ms' or `score` fields.
+  double score_increase = 8;
 
-  // Decrease in the priority of the message when ACKed.
-  // Use a positive value to increase the priority score, resulting in a lower priority.
-  // Has the same effect as using a positive values in 'priority_increase' field.
+  // Decrease the score of the message when ACKed.
+  // Use a positive value to decrease the score, resulting in a higher priority.
+  // Has the same effect as using a positive values in 'score_increase' field.
   //
   // This field is used only for ack requests because in nack requests the message will return to the queue with the maximum priority.
-  // It will be ignored if used at the same time of 'lock_ms' field.
-  double priority_decrease = 9;
+  //
+  // It will be ignored if used at the same time of 'lock_ms' or `score` fields.
+  double score_decrease = 9;
+
+  // Sets the score of the message when ACKed, to override the default timestamp algorithm.
+  //
+  // This field is used only for ack requests because in nack requests the message will return to the queue with the maximum priority.
+  //
+  // If used at the same time with the 'lock_ms' attribute, the message will be locked for the specified time and then returned to the queue with the specified score.
+  double score = 10;
 }
 
 message AckResponse {
