@@ -987,7 +987,7 @@ func (suite *CacheIntegrationTestSuite) TestPullMessagesScoreFiltering() {
 	for _, tt := range tests {
 		suite.T().Run(tt.name, func(t *testing.T) {
 			for i := 0; i < 10; i++ {
-				suite.cache.Insert(context.Background(), "test_queue", &entities.Message{
+				_, _ = suite.cache.Insert(context.Background(), "test_queue", &entities.Message{
 					ID:    fmt.Sprintf("%d", i),
 					Queue: "test_queue",
 					Score: float64(i),
