@@ -31,7 +31,7 @@ func (suite *DeckardIntegrationTestSuite) BeforeTest(_, _ string) {
 	suite.deckardStorage.Flush(ctx)
 }
 
-func (suite *DeckardIntegrationTestSuite) TestAddMessageIntegration() {
+func (suite *DeckardIntegrationTestSuite) TestAddMessageDefaultScoreIntegration() {
 	start := time.Now()
 
 	response, err := suite.deckard.Add(ctx, &deckard.AddRequest{
