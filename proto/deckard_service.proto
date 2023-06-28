@@ -221,7 +221,8 @@ message AddMessage {
   // Score represents the priority score the message currently have in the queue.
   // The score is used to determine the order of the messages returned in a pull request.
   // The lower the score, the higher the priority.
-  // If the score is not set (or set to 0), the default value is the current timestamp in milliseconds at the moment of the message creation.
+  // Negative scores are not allowed and will be converted to 0, the minimum score allowed.
+  // If the score is not set, the value will be set with the current timestamp in milliseconds at the moment of the message creation.
   double score = 12;
 }
 
@@ -346,12 +347,16 @@ message AckRequest {
   //
   // This field is used only for ack requests because in nack requests the message will return to the queue with the maximum priority.
   //
+  // If the the score result is negative, the message will be returned to the queue with the minimum score allowed (0).
+  //
   // It will be ignored if used at the same time of 'lock_ms' or `score` fields.
   double score_decrease = 9;
 
   // Sets the score of the message when ACKed, to override the default timestamp algorithm.
   //
   // This field is used only for ack requests because in nack requests the message will return to the queue with the maximum priority.
+  //
+  // Negative scores are not allowed and will be converted to 0, the minimum score allowed.
   //
   // If used at the same time with the 'lock_ms' attribute, the message will be locked for the specified time and then returned to the queue with the specified score.
   double score = 10;
