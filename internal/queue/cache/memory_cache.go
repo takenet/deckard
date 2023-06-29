@@ -18,14 +18,12 @@ import (
 // It was not made to be performant, but to be used in integration tests and in development.
 // Currently only insert and pull functions are implemented.
 type MemoryCache struct {
-	queues               map[string]*list.List
-	processingQueues     map[string]*list.List
-	lockAckQueues        map[string]*list.List
-	lockNackQueues       map[string]*list.List
-	lockAckQueuesScores  map[string]*float64
-	lockNackQueuesScores map[string]*float64
-	lock                 *sync.Mutex
-	keys                 map[string]string
+	queues           map[string]*list.List
+	processingQueues map[string]*list.List
+	lockAckQueues    map[string]*list.List
+	lockNackQueues   map[string]*list.List
+	lock             *sync.Mutex
+	keys             map[string]string
 }
 
 type MemoryMessageEntry struct {
@@ -39,14 +37,12 @@ var _ Cache = &MemoryCache{}
 
 func NewMemoryCache() *MemoryCache {
 	return &MemoryCache{
-		queues:               make(map[string]*list.List),
-		processingQueues:     make(map[string]*list.List),
-		lockAckQueues:        make(map[string]*list.List),
-		lockNackQueues:       make(map[string]*list.List),
-		lockAckQueuesScores:  make(map[string]*float64),
-		lockNackQueuesScores: make(map[string]*float64),
-		keys:                 make(map[string]string),
-		lock:                 &sync.Mutex{},
+		queues:           make(map[string]*list.List),
+		processingQueues: make(map[string]*list.List),
+		lockAckQueues:    make(map[string]*list.List),
+		lockNackQueues:   make(map[string]*list.List),
+		keys:             make(map[string]string),
+		lock:             &sync.Mutex{},
 	}
 }
 
