@@ -137,7 +137,7 @@ return 0
 const moveFilteredElementsScript = `
 local elements = redis.call('ZREVRANGEBYSCORE', KEYS[2], ARGV[1], '0', 'LIMIT', '0', tostring(ARGV[3]))
 if next(elements) == nil then
-    return ''
+	return ''
 end
 for i, key in ipairs(elements) do
 	redis.call('ZADD', KEYS[1], ARGV[2], key)
@@ -163,7 +163,7 @@ return elements
 const unlockElementsScript = `
 local elements = redis.call('ZRANGE', KEYS[1], ARGV[2], '0', 'BYSCORE', 'REV', 'LIMIT', '0', tostring(ARGV[1]))
 if next(elements) == nil then
-    return ''
+	return ''
 end
 
 local scores = redis.call('ZMSCORE', KEYS[3], unpack(elements))
@@ -176,7 +176,7 @@ for i, key in ipairs(elements) do
 		lockScore = ARGV[3]
 	end
 
-    table.insert(bulkData, lockScore)
+	table.insert(bulkData, lockScore)
 	table.insert(bulkData, key)
 end
 
@@ -208,7 +208,7 @@ else
 	elements = redis.call('ZRANGE', KEYS[1], ARGV[3], ARGV[4], 'BYSCORE', 'LIMIT', '0', tostring(ARGV[1]))
 end
 if next(elements) == nil then
-    return ''
+	return ''
 end
 for i, key in ipairs(elements) do
 	redis.call('ZADD', KEYS[2], ARGV[2], key)
