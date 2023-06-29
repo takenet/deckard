@@ -270,6 +270,9 @@ type PullRequest struct {
 	// Prefer using the max_score field instead of this one.
 	// This field is deprecated and will be removed in the future.
 	//
+	// The `score_filter` behaves differently than `max_score` field.
+	// The `max_score` field is the upper threshold itself, but the `score_filter` will result in a upper score threshold of the current timestamp minus the score_filter value.
+	//
 	// Useful only when your queue's score is only based on the current timestamp to not return a message just moments after it was last used.
 	// It will only return messages with score lower than the current timestamp minus the score_filter value.
 	//
@@ -281,13 +284,13 @@ type PullRequest struct {
 	//
 	// Only messages with a priority score equal to or lower than the max_score value will be returned.
 	//
-	// The maximum score accepted by Deckard is 9007199254740992, any value higher than this will be considered as the maximum score.
+	// The maximum score accepted by Deckard is 9007199254740992, any value higher than this will be capped to the maximum score.
 	// To set this value to the minimum score accepted by Deckard, use any negative number.
 	// This parameter will be ignored if set to 0 (default value).
 	MaxScore float64 `protobuf:"fixed64,4,opt,name=max_score,json=maxScore,proto3" json:"max_score,omitempty"`
 	// Sets the lower threshold for the priority score required for a message to be returned.
 	// Only messages with a priority score equal to or higher than the min_score value will be returned.
-	// The minimum score accepted by Deckard is 0
+	// The minimum score accepted by Deckard is 0 which is also the default value
 	MinScore float64 `protobuf:"fixed64,5,opt,name=min_score,json=minScore,proto3" json:"min_score,omitempty"`
 }
 
@@ -701,10 +704,10 @@ type AddMessage struct {
 	// The score is used to determine the order of the messages returned in a pull request.
 	// The lower the score, the higher the priority.
 	//
-	// If the score is not set, the value will be set with the current timestamp in milliseconds at the moment of the message creation.
+	// If the score is not set (or set to 0), the score will be set with the current timestamp in milliseconds at the moment of the message creation.
 	//
 	// The maximum score accepted by Deckard is 9007199254740992 and the minimum is 0
-	// Negative scores are not allowed and will be converted to 0
+	// Negative scores will be converted to 0, adding the message with the lowest score (and highest priority)
 	Score float64 `protobuf:"fixed64,12,opt,name=score,proto3" json:"score,omitempty"`
 }
 
@@ -1183,9 +1186,9 @@ type AckRequest struct {
 	//
 	// If used at the same time with the 'lock_ms' attribute, the message will be locked for the specified time and then returned to the queue with the specified score.
 	//
-	// For ACK requests, if the score is not provided (or set to 0), the message will receive the default score algorithm which is the current timestamp in milliseconds.
+	// For ACK requests, if the score is not provided (or set to 0), the message will return to the queue with the default score algorithm which is the current timestamp in milliseconds.
 	//
-	// For NACKs requests, if the score is not provided (or set to 0), the message will receive the minimum score accepted by Deckard which is 0.
+	// For NACKs requests, if the score is not provided (or set to 0), the message will return to the queue with the minimum score accepted by Deckard which is 0.
 	//
 	// Negative values will be converted to 0, which is how to set the highest priority to a message in a ACK/NACK request.
 	//

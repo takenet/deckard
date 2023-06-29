@@ -188,14 +188,14 @@ func TestRecoveryMessagesCacheError(t *testing.T) {
 		InternalId:        4321,
 		ExpiryDate:        time.Time{},
 		LastUsage:         &now,
-		Score:             score.GetScoreByDefaultAlgorithm() - 54321,
+		Score:             score.GetScoreFromTime(&now) - 54321,
 		LastScoreSubtract: 54321,
 	}, {
 		ID:                "id2",
 		InternalId:        65456,
 		Queue:             "queue",
 		ExpiryDate:        time.Time{},
-		Score:             score.GetScoreByDefaultAlgorithm() - 23457,
+		Score:             score.GetScoreFromTime(&now) - 23457,
 		LastUsage:         &now,
 		LastScoreSubtract: 23457,
 	}}
@@ -211,7 +211,7 @@ func TestRecoveryMessagesCacheError(t *testing.T) {
 		InternalId:        4321,
 		Queue:             "queue",
 		ExpiryDate:        time.Time{},
-		Score:             score.GetScoreByDefaultAlgorithm() - 54321,
+		Score:             score.GetScoreFromTime(&now) - 54321,
 		LastUsage:         &now,
 		LastScoreSubtract: 54321,
 	}, {
@@ -219,7 +219,7 @@ func TestRecoveryMessagesCacheError(t *testing.T) {
 		InternalId:        65456,
 		Queue:             "queue",
 		ExpiryDate:        time.Time{},
-		Score:             score.GetScoreByDefaultAlgorithm() - 23457,
+		Score:             score.GetScoreFromTime(&now) - 23457,
 		LastUsage:         &now,
 		LastScoreSubtract: 23457,
 	}}
