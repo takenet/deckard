@@ -110,10 +110,11 @@ func TestLoadRedisAndMongoDBDeckardShouldLoadSuccessfullyIntegration(t *testing.
 
 	client := deckard.NewDeckardClient(conn)
 
-	client.Remove(ctx, &deckard.RemoveRequest{
+	_, err = client.Remove(ctx, &deckard.RemoveRequest{
 		Ids:   []string{"1"},
 		Queue: "queue_main_test",
 	})
+	require.NoError(t, err)
 
 	response, err := client.Add(ctx, &deckard.AddRequest{
 		Messages: []*deckard.AddMessage{
