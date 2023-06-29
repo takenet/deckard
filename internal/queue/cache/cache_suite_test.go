@@ -9,8 +9,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"github.com/takenet/deckard/internal/queue/entities"
-	"github.com/takenet/deckard/internal/queue/utils"
+	"github.com/takenet/deckard/internal/dtime"
+	"github.com/takenet/deckard/internal/queue/message"
+	"github.com/takenet/deckard/internal/queue/pool"
+	"github.com/takenet/deckard/internal/queue/score"
 )
 
 var ctx, cancel = context.WithCancel(context.Background())
@@ -33,7 +35,7 @@ func (suite *CacheIntegrationTestSuite) BeforeTest(_, _ string) {
 }
 
 func (suite *CacheIntegrationTestSuite) TestTimeoutMessagesShouldMakeAvailableWithMaxScore() {
-	_, insertError := suite.cache.Insert(ctx, "queue", &entities.Message{
+	_, insertError := suite.cache.Insert(ctx, "queue", &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "queue",
@@ -55,7 +57,7 @@ func (suite *CacheIntegrationTestSuite) TestTimeoutMessagesShouldMakeAvailableWi
 
 		// Insert lower score
 		now := time.Now()
-		_, insertError := suite.cache.Insert(ctx, "queue", &entities.Message{
+		_, insertError := suite.cache.Insert(ctx, "queue", &message.Message{
 			ID:          "id2",
 			Description: "desc",
 			Queue:       "queue",
@@ -76,7 +78,7 @@ func (suite *CacheIntegrationTestSuite) TestTimeoutMessagesShouldMakeAvailableWi
 func (suite *CacheIntegrationTestSuite) TestFlush() {
 	_ = suite.cache.Set(ctx, RECOVERY_STORAGE_BREAKPOINT_KEY, "asdf")
 
-	_, insertError := suite.cache.Insert(ctx, "queue", &entities.Message{
+	_, insertError := suite.cache.Insert(ctx, "queue", &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "queue",
@@ -97,15 +99,15 @@ func (suite *CacheIntegrationTestSuite) TestFlush() {
 func (suite *CacheIntegrationTestSuite) TestTimeoutMessagesShouldNotMakeAvailable() {
 	threeMinutesTime := time.Now().Add(-3 * time.Minute)
 
-	_, insertError := suite.cache.Insert(ctx, "queue", &entities.Message{
+	_, insertError := suite.cache.Insert(ctx, "queue", &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "queue",
-		Score:       float64(utils.TimeToMs(&threeMinutesTime)),
+		Score:       float64(dtime.TimeToMs(&threeMinutesTime)),
 	})
 	require.NoError(suite.T(), insertError)
 
-	_, insertError2 := suite.cache.Insert(ctx, "queue", &entities.Message{
+	_, insertError2 := suite.cache.Insert(ctx, "queue", &message.Message{
 		ID:          "id2",
 		Description: "desc",
 		Queue:       "queue",
@@ -146,7 +148,7 @@ func (suite *CacheIntegrationTestSuite) TestSetStorageBreakpointShouldReturnValu
 }
 
 func (suite *CacheIntegrationTestSuite) TestInsertOneOkShouldNotBeAvailableAgain() {
-	inserts, err := suite.cache.Insert(ctx, "queue", &entities.Message{
+	inserts, err := suite.cache.Insert(ctx, "queue", &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "queue",
@@ -168,17 +170,17 @@ func (suite *CacheIntegrationTestSuite) TestInsertOneOkShouldNotBeAvailableAgain
 
 func (suite *CacheIntegrationTestSuite) TestPullShouldResultMaxScore() {
 	// Older last usage = bigger score
-	inserts, err := suite.cache.Insert(ctx, "queue", &entities.Message{
+	inserts, err := suite.cache.Insert(ctx, "queue", &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "queue",
 		Score:       float64(50),
-	}, &entities.Message{
+	}, &message.Message{
 		ID:          "id2",
 		Description: "desc",
 		Queue:       "queue",
 		Score:       float64(5),
-	}, &entities.Message{
+	}, &message.Message{
 		ID:          "id3",
 		Description: "desc",
 		Queue:       "queue",
@@ -196,17 +198,17 @@ func (suite *CacheIntegrationTestSuite) TestPullShouldResultMaxScore() {
 }
 
 func (suite *CacheIntegrationTestSuite) TestInsertOrderedPullShouldResultMaxScore() {
-	inserts, err := suite.cache.Insert(ctx, "queue", &entities.Message{
+	inserts, err := suite.cache.Insert(ctx, "queue", &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "queue",
 		Score:       float64(50),
-	}, &entities.Message{
+	}, &message.Message{
 		ID:          "id2",
 		Description: "desc",
 		Queue:       "queue",
 		Score:       float64(10),
-	}, &entities.Message{
+	}, &message.Message{
 		ID:          "id3",
 		Description: "desc",
 		Queue:       "queue",
@@ -223,7 +225,7 @@ func (suite *CacheIntegrationTestSuite) TestInsertOrderedPullShouldResultMaxScor
 }
 
 func (suite *CacheIntegrationTestSuite) TestInsertSameObjectTwiceShouldNotUpdateScore() {
-	first, err := suite.cache.Insert(ctx, "queue", &entities.Message{
+	first, err := suite.cache.Insert(ctx, "queue", &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "queue",
@@ -232,7 +234,7 @@ func (suite *CacheIntegrationTestSuite) TestInsertSameObjectTwiceShouldNotUpdate
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), []string{"id1"}, first)
 
-	second, err := suite.cache.Insert(ctx, "queue", &entities.Message{
+	second, err := suite.cache.Insert(ctx, "queue", &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "queue",
@@ -244,7 +246,7 @@ func (suite *CacheIntegrationTestSuite) TestInsertSameObjectTwiceShouldNotUpdate
 	require.Equal(suite.T(), 0, len(second))
 
 	// insert element with a lower score
-	third, err := suite.cache.Insert(ctx, "queue", &entities.Message{
+	third, err := suite.cache.Insert(ctx, "queue", &message.Message{
 		ID:          "id2",
 		Description: "desc",
 		Queue:       "queue",
@@ -262,12 +264,12 @@ func (suite *CacheIntegrationTestSuite) TestInsertSameObjectTwiceShouldNotUpdate
 }
 
 func (suite *CacheIntegrationTestSuite) TestInsertSameObjectInSameRequestShouldPreserveLastScore() {
-	first, err := suite.cache.Insert(ctx, "queue", &entities.Message{
+	first, err := suite.cache.Insert(ctx, "queue", &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "queue",
 		Score:       float64(50),
-	}, &entities.Message{
+	}, &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "queue",
@@ -277,7 +279,7 @@ func (suite *CacheIntegrationTestSuite) TestInsertSameObjectInSameRequestShouldP
 	require.Equal(suite.T(), []string{"id1", "id1"}, first)
 
 	// insert element with a higher score
-	third, err := suite.cache.Insert(ctx, "queue", &entities.Message{
+	third, err := suite.cache.Insert(ctx, "queue", &message.Message{
 		ID:          "id2",
 		Description: "desc",
 		Queue:       "queue",
@@ -296,20 +298,20 @@ func (suite *CacheIntegrationTestSuite) TestInsertSameObjectInSameRequestShouldP
 
 func (suite *CacheIntegrationTestSuite) TestCacheShouldSupportLowScoreDifferences() {
 	now := time.Now()
-	firstInsert, err := suite.cache.Insert(ctx, "queue", &entities.Message{
+	firstInsert, err := suite.cache.Insert(ctx, "queue", &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "queue",
-		Score:       float64(utils.TimeToMs(&now)),
+		Score:       float64(dtime.TimeToMs(&now)),
 	})
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), []string{"id1"}, firstInsert)
 
-	secondInsert, err := suite.cache.Insert(ctx, "queue", &entities.Message{
+	secondInsert, err := suite.cache.Insert(ctx, "queue", &message.Message{
 		ID:          "id2",
 		Description: "desc",
 		Queue:       "queue",
-		Score:       float64(utils.TimeToMs(&now) - 1),
+		Score:       float64(dtime.TimeToMs(&now) - 1),
 	})
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), []string{"id2"}, secondInsert)
@@ -322,15 +324,15 @@ func (suite *CacheIntegrationTestSuite) TestCacheShouldSupportLowScoreDifference
 }
 
 func (suite *CacheIntegrationTestSuite) TestPullMoreThanAvailable() {
-	inserts, err := suite.cache.Insert(ctx, "queue", &entities.Message{
+	inserts, err := suite.cache.Insert(ctx, "queue", &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "queue",
-	}, &entities.Message{
+	}, &message.Message{
 		ID:          "id2",
 		Description: "desc",
 		Queue:       "queue",
-	}, &entities.Message{
+	}, &message.Message{
 		ID:          "id3",
 		Description: "desc",
 		Queue:       "queue",
@@ -350,7 +352,7 @@ func (suite *CacheIntegrationTestSuite) TestPullMoreThanAvailable() {
 }
 
 func (suite *CacheIntegrationTestSuite) TestRemoveShouldDeleteFromProcessingQueue() {
-	inserts, err := suite.cache.Insert(ctx, "queue", &entities.Message{
+	inserts, err := suite.cache.Insert(ctx, "queue", &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "queue",
@@ -374,11 +376,11 @@ func (suite *CacheIntegrationTestSuite) TestRemoveShouldDeleteFromProcessingQueu
 }
 
 func (suite *CacheIntegrationTestSuite) TestRemoveShouldDeleteOnlyCorrectId() {
-	inserts, err := suite.cache.Insert(ctx, "queue", &entities.Message{
+	inserts, err := suite.cache.Insert(ctx, "queue", &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "queue",
-	}, &entities.Message{
+	}, &message.Message{
 		ID:          "id2",
 		Description: "desc",
 		Queue:       "queue",
@@ -401,7 +403,7 @@ func (suite *CacheIntegrationTestSuite) TestRemoveShouldDeleteOnlyCorrectId() {
 }
 
 func (suite *CacheIntegrationTestSuite) TestRemoveShouldDeleteFromActiveQueue() {
-	_, opErr := suite.cache.Insert(ctx, "queue", &entities.Message{
+	_, opErr := suite.cache.Insert(ctx, "queue", &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "queue",
@@ -418,13 +420,13 @@ func (suite *CacheIntegrationTestSuite) TestRemoveShouldDeleteFromActiveQueue() 
 
 func (suite *CacheIntegrationTestSuite) TestBulkElementsShouldNotError() {
 	ids := make([]string, 100)
-	data := make([]*entities.Message, 100)
+	data := make([]*message.Message, 100)
 
 	for i := 0; i < 100; i++ {
 		id := fmt.Sprintf("giganicstringtoconsumelotofmemoryofredisscript%d", i)
 
 		ids[i] = id
-		data[i] = &entities.Message{
+		data[i] = &message.Message{
 			ID:          id,
 			Description: "desc",
 			Queue:       "queue",
@@ -450,7 +452,7 @@ func (suite *CacheIntegrationTestSuite) TestBulkElementsShouldNotError() {
 }
 
 func (suite *CacheIntegrationTestSuite) TestInsertOneWithInvalidQueue() {
-	inserts, err := suite.cache.Insert(ctx, "queue", &entities.Message{
+	inserts, err := suite.cache.Insert(ctx, "queue", &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "other_queue",
@@ -461,7 +463,7 @@ func (suite *CacheIntegrationTestSuite) TestInsertOneWithInvalidQueue() {
 }
 
 func (suite *CacheIntegrationTestSuite) TestMakeAvailableAfterPull() {
-	message := &entities.Message{
+	message := &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "queue",
@@ -488,7 +490,7 @@ func (suite *CacheIntegrationTestSuite) TestMakeAvailableAfterPull() {
 }
 
 func (suite *CacheIntegrationTestSuite) TestMakeAvailableWithoutQueue() {
-	message := &entities.Message{
+	message := &message.Message{
 		ID:          "id1",
 		Description: "desc",
 	}
@@ -500,15 +502,17 @@ func (suite *CacheIntegrationTestSuite) TestMakeAvailableWithoutQueue() {
 }
 
 func (suite *CacheIntegrationTestSuite) TestLockMessageAck() {
-	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
 	})
 
-	_, _ = suite.cache.PullMessages(ctx, "q1", 1, nil, nil)
+	val, pullErr := suite.cache.PullMessages(ctx, "q1", 1, nil, nil)
+	require.NoError(suite.T(), pullErr)
+	require.Len(suite.T(), val, 1)
 
-	result, makeErr := suite.cache.LockMessage(ctx, &entities.Message{
+	result, makeErr := suite.cache.LockMessage(ctx, &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
@@ -522,26 +526,26 @@ func (suite *CacheIntegrationTestSuite) TestLockMessageAck() {
 	require.NoError(suite.T(), err)
 	require.False(suite.T(), result)
 
-	queues, err := suite.cache.ListQueues(ctx, "*", entities.LOCK_ACK_POOL)
+	queues, err := suite.cache.ListQueues(ctx, "*", pool.LOCK_ACK_POOL)
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), []string{"q1"}, queues)
 
 	// Check if all other pools are empty
-	queues, err = suite.cache.ListQueues(ctx, "*", entities.PRIMARY_POOL)
+	queues, err = suite.cache.ListQueues(ctx, "*", pool.PRIMARY_POOL)
 	require.NoError(suite.T(), err)
 	require.Empty(suite.T(), queues)
 
-	queues, err = suite.cache.ListQueues(ctx, "*", entities.PROCESSING_POOL)
+	queues, err = suite.cache.ListQueues(ctx, "*", pool.PROCESSING_POOL)
 	require.NoError(suite.T(), err)
 	require.Empty(suite.T(), queues)
 
-	queues, err = suite.cache.ListQueues(ctx, "*", entities.LOCK_NACK_POOL)
+	queues, err = suite.cache.ListQueues(ctx, "*", pool.LOCK_NACK_POOL)
 	require.NoError(suite.T(), err)
 	require.Empty(suite.T(), queues)
 }
 
 func (suite *CacheIntegrationTestSuite) TestLockWithInvalidLockMs() {
-	result, makeErr := suite.cache.LockMessage(ctx, &entities.Message{
+	result, makeErr := suite.cache.LockMessage(ctx, &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
@@ -554,7 +558,7 @@ func (suite *CacheIntegrationTestSuite) TestLockWithInvalidLockMs() {
 
 func (suite *CacheIntegrationTestSuite) TestLockWithoutLockMsShouldError() {
 	// Add one of them to lock ACK
-	lockAckResult, err := suite.cache.LockMessage(ctx, &entities.Message{
+	lockAckResult, err := suite.cache.LockMessage(ctx, &message.Message{
 		ID:    "1",
 		Queue: "q1",
 	}, LOCK_ACK)
@@ -563,7 +567,7 @@ func (suite *CacheIntegrationTestSuite) TestLockWithoutLockMsShouldError() {
 }
 
 func (suite *CacheIntegrationTestSuite) TestLockMessageNack() {
-	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
@@ -571,7 +575,7 @@ func (suite *CacheIntegrationTestSuite) TestLockMessageNack() {
 
 	_, _ = suite.cache.PullMessages(ctx, "q1", 1, nil, nil)
 
-	result, makeErr := suite.cache.LockMessage(ctx, &entities.Message{
+	result, makeErr := suite.cache.LockMessage(ctx, &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
@@ -585,32 +589,32 @@ func (suite *CacheIntegrationTestSuite) TestLockMessageNack() {
 	require.NoError(suite.T(), err)
 	require.False(suite.T(), result)
 
-	queues, err := suite.cache.ListQueues(ctx, "*", entities.LOCK_NACK_POOL)
+	queues, err := suite.cache.ListQueues(ctx, "*", pool.LOCK_NACK_POOL)
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), []string{"q1"}, queues)
 
 	// Check if all other pools are empty
-	queues, err = suite.cache.ListQueues(ctx, "*", entities.PRIMARY_POOL)
+	queues, err = suite.cache.ListQueues(ctx, "*", pool.PRIMARY_POOL)
 	require.NoError(suite.T(), err)
 	require.Empty(suite.T(), queues)
 
-	queues, err = suite.cache.ListQueues(ctx, "*", entities.PROCESSING_POOL)
+	queues, err = suite.cache.ListQueues(ctx, "*", pool.PROCESSING_POOL)
 	require.NoError(suite.T(), err)
 	require.Empty(suite.T(), queues)
 
-	queues, err = suite.cache.ListQueues(ctx, "*", entities.LOCK_ACK_POOL)
+	queues, err = suite.cache.ListQueues(ctx, "*", pool.LOCK_ACK_POOL)
 	require.NoError(suite.T(), err)
 	require.Empty(suite.T(), queues)
 }
 
 func (suite *CacheIntegrationTestSuite) TestLockMessageWithoutQueueShouldReturnError() {
-	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
 	})
 
-	result, makeErr := suite.cache.LockMessage(ctx, &entities.Message{
+	result, makeErr := suite.cache.LockMessage(ctx, &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		LockMs:      10,
@@ -621,13 +625,13 @@ func (suite *CacheIntegrationTestSuite) TestLockMessageWithoutQueueShouldReturnE
 }
 
 func (suite *CacheIntegrationTestSuite) TestLockAckWithoutProcessingReturnFalse() {
-	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
 	})
 
-	result, makeErr := suite.cache.LockMessage(ctx, &entities.Message{
+	result, makeErr := suite.cache.LockMessage(ctx, &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
@@ -638,13 +642,13 @@ func (suite *CacheIntegrationTestSuite) TestLockAckWithoutProcessingReturnFalse(
 	require.False(suite.T(), result)
 }
 func (suite *CacheIntegrationTestSuite) TestLockNackWithoutProcessingReturnFalse() {
-	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
 	})
 
-	result, makeErr := suite.cache.LockMessage(ctx, &entities.Message{
+	result, makeErr := suite.cache.LockMessage(ctx, &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
@@ -656,13 +660,13 @@ func (suite *CacheIntegrationTestSuite) TestLockNackWithoutProcessingReturnFalse
 }
 
 func (suite *CacheIntegrationTestSuite) TestMakeAvailableMessageWithoutProcessingReturnFalse() {
-	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
 	})
 
-	result, makeErr := suite.cache.MakeAvailable(ctx, &entities.Message{
+	result, makeErr := suite.cache.MakeAvailable(ctx, &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
@@ -673,19 +677,19 @@ func (suite *CacheIntegrationTestSuite) TestMakeAvailableMessageWithoutProcessin
 }
 
 func (suite *CacheIntegrationTestSuite) TestListQueuesPrimaryPool() {
-	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
 	})
 
-	_, _ = suite.cache.Insert(ctx, "q2", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q2", &message.Message{
 		ID:          "id2",
 		Description: "desc",
 		Queue:       "q2",
 	})
 
-	result, makeErr := suite.cache.ListQueues(ctx, "*", entities.PRIMARY_POOL)
+	result, makeErr := suite.cache.ListQueues(ctx, "*", pool.PRIMARY_POOL)
 
 	sort.Strings(result)
 
@@ -694,19 +698,19 @@ func (suite *CacheIntegrationTestSuite) TestListQueuesPrimaryPool() {
 }
 
 func (suite *CacheIntegrationTestSuite) TestRemoveShouldRemoveFromAllPools() {
-	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &message.Message{
 		ID:    "id1",
 		Queue: "q1",
 	})
-	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &message.Message{
 		ID:    "id2",
 		Queue: "q1",
 	})
-	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &message.Message{
 		ID:    "id3",
 		Queue: "q1",
 	})
-	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &message.Message{
 		ID:    "id4",
 		Queue: "q1",
 	})
@@ -717,20 +721,22 @@ func (suite *CacheIntegrationTestSuite) TestRemoveShouldRemoveFromAllPools() {
 	require.Len(suite.T(), ids, 3)
 
 	// Add one of them to lock ACK
-	lockAckResult, err := suite.cache.LockMessage(ctx, &entities.Message{
+	lockAckResult, err := suite.cache.LockMessage(ctx, &message.Message{
 		ID:     ids[0],
 		Queue:  "q1",
 		LockMs: 10000,
+		Score:  score.Undefined,
 	}, LOCK_ACK)
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), lockAckResult)
 
-	// Add other to lock ACK
-	lockNackResult, err := suite.cache.LockMessage(ctx, &entities.Message{
+	// Add other to lock NACK
+	lockNackResult, err := suite.cache.LockMessage(ctx, &message.Message{
 		ID:     ids[1],
 		Queue:  "q1",
 		LockMs: 10000,
-	}, LOCK_ACK)
+		Score:  score.Undefined,
+	}, LOCK_NACK)
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), lockNackResult)
 
@@ -739,36 +745,36 @@ func (suite *CacheIntegrationTestSuite) TestRemoveShouldRemoveFromAllPools() {
 	require.Equal(suite.T(), int64(4), removed)
 
 	// Asserts all pools are empty
-	result, makeErr := suite.cache.ListQueues(ctx, "*", entities.PRIMARY_POOL)
+	result, makeErr := suite.cache.ListQueues(ctx, "*", pool.PRIMARY_POOL)
 	require.NoError(suite.T(), makeErr)
 	require.Empty(suite.T(), result)
 
-	result, makeErr = suite.cache.ListQueues(ctx, "*", entities.PROCESSING_POOL)
+	result, makeErr = suite.cache.ListQueues(ctx, "*", pool.PROCESSING_POOL)
 	require.NoError(suite.T(), makeErr)
 	require.Empty(suite.T(), result)
 
-	result, makeErr = suite.cache.ListQueues(ctx, "*", entities.LOCK_ACK_POOL)
+	result, makeErr = suite.cache.ListQueues(ctx, "*", pool.LOCK_ACK_POOL)
 	require.NoError(suite.T(), makeErr)
 	require.Empty(suite.T(), result)
 
-	result, makeErr = suite.cache.ListQueues(ctx, "*", entities.LOCK_NACK_POOL)
+	result, makeErr = suite.cache.ListQueues(ctx, "*", pool.LOCK_NACK_POOL)
 	require.NoError(suite.T(), makeErr)
 	require.Empty(suite.T(), result)
 }
 
 func (suite *CacheIntegrationTestSuite) TestUnlockMessagesFromAckPool() {
 	// Insert data
-	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
 	})
-	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &message.Message{
 		ID:          "id2",
 		Description: "desc",
 		Queue:       "q1",
 	})
-	_, _ = suite.cache.Insert(ctx, "q2", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q2", &message.Message{
 		ID:          "id3",
 		Description: "desc",
 		Queue:       "q2",
@@ -782,7 +788,7 @@ func (suite *CacheIntegrationTestSuite) TestUnlockMessagesFromAckPool() {
 	require.Len(suite.T(), ids, 1)
 
 	// Lock data
-	result, err := suite.cache.LockMessage(ctx, &entities.Message{
+	result, err := suite.cache.LockMessage(ctx, &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
@@ -791,7 +797,7 @@ func (suite *CacheIntegrationTestSuite) TestUnlockMessagesFromAckPool() {
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), result)
 
-	result, err = suite.cache.LockMessage(ctx, &entities.Message{
+	result, err = suite.cache.LockMessage(ctx, &message.Message{
 		ID:          "id2",
 		Description: "desc",
 		Queue:       "q1",
@@ -800,7 +806,7 @@ func (suite *CacheIntegrationTestSuite) TestUnlockMessagesFromAckPool() {
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), result)
 
-	result, err = suite.cache.LockMessage(ctx, &entities.Message{
+	result, err = suite.cache.LockMessage(ctx, &message.Message{
 		ID:          "id3",
 		Description: "desc",
 		Queue:       "q2",
@@ -817,19 +823,239 @@ func (suite *CacheIntegrationTestSuite) TestUnlockMessagesFromAckPool() {
 	require.Equal(suite.T(), []string{"id2"}, messages)
 }
 
-func (suite *CacheIntegrationTestSuite) TestUnlockMessagesFromNackPool() {
+func (suite *CacheIntegrationTestSuite) TestAckLockWithUndefinedScoreShouldUnlockDefaultScore() {
 	// Insert data
-	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
 	})
-	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
+
+	// Pull data
+	ids, _ := suite.cache.PullMessages(ctx, "q1", 1, nil, nil)
+	require.Len(suite.T(), ids, 1)
+
+	// Lock data
+	result, err := suite.cache.LockMessage(ctx, &message.Message{
+		ID:          "id1",
+		Description: "desc",
+		Queue:       "q1",
+		LockMs:      1,
+		Score:       score.Undefined,
+	}, LOCK_ACK)
+	require.NoError(suite.T(), err)
+	require.True(suite.T(), result)
+
+	<-time.After(1 * time.Millisecond)
+
+	beforeUnlock := score.GetScoreByDefaultAlgorithm()
+	// Check for unlocked data
+	messages, err := suite.cache.UnlockMessages(ctx, "q1", LOCK_ACK)
+	require.NoError(suite.T(), err)
+	require.Equal(suite.T(), []string{"id1"}, messages)
+	afterUnlock := score.GetScoreByDefaultAlgorithm()
+
+	// Check for score pulling with defined score
+	message, err := suite.cache.PullMessages(ctx, "q1", 1, &beforeUnlock, &afterUnlock)
+	require.NoError(suite.T(), err)
+	require.Len(suite.T(), message, 1)
+}
+
+func (suite *CacheIntegrationTestSuite) TestAckLockWithScoreShouldUnlockPreservingScore() {
+	// Insert data
+	_, _ = suite.cache.Insert(ctx, "q1", &message.Message{
+		ID:          "id1",
+		Description: "desc",
+		Queue:       "q1",
+	})
+
+	// Pull data
+	ids, _ := suite.cache.PullMessages(ctx, "q1", 1, nil, nil)
+	require.Len(suite.T(), ids, 1)
+
+	// Lock data
+	result, err := suite.cache.LockMessage(ctx, &message.Message{
+		ID:          "id1",
+		Description: "desc",
+		Queue:       "q1",
+		LockMs:      1,
+		Score:       1234,
+	}, LOCK_ACK)
+	require.NoError(suite.T(), err)
+	require.True(suite.T(), result)
+
+	<-time.After(1 * time.Millisecond)
+
+	// Check for unlocked data
+	messages, err := suite.cache.UnlockMessages(ctx, "q1", LOCK_ACK)
+	require.NoError(suite.T(), err)
+	require.Equal(suite.T(), []string{"id1"}, messages)
+
+	// Check for score pulling with min and max score as the predefined score
+	score := float64(1234)
+	message, err := suite.cache.PullMessages(ctx, "q1", 1, &score, &score)
+	require.NoError(suite.T(), err)
+	require.Len(suite.T(), message, 1)
+}
+
+func (suite *CacheIntegrationTestSuite) TestAckLockWithMinScoreShouldUnlockMinScore() {
+	// Insert data
+	_, _ = suite.cache.Insert(ctx, "q1", &message.Message{
+		ID:          "id1",
+		Description: "desc",
+		Queue:       "q1",
+	})
+
+	// Pull data
+	ids, _ := suite.cache.PullMessages(ctx, "q1", 1, nil, nil)
+	require.Len(suite.T(), ids, 1)
+
+	// Lock data
+	result, err := suite.cache.LockMessage(ctx, &message.Message{
+		ID:          "id1",
+		Description: "desc",
+		Queue:       "q1",
+		LockMs:      1,
+		Score:       score.Min,
+	}, LOCK_ACK)
+	require.NoError(suite.T(), err)
+	require.True(suite.T(), result)
+
+	<-time.After(1 * time.Millisecond)
+
+	// Check for unlocked data
+	messages, err := suite.cache.UnlockMessages(ctx, "q1", LOCK_ACK)
+	require.NoError(suite.T(), err)
+	require.Equal(suite.T(), []string{"id1"}, messages)
+
+	// Check for score pulling with min and max score as the predefined score
+	message, err := suite.cache.PullMessages(ctx, "q1", 1, &score.Min, &score.Min)
+	require.NoError(suite.T(), err)
+	require.Len(suite.T(), message, 1)
+}
+
+func (suite *CacheIntegrationTestSuite) TestNackLockWithMinScoreShouldUnlockMinScore() {
+	// Insert data
+	_, _ = suite.cache.Insert(ctx, "q1", &message.Message{
+		ID:          "id1",
+		Description: "desc",
+		Queue:       "q1",
+	})
+
+	// Pull data
+	ids, _ := suite.cache.PullMessages(ctx, "q1", 1, nil, nil)
+	require.Len(suite.T(), ids, 1)
+
+	// Lock data
+	result, err := suite.cache.LockMessage(ctx, &message.Message{
+		ID:          "id1",
+		Description: "desc",
+		Queue:       "q1",
+		LockMs:      1,
+		Score:       score.Min,
+	}, LOCK_NACK)
+	require.NoError(suite.T(), err)
+	require.True(suite.T(), result)
+
+	<-time.After(1 * time.Millisecond)
+
+	// Check for unlocked data
+	messages, err := suite.cache.UnlockMessages(ctx, "q1", LOCK_NACK)
+	require.NoError(suite.T(), err)
+	require.Equal(suite.T(), []string{"id1"}, messages)
+
+	// Check for score pulling with min and max score as the predefined score
+	message, err := suite.cache.PullMessages(ctx, "q1", 1, &score.Min, &score.Min)
+	require.NoError(suite.T(), err)
+	require.Len(suite.T(), message, 1)
+}
+
+func (suite *CacheIntegrationTestSuite) TestNackLockWithScoreShouldUnlockPreservingScore() {
+	// Insert data
+	_, _ = suite.cache.Insert(ctx, "q1", &message.Message{
+		ID:          "id1",
+		Description: "desc",
+		Queue:       "q1",
+	})
+
+	// Pull data
+	ids, _ := suite.cache.PullMessages(ctx, "q1", 1, nil, nil)
+	require.Len(suite.T(), ids, 1)
+
+	// Lock data
+	result, err := suite.cache.LockMessage(ctx, &message.Message{
+		ID:          "id1",
+		Description: "desc",
+		Queue:       "q1",
+		LockMs:      1,
+		Score:       1234,
+	}, LOCK_NACK)
+	require.NoError(suite.T(), err)
+	require.True(suite.T(), result)
+
+	<-time.After(1 * time.Millisecond)
+
+	// Check for unlocked data
+	messages, err := suite.cache.UnlockMessages(ctx, "q1", LOCK_NACK)
+	require.NoError(suite.T(), err)
+	require.Equal(suite.T(), []string{"id1"}, messages)
+
+	// Check for score pulling with min and max score as the predefined score
+	score := float64(1234)
+	message, err := suite.cache.PullMessages(ctx, "q1", 1, &score, &score)
+	require.NoError(suite.T(), err)
+	require.Len(suite.T(), message, 1)
+}
+
+func (suite *CacheIntegrationTestSuite) TestNackLockWithUndefinedScoreShouldUnlockMinScore() {
+	// Insert data
+	_, _ = suite.cache.Insert(ctx, "q1", &message.Message{
+		ID:          "id1",
+		Description: "desc",
+		Queue:       "q1",
+	})
+
+	// Pull data
+	ids, _ := suite.cache.PullMessages(ctx, "q1", 1, nil, nil)
+	require.Len(suite.T(), ids, 1)
+
+	// Lock data
+	result, err := suite.cache.LockMessage(ctx, &message.Message{
+		ID:          "id1",
+		Description: "desc",
+		Queue:       "q1",
+		LockMs:      1,
+		Score:       score.Undefined,
+	}, LOCK_NACK)
+	require.NoError(suite.T(), err)
+	require.True(suite.T(), result)
+
+	<-time.After(1 * time.Millisecond)
+
+	// Check for unlocked data
+	messages, err := suite.cache.UnlockMessages(ctx, "q1", LOCK_NACK)
+	require.NoError(suite.T(), err)
+	require.Equal(suite.T(), []string{"id1"}, messages)
+
+	// Check for score pulling with defined score
+	message, err := suite.cache.PullMessages(ctx, "q1", 1, &score.Min, &score.Min)
+	require.NoError(suite.T(), err)
+	require.Len(suite.T(), message, 1)
+}
+
+func (suite *CacheIntegrationTestSuite) TestUnlockMessagesFromNackPool() {
+	// Insert data
+	_, _ = suite.cache.Insert(ctx, "q1", &message.Message{
+		ID:          "id1",
+		Description: "desc",
+		Queue:       "q1",
+	})
+	_, _ = suite.cache.Insert(ctx, "q1", &message.Message{
 		ID:          "id2",
 		Description: "desc",
 		Queue:       "q1",
 	})
-	_, _ = suite.cache.Insert(ctx, "q2", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q2", &message.Message{
 		ID:          "id3",
 		Description: "desc",
 		Queue:       "q2",
@@ -843,7 +1069,7 @@ func (suite *CacheIntegrationTestSuite) TestUnlockMessagesFromNackPool() {
 	require.Len(suite.T(), ids, 1)
 
 	// Lock data
-	result, err := suite.cache.LockMessage(ctx, &entities.Message{
+	result, err := suite.cache.LockMessage(ctx, &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
@@ -852,7 +1078,7 @@ func (suite *CacheIntegrationTestSuite) TestUnlockMessagesFromNackPool() {
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), result)
 
-	result, err = suite.cache.LockMessage(ctx, &entities.Message{
+	result, err = suite.cache.LockMessage(ctx, &message.Message{
 		ID:          "id2",
 		Description: "desc",
 		Queue:       "q1",
@@ -861,7 +1087,7 @@ func (suite *CacheIntegrationTestSuite) TestUnlockMessagesFromNackPool() {
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), result)
 
-	result, err = suite.cache.LockMessage(ctx, &entities.Message{
+	result, err = suite.cache.LockMessage(ctx, &message.Message{
 		ID:          "id3",
 		Description: "desc",
 		Queue:       "q2",
@@ -879,17 +1105,17 @@ func (suite *CacheIntegrationTestSuite) TestUnlockMessagesFromNackPool() {
 
 func (suite *CacheIntegrationTestSuite) TestUnlockTiming() {
 	// Insert data
-	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
 	})
-	_, _ = suite.cache.Insert(ctx, "q1", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q1", &message.Message{
 		ID:          "id2",
 		Description: "desc",
 		Queue:       "q1",
 	})
-	_, _ = suite.cache.Insert(ctx, "q2", &entities.Message{
+	_, _ = suite.cache.Insert(ctx, "q2", &message.Message{
 		ID:          "id3",
 		Description: "desc",
 		Queue:       "q2",
@@ -903,7 +1129,7 @@ func (suite *CacheIntegrationTestSuite) TestUnlockTiming() {
 	require.Len(suite.T(), ids, 1)
 
 	// Lock data
-	result, err := suite.cache.LockMessage(ctx, &entities.Message{
+	result, err := suite.cache.LockMessage(ctx, &message.Message{
 		ID:          "id1",
 		Description: "desc",
 		Queue:       "q1",
@@ -912,7 +1138,7 @@ func (suite *CacheIntegrationTestSuite) TestUnlockTiming() {
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), result)
 
-	result, err = suite.cache.LockMessage(ctx, &entities.Message{
+	result, err = suite.cache.LockMessage(ctx, &message.Message{
 		ID:          "id2",
 		Description: "desc",
 		Queue:       "q1",
@@ -921,7 +1147,7 @@ func (suite *CacheIntegrationTestSuite) TestUnlockTiming() {
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), result)
 
-	result, err = suite.cache.LockMessage(ctx, &entities.Message{
+	result, err = suite.cache.LockMessage(ctx, &message.Message{
 		ID:          "id3",
 		Description: "desc",
 		Queue:       "q2",
@@ -987,7 +1213,7 @@ func (suite *CacheIntegrationTestSuite) TestPullMessagesScoreFiltering() {
 	for _, tt := range tests {
 		suite.T().Run(tt.name, func(t *testing.T) {
 			for i := 0; i < 10; i++ {
-				_, _ = suite.cache.Insert(context.Background(), "test_queue", &entities.Message{
+				_, _ = suite.cache.Insert(context.Background(), "test_queue", &message.Message{
 					ID:    fmt.Sprintf("%d", i),
 					Queue: "test_queue",
 					Score: float64(i),

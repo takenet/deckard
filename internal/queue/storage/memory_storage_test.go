@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/takenet/deckard/internal/config"
-	"github.com/takenet/deckard/internal/queue/entities"
+	"github.com/takenet/deckard/internal/queue/message"
 )
 
 func TestMemoryStorage(t *testing.T) {
@@ -28,7 +28,7 @@ func TestInternalIdIncrement(t *testing.T) {
 	storage := NewMemoryStorage(context.Background())
 
 	for i := 1; i < 10; i++ {
-		message := &entities.Message{
+		message := &message.Message{
 			ID:         strconv.Itoa(i),
 			Queue:      "q",
 			ExpiryDate: time.Now().Add(10 * time.Hour),

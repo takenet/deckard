@@ -12,10 +12,12 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/meirf/gopart"
 	"github.com/takenet/deckard/internal/config"
+	"github.com/takenet/deckard/internal/dtime"
 	"github.com/takenet/deckard/internal/logger"
 	"github.com/takenet/deckard/internal/metrics"
-	"github.com/takenet/deckard/internal/queue/entities"
-	"github.com/takenet/deckard/internal/queue/utils"
+	"github.com/takenet/deckard/internal/queue/message"
+	"github.com/takenet/deckard/internal/queue/pool"
+	"github.com/takenet/deckard/internal/queue/score"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -30,14 +32,18 @@ const (
 	pullElement          = "pull"
 	removeElement        = "remove"
 	moveElement          = "move"
+	lockElement          = "lock"
 	addElements          = "add"
 	containsElement      = "contains"
 	moveFilteredElements = "move_primary_pool"
+	unlockElements       = "unlock_elements"
 
 	POOL_PREFIX            = "deckard:queue:"
 	PROCESSING_POOL_SUFFIX = ":tmp"
 	LOCK_ACK_SUFFIX        = ":" + string(LOCK_ACK)
 	LOCK_NACK_SUFFIX       = ":" + string(LOCK_NACK)
+	LOCK_ACK_SCORE_SUFFIX  = ":" + string(LOCK_ACK) + ":score"
+	LOCK_NACK_SCORE_SUFFIX = ":" + string(LOCK_NACK) + ":score"
 )
 
 var PROCESSING_POOL_REGEX = regexp.MustCompile("(.+)" + PROCESSING_POOL_SUFFIX + "$")
@@ -67,7 +73,7 @@ func NewRedisCache(ctx context.Context) (*RedisCache, error) {
 
 	logger.S(ctx).Debug("Connecting to ", options.Addr, " Redis instance")
 
-	start := time.Now()
+	start := dtime.Now()
 
 	redisClient, err := waitForClient(options)
 	if err != nil {
@@ -82,7 +88,9 @@ func NewRedisCache(ctx context.Context) (*RedisCache, error) {
 			removeElement:        redis.NewScript(removeElementScript),
 			pullElement:          redis.NewScript(pullElementsScript),
 			moveElement:          redis.NewScript(moveElementScript),
+			lockElement:          redis.NewScript(lockElementScript),
 			moveFilteredElements: redis.NewScript(moveFilteredElementsScript),
+			unlockElements:       redis.NewScript(unlockElementsScript),
 			addElements:          redis.NewScript(addElementsScript),
 			containsElement:      redis.NewScript(containsElementScript),
 		},
@@ -114,9 +122,9 @@ func waitForClient(options *redis.Options) (*redis.Client, error) {
 }
 
 func (cache *RedisCache) Flush(ctx context.Context) {
-	now := time.Now()
+	now := dtime.Now()
 	defer func() {
-		metrics.CacheLatency.Record(ctx, utils.ElapsedTime(now), attribute.String("op", "flush"))
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "flush"))
 	}()
 
 	cache.Client.FlushDB(ctx)
@@ -125,9 +133,9 @@ func (cache *RedisCache) Flush(ctx context.Context) {
 func (cache *RedisCache) Remove(ctx context.Context, queue string, ids ...string) (removed int64, err error) {
 	total := int64(0)
 
-	execStart := time.Now()
+	execStart := dtime.Now()
 	defer func() {
-		metrics.CacheLatency.Record(ctx, utils.ElapsedTime(execStart), attribute.String("op", "remove"))
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), attribute.String("op", "remove"))
 	}()
 
 	idList := make([]interface{}, len(ids))
@@ -139,7 +147,14 @@ func (cache *RedisCache) Remove(ctx context.Context, queue string, ids ...string
 		cmd := cache.scripts[removeElement].Run(
 			context.Background(),
 			cache.Client,
-			[]string{cache.activePool(queue), cache.processingPool(queue), cache.lockPool(queue, LOCK_ACK), cache.lockPool(queue, LOCK_NACK)},
+			[]string{
+				cache.activePool(queue),
+				cache.processingPool(queue),
+				cache.lockPool(queue, LOCK_ACK),
+				cache.lockPool(queue, LOCK_NACK),
+				cache.lockPoolScore(queue, LOCK_ACK),
+				cache.lockPoolScore(queue, LOCK_NACK),
+			},
 			idList[index.Low:index.High]...,
 		)
 
@@ -157,25 +172,27 @@ func (cache *RedisCache) Remove(ctx context.Context, queue string, ids ...string
 	return total, nil
 }
 
-func (cache *RedisCache) ListQueues(ctx context.Context, pattern string, poolType entities.PoolType) (queues []string, err error) {
-	execStart := time.Now()
+// TODO: This should be optimized.
+// TODO: We should list queues using storage with iterator, and not redis. Rethink this usage
+func (cache *RedisCache) ListQueues(ctx context.Context, pattern string, poolType pool.PoolType) (queues []string, err error) {
+	execStart := dtime.Now()
 	defer func() {
-		metrics.CacheLatency.Record(ctx, utils.ElapsedTime(execStart), attribute.String("op", "list_queue"))
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), attribute.String("op", "list_queue"))
 	}()
 
 	var searchPattern string
 
 	switch poolType {
-	case entities.PRIMARY_POOL:
+	case pool.PRIMARY_POOL:
 		searchPattern = cache.activePool(pattern)
 
-	case entities.PROCESSING_POOL:
+	case pool.PROCESSING_POOL:
 		searchPattern = cache.processingPool(pattern)
 
-	case entities.LOCK_ACK_POOL:
+	case pool.LOCK_ACK_POOL:
 		searchPattern = cache.lockPool(pattern, LOCK_ACK)
 
-	case entities.LOCK_NACK_POOL:
+	case pool.LOCK_NACK_POOL:
 		searchPattern = cache.lockPool(pattern, LOCK_NACK)
 	}
 
@@ -189,13 +206,13 @@ func (cache *RedisCache) ListQueues(ctx context.Context, pattern string, poolTyp
 
 	var regex *regexp.Regexp
 	switch poolType {
-	case entities.PROCESSING_POOL:
+	case pool.PROCESSING_POOL:
 		regex = PROCESSING_POOL_REGEX
 
-	case entities.LOCK_ACK_POOL:
+	case pool.LOCK_ACK_POOL:
 		regex = LOCK_ACK_POOL_REGEX
 
-	case entities.LOCK_NACK_POOL:
+	case pool.LOCK_NACK_POOL:
 		regex = LOCK_NACK_POOL_REGEX
 	}
 
@@ -209,7 +226,7 @@ func (cache *RedisCache) ListQueues(ctx context.Context, pattern string, poolTyp
 		data[i] = queue
 	}
 
-	if entities.PRIMARY_POOL == poolType {
+	if pool.PRIMARY_POOL == poolType {
 		return filterQueueSuffix(data), nil
 	}
 
@@ -232,20 +249,28 @@ func filterQueueSuffix(data []string) []string {
 			continue
 		}
 
+		if strings.HasSuffix(data[i], LOCK_NACK_SCORE_SUFFIX) {
+			continue
+		}
+
+		if strings.HasSuffix(data[i], LOCK_ACK_SCORE_SUFFIX) {
+			continue
+		}
+
 		result = append(result, data[i])
 	}
 
 	return result
 }
 
-func (cache *RedisCache) MakeAvailable(ctx context.Context, message *entities.Message) (bool, error) {
+func (cache *RedisCache) MakeAvailable(ctx context.Context, message *message.Message) (bool, error) {
 	if message.Queue == "" {
 		return false, errors.New("invalid message queue")
 	}
 
-	execStart := time.Now()
+	execStart := dtime.Now()
 	defer func() {
-		metrics.CacheLatency.Record(ctx, utils.ElapsedTime(execStart), attribute.String("op", "make_available"))
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), attribute.String("op", "make_available"))
 	}()
 
 	cmd := cache.scripts[moveElement].Run(
@@ -263,31 +288,29 @@ func (cache *RedisCache) MakeAvailable(ctx context.Context, message *entities.Me
 	return cmd.Val().(int64) == 1, nil
 }
 
-func (cache *RedisCache) LockMessage(ctx context.Context, message *entities.Message, lockType LockType) (bool, error) {
+func (cache *RedisCache) LockMessage(ctx context.Context, message *message.Message, lockType LockType) (bool, error) {
 	if message.Queue == "" {
 		return false, errors.New("invalid queue to lock")
 	}
 
 	if message.LockMs <= 0 {
-		return false, errors.New("invalid lock seconds")
+		return false, errors.New("invalid lock time")
 	}
 
-	now := time.Now()
-	nowMs := utils.TimeToMs(&now)
+	lockScore := dtime.NowMs() + message.LockMs
 
-	score := nowMs + message.LockMs
-
-	execStart := time.Now()
+	execStart := dtime.Now()
 	defer func() {
-		metrics.CacheLatency.Record(ctx, utils.ElapsedTime(execStart), attribute.String("op", "lock"))
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), attribute.String("op", "lock"))
 	}()
 
-	cmd := cache.scripts[moveElement].Run(
+	cmd := cache.scripts[lockElement].Run(
 		context.Background(),
 		cache.Client,
-		[]string{cache.lockPool(message.Queue, lockType), cache.processingPool(message.Queue)},
-		score,
+		[]string{cache.processingPool(message.Queue), cache.lockPool(message.Queue, lockType), cache.lockPoolScore(message.Queue, lockType)},
+		lockScore,
 		message.ID,
+		message.Score,
 	)
 
 	if cmd.Err() != nil {
@@ -298,24 +321,22 @@ func (cache *RedisCache) LockMessage(ctx context.Context, message *entities.Mess
 }
 
 func (cache *RedisCache) UnlockMessages(ctx context.Context, queue string, lockType LockType) ([]string, error) {
-	now := time.Now()
-	nowTime := utils.TimeToMs(&now)
+	defaultScore := score.Min
 
-	newScore := entities.MaxScore()
 	if lockType == LOCK_ACK {
-		newScore = entities.GetScore(&now, 0)
+		defaultScore = score.GetScoreByDefaultAlgorithm()
 	}
 
-	execStart := time.Now()
+	execStart := dtime.Now()
 	defer func() {
-		metrics.CacheLatency.Record(ctx, utils.ElapsedTime(execStart), attribute.String("op", "unlock_messages"))
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), attribute.String("op", "unlock_messages"))
 	}()
 
-	cmd := cache.scripts[moveFilteredElements].Run(
+	cmd := cache.scripts[unlockElements].Run(
 		context.Background(),
 		cache.Client,
-		[]string{cache.activePool(queue), cache.lockPool(queue, lockType)},
-		nowTime, newScore, 1000,
+		[]string{cache.lockPool(queue, lockType), cache.activePool(queue), cache.lockPoolScore(queue, lockType)},
+		1000, dtime.NowMs(), defaultScore,
 	)
 
 	return parseResult(cmd)
@@ -324,13 +345,13 @@ func (cache *RedisCache) UnlockMessages(ctx context.Context, queue string, lockT
 func (cache *RedisCache) PullMessages(ctx context.Context, queue string, n int64, minScore *float64, maxScore *float64) (ids []string, err error) {
 	var cmd *redis.Cmd
 
-	now := time.Now()
+	now := dtime.Now()
 	defer func() {
-		metrics.CacheLatency.Record(ctx, utils.ElapsedTime(now), attribute.String("op", "pull"))
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "pull"))
 	}()
 
 	args := []any{
-		n, utils.TimeToMs(&now),
+		n, dtime.TimeToMs(&now),
 	}
 
 	if minScore != nil {
@@ -390,25 +411,25 @@ func resultToIds(result interface{}) []string {
 }
 
 func (cache *RedisCache) TimeoutMessages(ctx context.Context, queue string, timeout time.Duration) ([]string, error) {
-	nowMinusTimeout := time.Now().Add(-1 * timeout)
-	timeoutTime := utils.TimeToMs(&nowMinusTimeout)
+	nowMinusTimeout := dtime.Now().Add(-1 * timeout)
+	timeoutTime := dtime.TimeToMs(&nowMinusTimeout)
 
-	execStart := time.Now()
+	execStart := dtime.Now()
 	defer func() {
-		metrics.CacheLatency.Record(ctx, utils.ElapsedTime(execStart), attribute.String("op", "timeout"))
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), attribute.String("op", "timeout"))
 	}()
 
 	cmd := cache.scripts[moveFilteredElements].Run(
 		context.Background(),
 		cache.Client,
 		[]string{cache.activePool(queue), cache.processingPool(queue)},
-		timeoutTime, entities.MaxScore(), 1000,
+		timeoutTime, score.Min, 1000,
 	)
 
 	return parseResult(cmd)
 }
 
-func (cache *RedisCache) Insert(ctx context.Context, queue string, messages ...*entities.Message) ([]string, error) {
+func (cache *RedisCache) Insert(ctx context.Context, queue string, messages ...*message.Message) ([]string, error) {
 	for i := range messages {
 		if messages[i].Queue != queue {
 			return nil, errors.New("invalid queue to insert data")
@@ -431,9 +452,9 @@ func (cache *RedisCache) Insert(ctx context.Context, queue string, messages ...*
 
 		var cmd *redis.Cmd
 		func() {
-			execStart := time.Now()
+			execStart := dtime.Now()
 			defer func() {
-				metrics.CacheLatency.Record(ctx, utils.ElapsedTime(execStart), attribute.String("op", "insert"))
+				metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), attribute.String("op", "insert"))
 			}()
 
 			cmd = cache.scripts[addElements].Run(
@@ -457,9 +478,9 @@ func (cache *RedisCache) Insert(ctx context.Context, queue string, messages ...*
 }
 
 func (cache *RedisCache) IsProcessing(ctx context.Context, queue string, id string) (bool, error) {
-	execStart := time.Now()
+	execStart := dtime.Now()
 	defer func() {
-		metrics.CacheLatency.Record(ctx, utils.ElapsedTime(execStart), attribute.String("op", "is_processing"))
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), attribute.String("op", "is_processing"))
 	}()
 
 	return cache.containsElement(ctx, cache.processingPool(queue), id)
@@ -480,9 +501,9 @@ func (cache *RedisCache) containsElement(ctx context.Context, queuePool string, 
 }
 
 func (cache *RedisCache) Get(ctx context.Context, key string) (string, error) {
-	execStart := time.Now()
+	execStart := dtime.Now()
 	defer func() {
-		metrics.CacheLatency.Record(ctx, utils.ElapsedTime(execStart), attribute.String("op", "get"))
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), attribute.String("op", "get"))
 	}()
 
 	cmd := cache.Client.Get(context.Background(), fmt.Sprint("deckard:", key))
@@ -500,9 +521,9 @@ func (cache *RedisCache) Get(ctx context.Context, key string) (string, error) {
 }
 
 func (cache *RedisCache) Set(ctx context.Context, key string, value string) error {
-	execStart := time.Now()
+	execStart := dtime.Now()
 	defer func() {
-		metrics.CacheLatency.Record(ctx, utils.ElapsedTime(execStart), attribute.String("op", "set"))
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), attribute.String("op", "set"))
 	}()
 
 	cmd := cache.Client.Set(context.Background(), fmt.Sprint("deckard:", key), value, 0)
@@ -531,4 +552,11 @@ func (cache *RedisCache) processingPool(queue string) string {
 // lockPool returns the name of the lock pool of messages.
 func (cache *RedisCache) lockPool(queue string, lockType LockType) string {
 	return POOL_PREFIX + queue + ":" + string(lockType)
+}
+
+// lockPool returns the name of the lock pool scores of messages.
+//
+// used to unlock messages with a predefined score.
+func (cache *RedisCache) lockPoolScore(queue string, lockType LockType) string {
+	return POOL_PREFIX + queue + ":" + string(lockType) + ":score"
 }

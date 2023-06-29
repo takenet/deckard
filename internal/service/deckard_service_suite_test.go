@@ -9,7 +9,7 @@ import (
 	"github.com/takenet/deckard"
 	"github.com/takenet/deckard/internal/queue"
 	"github.com/takenet/deckard/internal/queue/cache"
-	"github.com/takenet/deckard/internal/queue/entities"
+	"github.com/takenet/deckard/internal/queue/score"
 	"github.com/takenet/deckard/internal/queue/storage"
 )
 
@@ -63,11 +63,8 @@ func (suite *DeckardIntegrationTestSuite) TestAddMessageDefaultScoreIntegration(
 	require.NoError(suite.T(), err)
 
 	message := result.Messages[0]
-	score := message.Score
-	require.GreaterOrEqual(suite.T(), score, entities.GetScore(&start, 0))
-
-	after := time.Now()
-	require.LessOrEqual(suite.T(), score, entities.GetScore(&after, 0))
+	require.GreaterOrEqual(suite.T(), message.Score, score.GetScoreFromTime(&start))
+	require.LessOrEqual(suite.T(), message.Score, score.GetScoreByDefaultAlgorithm())
 
 	message.Score = 0
 

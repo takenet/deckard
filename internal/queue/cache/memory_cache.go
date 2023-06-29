@@ -7,36 +7,46 @@ import (
 	"sync"
 	"time"
 
-	"github.com/takenet/deckard/internal/queue/entities"
+	"github.com/takenet/deckard/internal/dtime"
+	"github.com/takenet/deckard/internal/queue/message"
+	"github.com/takenet/deckard/internal/queue/pool"
+	"github.com/takenet/deckard/internal/queue/score"
 	"github.com/takenet/deckard/internal/queue/utils"
 )
 
 // MemoryStorage is an implementation of the Storage Interface using memory.
+// It was not made to be performant, but to be used in integration tests and in development.
 // Currently only insert and pull functions are implemented.
 type MemoryCache struct {
-	queues           map[string]*list.List
-	processingQueues map[string]*list.List
-	lockAckQueues    map[string]*list.List
-	lockNackQueues   map[string]*list.List
-	lock             *sync.Mutex
-	keys             map[string]string
+	queues               map[string]*list.List
+	processingQueues     map[string]*list.List
+	lockAckQueues        map[string]*list.List
+	lockNackQueues       map[string]*list.List
+	lockAckQueuesScores  map[string]*float64
+	lockNackQueuesScores map[string]*float64
+	lock                 *sync.Mutex
+	keys                 map[string]string
 }
 
 type MemoryMessageEntry struct {
 	score float64
 	id    string
+
+	lockUntil float64
 }
 
 var _ Cache = &MemoryCache{}
 
 func NewMemoryCache() *MemoryCache {
 	return &MemoryCache{
-		queues:           make(map[string]*list.List),
-		processingQueues: make(map[string]*list.List),
-		lockAckQueues:    make(map[string]*list.List),
-		lockNackQueues:   make(map[string]*list.List),
-		keys:             make(map[string]string),
-		lock:             &sync.Mutex{},
+		queues:               make(map[string]*list.List),
+		processingQueues:     make(map[string]*list.List),
+		lockAckQueues:        make(map[string]*list.List),
+		lockNackQueues:       make(map[string]*list.List),
+		lockAckQueuesScores:  make(map[string]*float64),
+		lockNackQueuesScores: make(map[string]*float64),
+		keys:                 make(map[string]string),
+		lock:                 &sync.Mutex{},
 	}
 }
 
@@ -111,7 +121,7 @@ func (cache *MemoryCache) removeFromSlice(_ context.Context, data *list.List, id
 	return count, data, nil
 }
 
-func (cache *MemoryCache) MakeAvailable(_ context.Context, message *entities.Message) (bool, error) {
+func (cache *MemoryCache) MakeAvailable(_ context.Context, message *message.Message) (bool, error) {
 	if message.Queue == "" {
 		return false, errors.New("invalid message queue")
 	}
@@ -131,7 +141,7 @@ func (cache *MemoryCache) MakeAvailable(_ context.Context, message *entities.Mes
 	return result, nil
 }
 
-func (cache *MemoryCache) ListQueues(ctx context.Context, pattern string, poolType entities.PoolType) (queues []string, err error) {
+func (cache *MemoryCache) ListQueues(ctx context.Context, pattern string, poolType pool.PoolType) (queues []string, err error) {
 	result := make([]string, 0)
 
 	cache.lock.Lock()
@@ -139,13 +149,13 @@ func (cache *MemoryCache) ListQueues(ctx context.Context, pattern string, poolTy
 
 	var queueMap *map[string]*list.List
 	switch poolType {
-	case entities.PRIMARY_POOL:
+	case pool.PRIMARY_POOL:
 		queueMap = &cache.queues
-	case entities.PROCESSING_POOL:
+	case pool.PROCESSING_POOL:
 		queueMap = &cache.processingQueues
-	case entities.LOCK_ACK_POOL:
+	case pool.LOCK_ACK_POOL:
 		queueMap = &cache.lockAckQueues
-	case entities.LOCK_NACK_POOL:
+	case pool.LOCK_NACK_POOL:
 		queueMap = &cache.lockNackQueues
 	}
 
@@ -162,7 +172,7 @@ func (cache *MemoryCache) ListQueues(ctx context.Context, pattern string, poolTy
 	return result, nil
 }
 
-func (cache *MemoryCache) LockMessage(_ context.Context, message *entities.Message, lockType LockType) (bool, error) {
+func (cache *MemoryCache) LockMessage(_ context.Context, message *message.Message, lockType LockType) (bool, error) {
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
 
@@ -184,7 +194,7 @@ func (cache *MemoryCache) LockMessage(_ context.Context, message *entities.Messa
 	cache.processingQueues[message.Queue], result = removeEntry(entry, cache.processingQueues[message.Queue])
 
 	if result {
-		entry.score = float64(utils.NowMs() + message.LockMs)
+		entry.lockUntil = float64(dtime.NowMs() + message.LockMs)
 
 		switch lockType {
 		case LOCK_ACK:
@@ -201,18 +211,18 @@ func (cache *MemoryCache) UnlockMessages(ctx context.Context, queue string, lock
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
 
-	var lockScore float64
+	var defaultScore float64
 	var data map[string]*list.List
 	if lockType == LOCK_ACK {
 		data = cache.lockAckQueues
-		lockScore = float64(utils.NowMs())
+		defaultScore = score.GetScoreByDefaultAlgorithm()
 
 	} else {
 		data = cache.lockNackQueues
-		lockScore = 0
+		defaultScore = score.Min
 	}
 
-	nowMs := utils.NowMs()
+	nowMs := dtime.NowMs()
 
 	unlockedMessages := make([]string, 0)
 	for queue := range data {
@@ -225,10 +235,12 @@ func (cache *MemoryCache) UnlockMessages(ctx context.Context, queue string, lock
 		for e := list.Front(); e != nil; e = e.Next() {
 			value := e.Value.(*MemoryMessageEntry)
 
-			if nowMs >= int64(value.score) {
+			if nowMs >= int64(value.lockUntil) {
 				list.Remove(e)
 
-				value.score = lockScore
+				if score.IsUndefined(value.score) {
+					value.score = defaultScore
+				}
 
 				cache.queues[queue], _ = insertEntry(value, cache.queues[queue])
 
@@ -274,7 +286,7 @@ func (cache *MemoryCache) PullMessages(ctx context.Context, queue string, n int6
 
 		processingEntry := &MemoryMessageEntry{
 			id:    entry.id,
-			score: float64(time.Now().Unix()),
+			score: float64(dtime.Now().Unix()),
 		}
 
 		cache.processingQueues[queue], _ = insertEntry(processingEntry, cache.processingQueues[queue])
@@ -297,7 +309,7 @@ func (cache *MemoryCache) TimeoutMessages(_ context.Context, queue string, timeo
 		return nil, nil
 	}
 
-	timeoutTime := time.Now().Add(-1 * timeout).Unix()
+	timeoutTime := dtime.Now().Add(-1 * timeout).Unix()
 
 	count := int64(0)
 
@@ -306,7 +318,7 @@ func (cache *MemoryCache) TimeoutMessages(_ context.Context, queue string, timeo
 		value := e.Value.(*MemoryMessageEntry)
 
 		if value.score <= float64(timeoutTime) {
-			value.score = entities.MaxScore()
+			value.score = score.Min
 
 			result = append(result, value.id)
 
@@ -319,7 +331,7 @@ func (cache *MemoryCache) TimeoutMessages(_ context.Context, queue string, timeo
 	return result, nil
 }
 
-func (cache *MemoryCache) Insert(ctx context.Context, queue string, messages ...*entities.Message) ([]string, error) {
+func (cache *MemoryCache) Insert(ctx context.Context, queue string, messages ...*message.Message) ([]string, error) {
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
 
@@ -330,7 +342,7 @@ func (cache *MemoryCache) Insert(ctx context.Context, queue string, messages ...
 	}
 
 	insertIds := make([]string, 0)
-	insertions := make([]*entities.Message, 0)
+	insertions := make([]*message.Message, 0)
 	for _, message := range messages {
 		isPresent := cache.isPresentOnAnyPool(ctx, queue, message.ID)
 
@@ -349,7 +361,7 @@ func (cache *MemoryCache) Insert(ctx context.Context, queue string, messages ...
 	return insertIds, nil
 }
 
-func createEntry(message *entities.Message) *MemoryMessageEntry {
+func createEntry(message *message.Message) *MemoryMessageEntry {
 	return &MemoryMessageEntry{
 		id:    message.ID,
 		score: message.Score,

@@ -9,7 +9,8 @@ import (
 
 	"github.com/elliotchance/orderedmap/v2"
 	"github.com/takenet/deckard/internal/logger"
-	"github.com/takenet/deckard/internal/queue/entities"
+	"github.com/takenet/deckard/internal/queue/configuration"
+	"github.com/takenet/deckard/internal/queue/message"
 )
 
 type Type string
@@ -22,21 +23,21 @@ const (
 // Storage is an interface that stores the messages that have to be routed.
 // It contains all Data of the message and is used as a storage only.
 type Storage interface {
-	Insert(ctx context.Context, messages ...*entities.Message) (inserted int64, updated int64, err error)
+	Insert(ctx context.Context, messages ...*message.Message) (inserted int64, updated int64, err error)
 
-	Find(ctx context.Context, opt *FindOptions) ([]entities.Message, error)
+	Find(ctx context.Context, opt *FindOptions) ([]message.Message, error)
 	Remove(ctx context.Context, queue string, ids ...string) (deleted int64, err error)
-	Ack(ctx context.Context, message *entities.Message) (modifiedCount int64, err error)
+	Ack(ctx context.Context, message *message.Message) (modifiedCount int64, err error)
 
 	ListQueueNames(ctx context.Context) (queues []string, err error)
 	ListQueuePrefixes(ctx context.Context) (queues []string, err error)
 	Count(ctx context.Context, opt *FindOptions) (int64, error)
 
-	GetStringInternalId(ctx context.Context, message *entities.Message) string
+	GetStringInternalId(ctx context.Context, message *message.Message) string
 
-	EditQueueConfiguration(ctx context.Context, configuration *entities.QueueConfiguration) error
-	GetQueueConfiguration(ctx context.Context, queue string) (*entities.QueueConfiguration, error)
-	ListQueueConfigurations(ctx context.Context) ([]*entities.QueueConfiguration, error)
+	EditQueueConfiguration(ctx context.Context, configuration *configuration.QueueConfiguration) error
+	GetQueueConfiguration(ctx context.Context, queue string) (*configuration.QueueConfiguration, error)
+	ListQueueConfigurations(ctx context.Context) ([]*configuration.QueueConfiguration, error)
 
 	// Available to cleanup tests
 	Flush(ctx context.Context) (deletedCount int64, err error)

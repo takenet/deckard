@@ -11,11 +11,12 @@ import (
 
 	"github.com/elliotchance/orderedmap/v2"
 	"github.com/takenet/deckard/internal/config"
+	"github.com/takenet/deckard/internal/dtime"
 	"github.com/takenet/deckard/internal/logger"
 	"github.com/takenet/deckard/internal/metrics"
 	"github.com/takenet/deckard/internal/project"
-	"github.com/takenet/deckard/internal/queue/entities"
-	"github.com/takenet/deckard/internal/queue/utils"
+	"github.com/takenet/deckard/internal/queue/configuration"
+	"github.com/takenet/deckard/internal/queue/message"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -41,7 +42,7 @@ func NewMongoStorage(ctx context.Context) (*MongoStorage, error) {
 
 	logger.S(ctx).Debug("Connecting to ", mongoSecondaryOpts.Hosts, " MongoDB instance(s).")
 
-	start := time.Now()
+	start := dtime.Now()
 
 	mongoSecondaryOpts.SetReadPreference(readpref.SecondaryPreferred())
 	clientSecondaryPreference, err := waitForClient(ctx, mongoSecondaryOpts)
@@ -157,7 +158,7 @@ func createClient(ctx context.Context, opts *options.ClientOptions) (*mongo.Clie
 	return client, nil
 }
 
-func (storage *MongoStorage) EditQueueConfiguration(ctx context.Context, configuration *entities.QueueConfiguration) error {
+func (storage *MongoStorage) EditQueueConfiguration(ctx context.Context, configuration *configuration.QueueConfiguration) error {
 	set := bson.M{}
 
 	maxElements := configuration.MaxElements
@@ -173,9 +174,9 @@ func (storage *MongoStorage) EditQueueConfiguration(ctx context.Context, configu
 		return nil
 	}
 
-	now := time.Now()
+	now := dtime.Now()
 	defer func() {
-		metrics.StorageLatency.Record(ctx, utils.ElapsedTime(now), attribute.String("op", "edit_configuration"))
+		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "edit_configuration"))
 	}()
 
 	upsert := true
@@ -195,10 +196,10 @@ func (storage *MongoStorage) EditQueueConfiguration(ctx context.Context, configu
 	return updateErr
 }
 
-func (storage *MongoStorage) ListQueueConfigurations(ctx context.Context) ([]*entities.QueueConfiguration, error) {
-	now := time.Now()
+func (storage *MongoStorage) ListQueueConfigurations(ctx context.Context) ([]*configuration.QueueConfiguration, error) {
+	now := dtime.Now()
 	defer func() {
-		metrics.StorageLatency.Record(ctx, utils.ElapsedTime(now), attribute.String("op", "list_configuration"))
+		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "list_configuration"))
 	}()
 
 	cursor, err := storage.queueConfigurationCollection.Find(context.Background(), bson.M{})
@@ -207,7 +208,7 @@ func (storage *MongoStorage) ListQueueConfigurations(ctx context.Context) ([]*en
 		return nil, fmt.Errorf("error finding queue configurations: %w", err)
 	}
 
-	configurations := make([]*entities.QueueConfiguration, 0)
+	configurations := make([]*configuration.QueueConfiguration, 0)
 
 	cursorErr := cursor.All(context.Background(), &configurations)
 
@@ -218,13 +219,13 @@ func (storage *MongoStorage) ListQueueConfigurations(ctx context.Context) ([]*en
 	return configurations, nil
 }
 
-func (storage *MongoStorage) GetQueueConfiguration(ctx context.Context, queue string) (*entities.QueueConfiguration, error) {
-	now := time.Now()
+func (storage *MongoStorage) GetQueueConfiguration(ctx context.Context, queue string) (*configuration.QueueConfiguration, error) {
+	now := dtime.Now()
 	defer func() {
-		metrics.StorageLatency.Record(ctx, utils.ElapsedTime(now), attribute.String("op", "find_configuration"))
+		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "find_configuration"))
 	}()
 
-	var configuration entities.QueueConfiguration
+	var configuration configuration.QueueConfiguration
 
 	err := storage.queueConfigurationCollection.FindOne(
 		context.Background(),
@@ -245,9 +246,9 @@ func (storage *MongoStorage) GetQueueConfiguration(ctx context.Context, queue st
 }
 
 func (storage *MongoStorage) Flush(ctx context.Context) (int64, error) {
-	now := time.Now()
+	now := dtime.Now()
 	defer func() {
-		metrics.StorageLatency.Record(ctx, utils.ElapsedTime(now), attribute.String("op", "flush"))
+		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "flush"))
 	}()
 
 	result, err := storage.messagesCollection.DeleteMany(context.Background(), bson.M{})
@@ -268,9 +269,9 @@ func (storage *MongoStorage) Flush(ctx context.Context) (int64, error) {
 }
 
 func (storage *MongoStorage) Count(ctx context.Context, opt *FindOptions) (int64, error) {
-	now := time.Now()
+	now := dtime.Now()
 	defer func() {
-		metrics.StorageLatency.Record(ctx, utils.ElapsedTime(now), attribute.String("op", "count"))
+		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "count"))
 	}()
 
 	mongoFilter, err := getMongoMessage(opt)
@@ -291,18 +292,18 @@ func (storage *MongoStorage) Count(ctx context.Context, opt *FindOptions) (int64
 }
 
 func (storage *MongoStorage) ListQueueNames(ctx context.Context) (queues []string, err error) {
-	now := time.Now()
+	now := dtime.Now()
 	defer func() {
-		metrics.StorageLatency.Record(ctx, utils.ElapsedTime(now), attribute.String("op", "list_queue"))
+		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "list_queue"))
 	}()
 
 	return storage.distinct(ctx, "queue")
 }
 
 func (storage *MongoStorage) ListQueuePrefixes(ctx context.Context) (queues []string, err error) {
-	now := time.Now()
+	now := dtime.Now()
 	defer func() {
-		metrics.StorageLatency.Record(ctx, utils.ElapsedTime(now), attribute.String("op", "list_queue_prefix"))
+		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "list_queue_prefix"))
 	}()
 
 	return storage.distinct(ctx, "queue_prefix")
@@ -330,7 +331,7 @@ func (storage *MongoStorage) distinct(ctx context.Context, field string) (data [
 
 // Find returns a cursor with the specified projection for fetching
 // all valid messages sorted by its ascending insertion date.
-func (storage *MongoStorage) Find(ctx context.Context, opt *FindOptions) ([]entities.Message, error) {
+func (storage *MongoStorage) Find(ctx context.Context, opt *FindOptions) ([]message.Message, error) {
 	if opt == nil {
 		opt = &FindOptions{}
 	}
@@ -361,9 +362,9 @@ func (storage *MongoStorage) Find(ctx context.Context, opt *FindOptions) ([]enti
 		"sort", findOptions.Sort,
 		"projection", findOptions.Projection)
 
-	now := time.Now()
+	now := dtime.Now()
 	defer func() {
-		metrics.StorageLatency.Record(ctx, utils.ElapsedTime(now), attribute.String("op", "find"), attribute.String("retry", strconv.FormatBool(opt.Retry)))
+		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "find"), attribute.String("retry", strconv.FormatBool(opt.Retry)))
 	}()
 
 	collection := storage.messagesCollection
@@ -376,7 +377,7 @@ func (storage *MongoStorage) Find(ctx context.Context, opt *FindOptions) ([]enti
 		return nil, fmt.Errorf("error finding storage elements: %w", err)
 	}
 
-	messages := make([]entities.Message, 0, opt.Limit)
+	messages := make([]message.Message, 0, opt.Limit)
 
 	cursorErr := cursor.All(context.Background(), &messages)
 
@@ -402,9 +403,9 @@ func (storage *MongoStorage) Remove(ctx context.Context, queue string, ids ...st
 
 	logger.S(ctx).Debugw("Storage operation: delete many operation.", "filter", filter)
 
-	now := time.Now()
+	now := dtime.Now()
 	defer func() {
-		metrics.StorageLatency.Record(ctx, utils.ElapsedTime(now), attribute.String("op", "remove"))
+		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "remove"))
 	}()
 
 	res, err := storage.messagesCollection.DeleteMany(context.Background(), filter)
@@ -415,10 +416,10 @@ func (storage *MongoStorage) Remove(ctx context.Context, queue string, ids ...st
 	return res.DeletedCount, nil
 }
 
-func (storage *MongoStorage) Insert(ctx context.Context, messages ...*entities.Message) (insertedCount int64, modifiedCount int64, err error) {
+func (storage *MongoStorage) Insert(ctx context.Context, messages ...*message.Message) (insertedCount int64, modifiedCount int64, err error) {
 	updates := make([]mongo.WriteModel, 0, len(messages))
 
-	now := time.Now()
+	now := dtime.Now()
 
 	upsert := true
 	for _, q := range messages {
@@ -474,7 +475,7 @@ func (storage *MongoStorage) Insert(ctx context.Context, messages ...*entities.M
 	}
 
 	defer func() {
-		metrics.StorageLatency.Record(ctx, utils.ElapsedTime(now), attribute.String("op", "insert"))
+		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "insert"))
 	}()
 
 	res, err := storage.messagesCollection.BulkWrite(context.Background(), updates, options.BulkWrite().SetOrdered(false))
@@ -486,10 +487,10 @@ func (storage *MongoStorage) Insert(ctx context.Context, messages ...*entities.M
 }
 
 // Ack updates the messages on mongostorage with updated status and score.
-func (storage *MongoStorage) Ack(ctx context.Context, message *entities.Message) (modifiedCount int64, err error) {
-	now := time.Now()
+func (storage *MongoStorage) Ack(ctx context.Context, message *message.Message) (modifiedCount int64, err error) {
+	now := dtime.Now()
 	defer func() {
-		metrics.StorageLatency.Record(ctx, utils.ElapsedTime(now), attribute.String("op", "ack"))
+		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "ack"))
 	}()
 
 	filter := bson.M{
@@ -608,7 +609,7 @@ func getMongoMessage(opt *FindOptions) (bson.M, error) {
 	return mongoFilter, nil
 }
 
-func (storage *MongoStorage) GetStringInternalId(_ context.Context, message *entities.Message) string {
+func (storage *MongoStorage) GetStringInternalId(_ context.Context, message *message.Message) string {
 	if message.InternalId == nil {
 		return ""
 	}

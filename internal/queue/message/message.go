@@ -1,23 +1,12 @@
-package entities
+package message
 
 import (
 	"strings"
 	"time"
 
-	"github.com/takenet/deckard/internal/queue/utils"
+	"github.com/takenet/deckard/internal/queue/pool"
 	"google.golang.org/protobuf/types/known/anypb"
 )
-
-type PoolType string
-
-const (
-	PRIMARY_POOL    PoolType = "primary_pool"
-	PROCESSING_POOL PoolType = "processing_pool"
-	LOCK_ACK_POOL   PoolType = "lock_ack_pool"
-	LOCK_NACK_POOL  PoolType = "lock_nack_pool"
-)
-
-const QUEUE_SEPARATOR = "::"
 
 // Message contains all data related to a single message. Including telemetry data.
 type Message struct {
@@ -56,12 +45,14 @@ type Message struct {
 	// Internal fields are managed by the Deckard itself and should not manually inserted on storage.
 
 	// The internal storage id for this message
+	// For MongoDB storage it is the _id field as primitive.ObjectID
+	// For Memory storage it is an int64
 	InternalId interface{} `json:"_id,omitempty" bson:"_id,omitempty"`
 
-	// Score defines the priority of this message and is calculate with UpdateScore method.
+	// Score defines the score priority of this message.
 	Score float64 `json:"score" bson:"score"`
 
-	// Represents the result from the last time this message has been processed.
+	// Represents the result from the last time this message has been processed successfully (acknowledged).
 	LastUsage         *time.Time `json:"last_usage,omitempty" bson:"last_usage,omitempty"`
 	Breakpoint        string     `json:"breakpoint" bson:"breakpoint"`
 	LastScoreSubtract float64    `json:"last_score_subtract" bson:"last_score_subtract"`
@@ -77,44 +68,16 @@ type Message struct {
 	QueueSuffix string `json:"queue_suffix" bson:"queue_suffix"`
 }
 
-// MaxScore is the biggest possible score a message could have.
-// Since our base implementation is the Redis, its sorted set are ascendant and 0 is the biggest score.
-// FIXME: TODO: remove this function
-func MaxScore() float64 {
-	return 0
-}
-
-func (q *Message) UpdateScore() {
-	q.Score = GetScore(q.LastUsage, q.LastScoreSubtract)
-}
-
-// GetScore returns the seconds since the unix epoch of the last usage minus the last score subtract.
-// The idea here is to give priority to messages that have not been used for a long time and also allow users to modify personalize the priority algorithm.
-// TODO: FIXME: remove this function
-func GetScore(usageTime *time.Time, scoreSubtract float64) float64 {
-	if usageTime == nil {
-		return MaxScore()
-	}
-
-	usageMillis := float64(utils.TimeToMs(usageTime))
-
-	if scoreSubtract == 0 {
-		return usageMillis
-	}
-
-	return usageMillis - scoreSubtract
-}
-
 func (q *Message) GetQueueParts() (prefix string, suffix string) {
 	return GetQueueParts(q.Queue)
 }
 
 func GetQueueParts(queue string) (prefix string, suffix string) {
-	if !strings.Contains(queue, QUEUE_SEPARATOR) {
+	if !strings.Contains(queue, pool.QUEUE_SEPARATOR) {
 		return queue, ""
 	}
 
-	data := strings.SplitN(queue, QUEUE_SEPARATOR, 2)
+	data := strings.SplitN(queue, pool.QUEUE_SEPARATOR, 2)
 
 	return data[0], data[1]
 }

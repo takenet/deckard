@@ -17,10 +17,12 @@ import (
 	"github.com/takenet/deckard"
 	"github.com/takenet/deckard/internal/audit"
 	"github.com/takenet/deckard/internal/config"
+	"github.com/takenet/deckard/internal/dtime"
 	"github.com/takenet/deckard/internal/mocks"
 	"github.com/takenet/deckard/internal/queue"
 	"github.com/takenet/deckard/internal/queue/cache"
-	"github.com/takenet/deckard/internal/queue/entities"
+	"github.com/takenet/deckard/internal/queue/message"
+	"github.com/takenet/deckard/internal/queue/score"
 	"github.com/takenet/deckard/internal/queue/storage"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -341,16 +343,20 @@ func TestAck(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
+	testTime := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	defer dtime.SetNowProviderValues(testTime)()
+
 	mockQueue := mocks.NewMockDeckardQueue(mockCtrl)
 	mockQueue.EXPECT().Ack(
 		ctx,
-		&entities.Message{
+		&message.Message{
 			ID:                "1234567",
 			Queue:             "queue",
 			LastScoreSubtract: 431,
 			Breakpoint:        "54325345",
+			LastUsage:         &testTime,
+			Score:             score.GetScoreFromTime(&testTime) - 431,
 		},
-		gomock.AssignableToTypeOf(time.Time{}),
 		"reason_test",
 	).Return(true, nil)
 
@@ -370,16 +376,21 @@ func TestAckPoolError(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
+	testTime := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	defer dtime.SetNowProviderValues(testTime)()
+
+	// FIXME: mock internal time.Now and add to the message expected time
 	mockQueue := mocks.NewMockDeckardQueue(mockCtrl)
 	mockQueue.EXPECT().Ack(
 		ctx,
-		&entities.Message{
+		&message.Message{
 			ID:                "1234567",
 			Queue:             "queue",
 			LastScoreSubtract: 431,
+			LastUsage:         &testTime,
 			Breakpoint:        "54325345",
+			Score:             score.GetScoreFromTime(&testTime) - 431,
 		},
-		gomock.AssignableToTypeOf(time.Time{}),
 		"reason_test",
 	).Return(false, errors.New("pool error"))
 
@@ -402,7 +413,7 @@ func TestNack(t *testing.T) {
 	mockQueue := mocks.NewMockDeckardQueue(mockCtrl)
 	mockQueue.EXPECT().Nack(
 		ctx,
-		&entities.Message{
+		&message.Message{
 			ID:                "1234567",
 			Queue:             "queue",
 			LastScoreSubtract: 431,
@@ -431,7 +442,7 @@ func TestNackPoolError(t *testing.T) {
 	mockQueue := mocks.NewMockDeckardQueue(mockCtrl)
 	mockQueue.EXPECT().Nack(
 		ctx,
-		&entities.Message{
+		&message.Message{
 			ID:                "1234567",
 			Queue:             "queue",
 			LastScoreSubtract: 431,
@@ -579,7 +590,7 @@ func TestGetMessageById(t *testing.T) {
 			Ids:   &[]string{"123"},
 			Queue: "queue",
 		},
-	}).Return([]entities.Message{{
+	}).Return([]message.Message{{
 		ID:            "123",
 		Queue:         "queue",
 		StringPayload: "test",

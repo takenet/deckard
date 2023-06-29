@@ -6,12 +6,15 @@ import (
 
 	"github.com/elliotchance/orderedmap/v2"
 	"github.com/takenet/deckard/internal/audit"
+	"github.com/takenet/deckard/internal/dtime"
 	"github.com/takenet/deckard/internal/logger"
 	"github.com/takenet/deckard/internal/metrics"
 	"github.com/takenet/deckard/internal/queue/cache"
-	"github.com/takenet/deckard/internal/queue/entities"
+	"github.com/takenet/deckard/internal/queue/configuration"
+	"github.com/takenet/deckard/internal/queue/message"
+	"github.com/takenet/deckard/internal/queue/pool"
+	"github.com/takenet/deckard/internal/queue/score"
 	"github.com/takenet/deckard/internal/queue/storage"
-	"github.com/takenet/deckard/internal/queue/utils"
 	"github.com/takenet/deckard/internal/shutdown"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -21,13 +24,13 @@ import (
 // TODO: allow each queue to have its own deadline for timeout.
 // TODO: change the behavior of this so it doesn't need to load all queue names in memory, we could use the storage to list queues with a cursor
 // TODO: we could even change the timeout mechanism to be not based on the queue name
-func ProcessTimeoutMessages(ctx context.Context, pool *Queue) error {
-	t := time.Now()
+func ProcessTimeoutMessages(ctx context.Context, queue *Queue) error {
+	t := dtime.Now()
 
-	queues, err := pool.cache.ListQueues(ctx, "*", entities.PROCESSING_POOL)
+	queues, err := queue.cache.ListQueues(ctx, "*", pool.PROCESSING_POOL)
 
 	if err != nil {
-		logger.S(ctx).Error("Error list processing pool queues: ", err)
+		logger.S(ctx).Error("Error list processing queues: ", err)
 		return err
 	}
 
@@ -46,7 +49,7 @@ func ProcessTimeoutMessages(ctx context.Context, pool *Queue) error {
 			break
 		}
 
-		result, err := pool.TimeoutMessages(ctx, queueName)
+		result, err := queue.TimeoutMessages(ctx, queueName)
 
 		if err != nil {
 			logger.S(ctx).Errorf("Error processing timeouts for queue %s: %v", queueName, err)
@@ -70,15 +73,15 @@ func ProcessTimeoutMessages(ctx context.Context, pool *Queue) error {
 }
 
 // processLockPool moves messages from the lock message pool to the message pool.
-func ProcessLockPool(ctx context.Context, pool *Queue) {
-	lockAckQueues, err := pool.cache.ListQueues(ctx, "*", entities.LOCK_ACK_POOL)
+func ProcessLockPool(ctx context.Context, queue *Queue) {
+	lockAckQueues, err := queue.cache.ListQueues(ctx, "*", pool.LOCK_ACK_POOL)
 
 	if err != nil {
 		logger.S(ctx).Error("Error getting lock_ack queue names: ", err)
 		return
 	}
 
-	unlockMessages(ctx, pool, lockAckQueues, cache.LOCK_ACK)
+	unlockMessages(ctx, queue, lockAckQueues, cache.LOCK_ACK)
 
 	if shutdown.Ongoing() {
 		logger.S(ctx).Info("Shutdown started. Stopping unlock process.")
@@ -86,14 +89,14 @@ func ProcessLockPool(ctx context.Context, pool *Queue) {
 		return
 	}
 
-	lockNackQueues, err := pool.cache.ListQueues(ctx, "*", entities.LOCK_NACK_POOL)
+	lockNackQueues, err := queue.cache.ListQueues(ctx, "*", pool.LOCK_NACK_POOL)
 
 	if err != nil {
 		logger.S(ctx).Error("Error getting lock_nack queue names: ", err)
 		return
 	}
 
-	unlockMessages(ctx, pool, lockNackQueues, cache.LOCK_NACK)
+	unlockMessages(ctx, queue, lockNackQueues, cache.LOCK_NACK)
 }
 
 func unlockMessages(ctx context.Context, pool *Queue, queues []string, lockType cache.LockType) {
@@ -107,7 +110,7 @@ func unlockMessages(ctx context.Context, pool *Queue, queues []string, lockType 
 		ids, err := pool.cache.UnlockMessages(ctx, queues[i], lockType)
 
 		if err != nil {
-			logger.S(ctx).Errorf("Error processing locks for queue %s: %v", queues[i], err.Error())
+			logger.S(ctx).Errorf("Error processing locks for queue '%s': %v", queues[i], err.Error())
 
 			continue
 		}
@@ -121,7 +124,7 @@ func unlockMessages(ctx context.Context, pool *Queue, queues []string, lockType 
 			})
 		}
 
-		metrics.HousekeeperUnlock.Add(ctx, int64(len(ids)), attribute.String("queue", entities.GetQueuePrefix(queues[i])), attribute.String("lock_type", string(lockType)))
+		metrics.HousekeeperUnlock.Add(ctx, int64(len(ids)), attribute.String("queue", message.GetQueuePrefix(queues[i])), attribute.String("lock_type", string(lockType)))
 	}
 }
 
@@ -138,7 +141,7 @@ func isRecovering(ctx context.Context, pool *Queue) (bool, error) {
 
 // RecoveryMessagesPool recover messages pool sending all storage data to cache
 func RecoveryMessagesPool(ctx context.Context, pool *Queue) (metrify bool) {
-	t := time.Now()
+	t := dtime.Now()
 
 	breakpoint, err := pool.cache.Get(ctx, cache.RECOVERY_STORAGE_BREAKPOINT_KEY)
 	if err != nil {
@@ -196,9 +199,16 @@ func RecoveryMessagesPool(ctx context.Context, pool *Queue) (metrify bool) {
 	}
 
 	if len(messages) > 0 {
-		addMessages := make([]*entities.Message, len(messages))
+		addMessages := make([]*message.Message, len(messages))
 		for i := range messages {
 			addMessages[i] = &messages[i]
+
+			// TODO:
+			if messages[i].Score < score.Min {
+				messages[i].Score = score.Min
+			} else if messages[i].Score > score.Max {
+				messages[i].Score = score.Max
+			}
 		}
 
 		_, err := pool.AddMessagesToCacheWithAuditReason(ctx, "recovery", addMessages...)
@@ -322,8 +332,8 @@ func RemoveTTLMessages(ctx context.Context, pool *Queue, filterDate *time.Time) 
 			return true, err
 		}
 
-		metrics.HousekeeperTTLCacheRemoved.Add(ctx, cacheRemoved, attribute.String("queue", entities.GetQueuePrefix(queue)))
-		metrics.HousekeeperTTLStorageRemoved.Add(ctx, storageRemoved, attribute.String("queue", entities.GetQueuePrefix(queue)))
+		metrics.HousekeeperTTLCacheRemoved.Add(ctx, cacheRemoved, attribute.String("queue", message.GetQueuePrefix(queue)))
+		metrics.HousekeeperTTLStorageRemoved.Add(ctx, storageRemoved, attribute.String("queue", message.GetQueuePrefix(queue)))
 	}
 
 	return true, nil
@@ -358,7 +368,7 @@ func RemoveExceedingMessages(ctx context.Context, pool *Queue) (bool, error) {
 	return true, nil
 }
 
-func (pool *Queue) removeExceedingMessagesFromQueue(ctx context.Context, queueConfiguration *entities.QueueConfiguration) error {
+func (pool *Queue) removeExceedingMessagesFromQueue(ctx context.Context, queueConfiguration *configuration.QueueConfiguration) error {
 	if queueConfiguration == nil || queueConfiguration.MaxElements <= 0 {
 		return nil
 	}
@@ -414,8 +424,8 @@ func (pool *Queue) removeExceedingMessagesFromQueue(ctx context.Context, queueCo
 		return err
 	}
 
-	metrics.HousekeeperExceedingCacheRemoved.Add(ctx, cacheRemoved, attribute.String("queue", entities.GetQueuePrefix(queue)))
-	metrics.HousekeeperExceedingStorageRemoved.Add(ctx, storageRemoved, attribute.String("queue", entities.GetQueuePrefix(queue)))
+	metrics.HousekeeperExceedingCacheRemoved.Add(ctx, cacheRemoved, attribute.String("queue", message.GetQueuePrefix(queue)))
+	metrics.HousekeeperExceedingStorageRemoved.Add(ctx, storageRemoved, attribute.String("queue", message.GetQueuePrefix(queue)))
 
 	return nil
 }
@@ -457,7 +467,7 @@ func ComputeMetrics(ctx context.Context, pool *Queue) {
 		}
 
 		if len(message) == 1 && message[0].LastUsage != nil {
-			oldestElement[queue] = utils.ElapsedTime(*message[0].LastUsage)
+			oldestElement[queue] = dtime.ElapsedTime(*message[0].LastUsage)
 		}
 
 		total, err := pool.Count(ctx, &storage.FindOptions{

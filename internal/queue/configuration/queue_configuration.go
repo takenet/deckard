@@ -1,4 +1,4 @@
-package entities
+package configuration
 
 type QueueConfiguration struct {
 	// Queue is the identifier of this message.

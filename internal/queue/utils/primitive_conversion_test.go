@@ -2,7 +2,6 @@ package utils
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -47,33 +46,6 @@ func TestStrToBool(t *testing.T) {
 				t.Errorf("StrToBool() = %v, expected %v", got, tt.expected)
 			}
 		})
-	}
-}
-
-func TestElapsedTime(t *testing.T) {
-	// Create a time object that is 1 second in the past
-	since := time.Now().Add(-time.Second)
-
-	// Call the ElapsedTime function
-	got := ElapsedTime(since)
-
-	// Check if the result is within 1 millisecond of 1000
-	if got < 999 || got > 1001 {
-		t.Errorf("ElapsedTime() = %d, expected 1000 +/- 1", got)
-	}
-}
-
-func TestNowMs(t *testing.T) {
-	// Get the current time in milliseconds
-	// This is the exact implementation of NowMS, this test only guarantees that the implementation result doesn't change
-	now := time.Now().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
-
-	// Call the NowMs function
-	got := NowMs()
-
-	// Check if the result is within 1 millisecond of the current time
-	if got < now-1 || got > now+1 {
-		t.Errorf("NowMs() = %d, expected %d +/- 1", got, now)
 	}
 }
 
@@ -132,30 +104,4 @@ func TestStrToInt32TypeError(t *testing.T) {
 	_, err := StrToInt64("123.32")
 
 	require.Error(t, err)
-}
-
-func TestMsPrecision(t *testing.T) {
-	t.Parallel()
-
-	fixedTime := time.Unix(1610578652, 894654759)
-
-	require.Equal(t, int64(1610578652894654759), fixedTime.UnixNano())
-
-	msPrecision := MsPrecision(&fixedTime)
-
-	require.Equal(t, int64(1610578652894000000), msPrecision.UnixNano())
-}
-
-func TestTimeToMs(t *testing.T) {
-	t.Parallel()
-
-	fixedTime := time.Unix(1610578652, 894654759)
-
-	require.Equal(t, int64(1610578652894), TimeToMs(&fixedTime))
-}
-
-func TestMsToTime(t *testing.T) {
-	t.Parallel()
-
-	require.Equal(t, int64(1610578652894000000), MsToTime(int64(1610578652894)).UnixNano())
 }

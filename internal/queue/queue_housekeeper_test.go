@@ -15,7 +15,10 @@ import (
 	"github.com/takenet/deckard/internal/metrics"
 	"github.com/takenet/deckard/internal/mocks"
 	"github.com/takenet/deckard/internal/queue/cache"
-	"github.com/takenet/deckard/internal/queue/entities"
+	"github.com/takenet/deckard/internal/queue/configuration"
+	"github.com/takenet/deckard/internal/queue/message"
+	"github.com/takenet/deckard/internal/queue/pool"
+	"github.com/takenet/deckard/internal/queue/score"
 	"github.com/takenet/deckard/internal/queue/storage"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -44,7 +47,7 @@ func TestUpdateOldestQueueMap(t *testing.T) {
 		InternalFilter: &storage.InternalFilter{
 			QueuePrefix: "a",
 		},
-	}).Return([]entities.Message{
+	}).Return([]message.Message{
 		{LastUsage: &now},
 	}, nil)
 
@@ -56,7 +59,7 @@ func TestUpdateOldestQueueMap(t *testing.T) {
 		InternalFilter: &storage.InternalFilter{
 			QueuePrefix: "b",
 		},
-	}).Return([]entities.Message{
+	}).Return([]message.Message{
 		{LastUsage: &nowMinusTenSeconds},
 	}, nil)
 
@@ -91,8 +94,8 @@ func TestProcessLockPool(t *testing.T) {
 	ctx = context.Background()
 
 	mockCache := mocks.NewMockCache(mockCtrl)
-	mockCache.EXPECT().ListQueues(ctx, "*", entities.LOCK_ACK_POOL).Return([]string{"a", "b"}, nil)
-	mockCache.EXPECT().ListQueues(ctx, "*", entities.LOCK_NACK_POOL).Return([]string{"c", "d"}, nil)
+	mockCache.EXPECT().ListQueues(ctx, "*", pool.LOCK_ACK_POOL).Return([]string{"a", "b"}, nil)
+	mockCache.EXPECT().ListQueues(ctx, "*", pool.LOCK_NACK_POOL).Return([]string{"c", "d"}, nil)
 
 	mockCache.EXPECT().UnlockMessages(ctx, "a", cache.LOCK_ACK)
 	mockCache.EXPECT().UnlockMessages(ctx, "b", cache.LOCK_ACK)
@@ -116,7 +119,7 @@ func TestProcessLockPoolAckListErrorShouldDoNothing(t *testing.T) {
 	ctx = context.Background()
 
 	mockCache := mocks.NewMockCache(mockCtrl)
-	mockCache.EXPECT().ListQueues(ctx, "*", entities.LOCK_ACK_POOL).Return(nil, fmt.Errorf("error"))
+	mockCache.EXPECT().ListQueues(ctx, "*", pool.LOCK_ACK_POOL).Return(nil, fmt.Errorf("error"))
 
 	mockStorage := mocks.NewMockStorage(mockCtrl)
 	mockAuditor := mocks.NewMockAuditor(mockCtrl)
@@ -135,8 +138,8 @@ func TestProcessLockPoolNackAckListErrorShouldDoNothing(t *testing.T) {
 	ctx = context.Background()
 
 	mockCache := mocks.NewMockCache(mockCtrl)
-	mockCache.EXPECT().ListQueues(ctx, "*", entities.LOCK_ACK_POOL).Return([]string{}, nil)
-	mockCache.EXPECT().ListQueues(ctx, "*", entities.LOCK_NACK_POOL).Return(nil, fmt.Errorf("error"))
+	mockCache.EXPECT().ListQueues(ctx, "*", pool.LOCK_ACK_POOL).Return([]string{}, nil)
+	mockCache.EXPECT().ListQueues(ctx, "*", pool.LOCK_NACK_POOL).Return(nil, fmt.Errorf("error"))
 
 	mockStorage := mocks.NewMockStorage(mockCtrl)
 	mockAuditor := mocks.NewMockAuditor(mockCtrl)
@@ -155,8 +158,8 @@ func TestProcessUnlockErrorShouldUnlockOthers(t *testing.T) {
 	ctx = context.Background()
 
 	mockCache := mocks.NewMockCache(mockCtrl)
-	mockCache.EXPECT().ListQueues(ctx, "*", entities.LOCK_ACK_POOL).Return([]string{"a", "b"}, nil)
-	mockCache.EXPECT().ListQueues(ctx, "*", entities.LOCK_NACK_POOL).Return([]string{"c", "d"}, nil)
+	mockCache.EXPECT().ListQueues(ctx, "*", pool.LOCK_ACK_POOL).Return([]string{"a", "b"}, nil)
+	mockCache.EXPECT().ListQueues(ctx, "*", pool.LOCK_NACK_POOL).Return([]string{"c", "d"}, nil)
 
 	mockCache.EXPECT().UnlockMessages(ctx, "a", cache.LOCK_ACK).Return(nil, fmt.Errorf("error"))
 	mockCache.EXPECT().UnlockMessages(ctx, "b", cache.LOCK_ACK)
@@ -179,20 +182,20 @@ func TestRecoveryMessagesCacheError(t *testing.T) {
 
 	now := time.Now()
 
-	cacheMessages := []*entities.Message{{
+	cacheMessages := []*message.Message{{
 		ID:                "id",
 		Queue:             "queue",
 		InternalId:        4321,
 		ExpiryDate:        time.Time{},
 		LastUsage:         &now,
-		Score:             entities.GetScore(&now, 54321),
+		Score:             score.GetScoreByDefaultAlgorithm() - 54321,
 		LastScoreSubtract: 54321,
 	}, {
 		ID:                "id2",
 		InternalId:        65456,
 		Queue:             "queue",
 		ExpiryDate:        time.Time{},
-		Score:             entities.GetScore(&now, 23457),
+		Score:             score.GetScoreByDefaultAlgorithm() - 23457,
 		LastUsage:         &now,
 		LastScoreSubtract: 23457,
 	}}
@@ -203,12 +206,12 @@ func TestRecoveryMessagesCacheError(t *testing.T) {
 	mockCache.EXPECT().Get(ctx, cache.RECOVERY_BREAKPOINT_KEY).Return("65456", nil)
 	mockCache.EXPECT().Insert(ctx, "queue", cacheMessages).Return(nil, errors.New("cache error"))
 
-	storageMessages := []entities.Message{{
+	storageMessages := []message.Message{{
 		ID:                "id",
 		InternalId:        4321,
 		Queue:             "queue",
 		ExpiryDate:        time.Time{},
-		Score:             entities.GetScore(&now, 54321),
+		Score:             score.GetScoreByDefaultAlgorithm() - 54321,
 		LastUsage:         &now,
 		LastScoreSubtract: 54321,
 	}, {
@@ -216,7 +219,7 @@ func TestRecoveryMessagesCacheError(t *testing.T) {
 		InternalId:        65456,
 		Queue:             "queue",
 		ExpiryDate:        time.Time{},
-		Score:             entities.GetScore(&now, 23457),
+		Score:             score.GetScoreByDefaultAlgorithm() - 23457,
 		LastUsage:         &now,
 		LastScoreSubtract: 23457,
 	}}
@@ -289,20 +292,20 @@ func TestRecoveryMessagesPoolShouldAddMessagesAfterBreakpoint(t *testing.T) {
 
 	now := time.Now()
 
-	cacheMessages := []*entities.Message{{
+	cacheMessages := []*message.Message{{
 		ID:                "id",
 		Queue:             "queue",
 		InternalId:        45456,
 		ExpiryDate:        time.Time{},
 		LastUsage:         &now,
-		Score:             entities.GetScore(&now, 54321),
+		Score:             score.GetScoreByDefaultAlgorithm() - 54321,
 		LastScoreSubtract: 54321,
 	}, {
 		ID:                "id2",
 		InternalId:        65456,
 		Queue:             "queue",
 		ExpiryDate:        time.Time{},
-		Score:             entities.GetScore(&now, 23457),
+		Score:             score.GetScoreByDefaultAlgorithm() - 23457,
 		LastUsage:         &now,
 		LastScoreSubtract: 23457,
 	}}
@@ -316,12 +319,12 @@ func TestRecoveryMessagesPoolShouldAddMessagesAfterBreakpoint(t *testing.T) {
 	mockCache.EXPECT().Set(ctx, cache.RECOVERY_RUNNING, "false")
 	mockCache.EXPECT().Insert(ctx, "queue", cacheMessages).Return([]string{"id", "id2"}, nil)
 
-	storageMessages := []entities.Message{{
+	storageMessages := []message.Message{{
 		ID:                "id",
 		InternalId:        45456,
 		Queue:             "queue",
 		ExpiryDate:        time.Time{},
-		Score:             entities.GetScore(&now, 54321),
+		Score:             score.GetScoreByDefaultAlgorithm() - 54321,
 		LastUsage:         &now,
 		LastScoreSubtract: 54321,
 	}, {
@@ -329,7 +332,7 @@ func TestRecoveryMessagesPoolShouldAddMessagesAfterBreakpoint(t *testing.T) {
 		InternalId:        65456,
 		Queue:             "queue",
 		ExpiryDate:        time.Time{},
-		Score:             entities.GetScore(&now, 23457),
+		Score:             score.GetScoreByDefaultAlgorithm() - 23457,
 		LastUsage:         &now,
 		LastScoreSubtract: 23457,
 	}}
@@ -354,12 +357,12 @@ func TestRecoveryMessagesPoolShouldAddMessagesAfterBreakpoint(t *testing.T) {
 		Sort:  sort,
 		Limit: int64(4000),
 	}).Return(storageMessages, nil)
-	mockStorage.EXPECT().GetStringInternalId(ctx, &entities.Message{
+	mockStorage.EXPECT().GetStringInternalId(ctx, &message.Message{
 		ID:                "id2",
 		InternalId:        65456,
 		Queue:             "queue",
 		ExpiryDate:        time.Time{},
-		Score:             entities.GetScore(&now, 23457),
+		Score:             score.GetScoreByDefaultAlgorithm() - 23457,
 		LastUsage:         &now,
 		LastScoreSubtract: 23457,
 	}).Return("65456")
@@ -392,7 +395,7 @@ func TestRecoveryMessagesPoolInitWithEmptyStorageShouldNotStartRecovery(t *testi
 		},
 		Sort:  sort,
 		Limit: int64(1),
-	}).Return([]entities.Message{}, nil)
+	}).Return([]message.Message{}, nil)
 
 	q := NewQueue(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
 
@@ -426,19 +429,19 @@ func TestRecoveryMessagesPoolInitNonEmptyStorageShouldStartRecovery(t *testing.T
 		},
 		Sort:  sort,
 		Limit: int64(1),
-	}).Return([]entities.Message{
+	}).Return([]message.Message{
 		{InternalId: storageLast},
 	}, nil)
 
-	mockStorage.EXPECT().GetStringInternalId(ctx, &entities.Message{
+	mockStorage.EXPECT().GetStringInternalId(ctx, &message.Message{
 		InternalId: storageLast,
 	}).Return(storageLast.Hex())
 
-	storageMessages := make([]entities.Message, 4000)
-	cacheMessages := make([]*entities.Message, 4000)
+	storageMessages := make([]message.Message, 4000)
+	cacheMessages := make([]*message.Message, 4000)
 	insertedIds := make([]string, 4000)
 	for i := 0; i < len(storageMessages); i++ {
-		storageMessages[i] = entities.Message{
+		storageMessages[i] = message.Message{
 			Queue:      "queue",
 			ID:         strconv.Itoa(i),
 			InternalId: primitive.NewObjectID(),
@@ -484,20 +487,20 @@ func TestRecoveryMessagesPoolAlreadyRunning(t *testing.T) {
 
 	now := time.Now()
 
-	cacheMessages := []*entities.Message{{
+	cacheMessages := []*message.Message{{
 		ID:                "id",
 		Queue:             "queue",
 		InternalId:        4321,
 		ExpiryDate:        time.Time{},
 		LastUsage:         &now,
-		Score:             entities.GetScore(&now, 54321),
+		Score:             score.GetScoreByDefaultAlgorithm() - 54321,
 		LastScoreSubtract: 54321,
 	}, {
 		ID:                "id2",
 		InternalId:        65456,
 		Queue:             "queue",
 		ExpiryDate:        time.Time{},
-		Score:             entities.GetScore(&now, 23457),
+		Score:             score.GetScoreByDefaultAlgorithm() - 23457,
 		LastUsage:         &now,
 		LastScoreSubtract: 23457,
 	}}
@@ -513,12 +516,12 @@ func TestRecoveryMessagesPoolAlreadyRunning(t *testing.T) {
 
 	mockCache.EXPECT().Insert(ctx, "queue", cacheMessages).Return([]string{"id", "id2"}, nil)
 
-	storageMessages := []entities.Message{{
+	storageMessages := []message.Message{{
 		ID:                "id",
 		InternalId:        4321,
 		Queue:             "queue",
 		ExpiryDate:        time.Time{},
-		Score:             entities.GetScore(&now, 54321),
+		Score:             score.GetScoreByDefaultAlgorithm() - 54321,
 		LastUsage:         &now,
 		LastScoreSubtract: 54321,
 	}, {
@@ -526,7 +529,7 @@ func TestRecoveryMessagesPoolAlreadyRunning(t *testing.T) {
 		InternalId:        65456,
 		Queue:             "queue",
 		ExpiryDate:        time.Time{},
-		Score:             entities.GetScore(&now, 23457),
+		Score:             score.GetScoreByDefaultAlgorithm() - 23457,
 		LastUsage:         &now,
 		LastScoreSubtract: 23457,
 	}}
@@ -551,12 +554,12 @@ func TestRecoveryMessagesPoolAlreadyRunning(t *testing.T) {
 		Sort:  sort,
 		Limit: int64(4000),
 	}).Return(storageMessages, nil)
-	mockStorage.EXPECT().GetStringInternalId(ctx, &entities.Message{
+	mockStorage.EXPECT().GetStringInternalId(ctx, &message.Message{
 		ID:                "id2",
 		InternalId:        65456,
 		Queue:             "queue",
 		ExpiryDate:        time.Time{},
-		Score:             entities.GetScore(&now, 23457),
+		Score:             score.GetScoreByDefaultAlgorithm() - 23457,
 		LastUsage:         &now,
 		LastScoreSubtract: 23457,
 	}).Return("65456")
@@ -677,10 +680,10 @@ func TestRemoveTTLMessagesShouldRemoveExpiredElements(t *testing.T) {
 		},
 		Sort: sort,
 	}).DoAndReturn(
-		func(ctx context.Context, opt *storage.FindOptions) ([]entities.Message, error) {
+		func(ctx context.Context, opt *storage.FindOptions) ([]message.Message, error) {
 			expiryDate = *opt.InternalFilter.ExpiryDate
 
-			return []entities.Message{{ID: "1", Queue: "q1"}, {ID: "2", Queue: "q2"}}, nil
+			return []message.Message{{ID: "1", Queue: "q1"}, {ID: "2", Queue: "q2"}}, nil
 		},
 	)
 
@@ -727,7 +730,7 @@ func TestRemoveExceedingMessagesNoQueuesShouldDoNothing(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	mockStorage := mocks.NewMockStorage(mockCtrl)
-	mockStorage.EXPECT().ListQueueConfigurations(gomock.Any()).Return([]*entities.QueueConfiguration{}, nil)
+	mockStorage.EXPECT().ListQueueConfigurations(gomock.Any()).Return([]*configuration.QueueConfiguration{}, nil)
 
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().Get(gomock.Any(), cache.RECOVERY_RUNNING).Return("", nil)
@@ -761,7 +764,7 @@ func TestRemoveExceedingMessagesNoQueuesShouldCallRemoveMethodToEachQueue(t *tes
 	defer mockCtrl.Finish()
 
 	mockStorage := mocks.NewMockStorage(mockCtrl)
-	mockStorage.EXPECT().ListQueueConfigurations(gomock.Any()).Return([]*entities.QueueConfiguration{{Queue: "q1"}, {Queue: "q2"}}, nil)
+	mockStorage.EXPECT().ListQueueConfigurations(gomock.Any()).Return([]*configuration.QueueConfiguration{{Queue: "q1"}, {Queue: "q2"}}, nil)
 
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().Get(gomock.Any(), cache.RECOVERY_RUNNING).Return("", nil)

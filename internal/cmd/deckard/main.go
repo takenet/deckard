@@ -10,12 +10,12 @@ import (
 
 	"github.com/takenet/deckard/internal/audit"
 	"github.com/takenet/deckard/internal/config"
+	"github.com/takenet/deckard/internal/dtime"
 	"github.com/takenet/deckard/internal/logger"
 	"github.com/takenet/deckard/internal/metrics"
 	"github.com/takenet/deckard/internal/queue"
 	"github.com/takenet/deckard/internal/queue/cache"
 	"github.com/takenet/deckard/internal/queue/storage"
-	"github.com/takenet/deckard/internal/queue/utils"
 	"github.com/takenet/deckard/internal/service"
 	"github.com/takenet/deckard/internal/shutdown"
 	"github.com/takenet/deckard/internal/trace"
@@ -189,7 +189,7 @@ func startHouseKeeperJobs(pool *queue.Queue) {
 		shutdown.WaitGroup,
 		config.HousekeeperTaskTTLDelay.GetDuration(),
 		func() bool {
-			now := time.Now()
+			now := dtime.Now()
 
 			metrify, _ := queue.RemoveTTLMessages(ctx, pool, &now)
 
@@ -222,15 +222,15 @@ func scheduleTask(taskName string, lock *sync.Mutex, taskWaitGroup *sync.WaitGro
 }
 
 func executeTask(taskName string, fn func() bool) {
-	now := time.Now()
+	now := dtime.Now()
 	var metrify bool
 	defer func() {
 		if metrify {
-			metrics.HousekeeperTaskLatency.Record(ctx, utils.ElapsedTime(now), attribute.String("task", taskName))
+			metrics.HousekeeperTaskLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("task", taskName))
 		}
 	}()
 
 	metrify = fn()
 
-	logger.S(ctx).Debug("Finished ", taskName, " task. Took ", utils.ElapsedTime(now), ".")
+	logger.S(ctx).Debug("Finished ", taskName, " task. Took ", dtime.ElapsedTime(now), ".")
 }
