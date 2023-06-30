@@ -532,6 +532,12 @@ func (d *Deckard) Ack(ctx context.Context, request *deckard.AckRequest) (*deckar
 
 	} else if request.LockMs == 0 {
 		newScore = score.GetScoreByDefaultAlgorithm() - request.ScoreSubtract
+
+		if newScore < score.Min {
+			newScore = score.Min
+		} else if newScore > score.Max {
+			newScore = score.Max
+		}
 	}
 
 	now := dtime.Now()

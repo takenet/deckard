@@ -278,6 +278,11 @@ message QueueConfiguration {
   // 0 will be always ignored and the queue will not be updated.
   // 
   // All queues are unlimited by default.
+  //
+  // The exclusion policy will be applied to the queue when the max elements is reached:
+  //
+  // Messages are excluded ordered by its TTL, where the closest to expire will be excluded first.
+  // If all messages have the same TTL, the oldest message will be excluded first.
   int64 max_elements = 1;
 }
 

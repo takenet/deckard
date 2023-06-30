@@ -268,13 +268,7 @@ func (cache *MemoryCache) PullMessages(ctx context.Context, queue string, n int6
 
 		cache.queues[queue], _ = removeEntry(entry, cache.queues[queue])
 
-		if minScore != nil && entry.score < *minScore {
-			filteredOut = append(filteredOut, entry)
-
-			continue
-		}
-
-		if maxScore != nil && entry.score > *maxScore {
+		if minScore != nil && entry.score < *minScore || maxScore != nil && entry.score > *maxScore {
 			filteredOut = append(filteredOut, entry)
 
 			continue
