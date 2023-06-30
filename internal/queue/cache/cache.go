@@ -7,7 +7,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/takenet/deckard/internal/queue/entities"
+	"github.com/takenet/deckard/internal/queue/message"
+	"github.com/takenet/deckard/internal/queue/pool"
 )
 
 type Type string
@@ -27,23 +28,23 @@ const (
 )
 
 type Cache interface {
-	MakeAvailable(ctx context.Context, message *entities.Message) (bool, error)
+	MakeAvailable(ctx context.Context, message *message.Message) (bool, error)
 	IsProcessing(ctx context.Context, queue string, id string) (bool, error)
-	PullMessages(ctx context.Context, queue string, n int64, scoreFilter int64) (ids []string, err error)
+	PullMessages(ctx context.Context, queue string, n int64, minScore *float64, maxScore *float64) (ids []string, err error)
 	TimeoutMessages(ctx context.Context, queue string, timeout time.Duration) (ids []string, err error)
 
 	// Locks a message for message.LockMs milliseconds.
-	LockMessage(ctx context.Context, message *entities.Message, lockType LockType) (bool, error)
+	LockMessage(ctx context.Context, message *message.Message, lockType LockType) (bool, error)
 
 	// Unlocks all messages from a queue
 	UnlockMessages(ctx context.Context, queue string, lockType LockType) (messages []string, err error)
 
 	// Lists all queues from a pool using a pattern search. Only glob-style pattern is supported.
-	ListQueues(ctx context.Context, pattern string, poolType entities.PoolType) (queues []string, err error)
+	ListQueues(ctx context.Context, pattern string, poolType pool.PoolType) (queues []string, err error)
 
 	// Inserts 1..n elements to cache and return the number of new elements.
 	// Elements already in cache should have its score updated.
-	Insert(ctx context.Context, queue string, messages ...*entities.Message) (insertions []string, err error)
+	Insert(ctx context.Context, queue string, messages ...*message.Message) (insertions []string, err error)
 	Remove(ctx context.Context, queue string, ids ...string) (removed int64, err error)
 	Flush(ctx context.Context)
 

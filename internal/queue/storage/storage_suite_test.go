@@ -10,8 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/takenet/deckard"
-	"github.com/takenet/deckard/internal/queue/entities"
-	"github.com/takenet/deckard/internal/queue/utils"
+	"github.com/takenet/deckard/internal/dtime"
+	"github.com/takenet/deckard/internal/queue/configuration"
+	"github.com/takenet/deckard/internal/queue/message"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -39,7 +40,7 @@ func (suite *StorageTestSuite) BeforeTest(_, _ string) {
 	}
 }
 
-func (suite *StorageTestSuite) insertDataNoError(messages ...*entities.Message) {
+func (suite *StorageTestSuite) insertDataNoError(messages ...*message.Message) {
 	i, m, err := suite.storage.Insert(ctx, messages...)
 
 	require.NoError(suite.T(), err)
@@ -48,7 +49,7 @@ func (suite *StorageTestSuite) insertDataNoError(messages ...*entities.Message) 
 }
 
 func (suite *StorageTestSuite) TestWithInternalFilterIdsOk() {
-	messages := []*entities.Message{{
+	messages := []*message.Message{{
 		Queue:      "q",
 		ID:         "id",
 		ExpiryDate: futureTime(),
@@ -78,7 +79,7 @@ func (suite *StorageTestSuite) TestWithInternalFilterIdsOk() {
 }
 
 func (suite *StorageTestSuite) TestWithInternalFilterExpiryDateOk() {
-	messages := []*entities.Message{{
+	messages := []*message.Message{{
 		Queue:      "q",
 		ID:         "id",
 		ExpiryDate: futureTime(),
@@ -109,7 +110,7 @@ func (suite *StorageTestSuite) TestWithInternalFilterExpiryDateOk() {
 }
 
 func (suite *StorageTestSuite) TestWithInternalFilterQueueOk() {
-	messages := []*entities.Message{{
+	messages := []*message.Message{{
 		Queue:      "q1",
 		ID:         "id",
 		ExpiryDate: futureTime(),
@@ -143,7 +144,7 @@ func (suite *StorageTestSuite) TestWithInternalFilterQueueOk() {
 }
 
 func (suite *StorageTestSuite) TestFindWithInternalFilterBreakpointOk() {
-	messages := []*entities.Message{{
+	messages := []*message.Message{{
 		Queue:      "q1",
 		ID:         "id",
 		ExpiryDate: futureTime(),
@@ -186,15 +187,15 @@ func (suite *StorageTestSuite) TestFindWithInternalFilterBreakpointOk() {
 func (suite *StorageTestSuite) TestInsertTwiceShouldReplaceMessageKeepingFields() {
 	now := time.Now()
 
-	message := entities.Message{
+	msg := message.Message{
 		Queue:      "q1",
 		ID:         "id",
 		ExpiryDate: futureTime(),
 	}
 
-	suite.insertDataNoError(&message)
+	suite.insertDataNoError(&msg)
 
-	ackModified, err := suite.storage.Ack(ctx, &entities.Message{
+	ackModified, err := suite.storage.Ack(ctx, &message.Message{
 		Queue:             "q1",
 		ID:                "id",
 		LastScoreSubtract: 1234.1,
@@ -207,7 +208,7 @@ func (suite *StorageTestSuite) TestInsertTwiceShouldReplaceMessageKeepingFields(
 	require.Equal(suite.T(), int64(1), ackModified)
 
 	newDate := futureTime().Add(time.Hour)
-	newMessage := entities.Message{
+	newMessage := message.Message{
 		Queue:         "q1",
 		ID:            "id",
 		ExpiryDate:    newDate,
@@ -233,20 +234,20 @@ func (suite *StorageTestSuite) TestInsertTwiceShouldReplaceMessageKeepingFields(
 	require.Equal(suite.T(), 1234.1, data.TotalScoreSubtract)
 	require.Equal(suite.T(), 1234.1, data.LastScoreSubtract)
 	require.Equal(suite.T(), 12345.1, data.Score)
-	require.Equal(suite.T(), utils.MsPrecision(&now).Local(), utils.MsPrecision(data.LastUsage).Local())
+	require.Equal(suite.T(), dtime.MsPrecision(&now).Local(), dtime.MsPrecision(data.LastUsage).Local())
 	require.Equal(suite.T(), "12345", data.Breakpoint)
 
 	// New Data
 	require.Equal(suite.T(), "newStringData", data.StringPayload)
 	require.Equal(suite.T(), map[string]string{"new": "1234"}, data.Metadata)
 	require.Equal(suite.T(), "newDescription", data.Description)
-	require.Equal(suite.T(), utils.MsPrecision(&newDate).Local(), utils.MsPrecision(&data.ExpiryDate).Local())
+	require.Equal(suite.T(), dtime.MsPrecision(&newDate).Local(), dtime.MsPrecision(&data.ExpiryDate).Local())
 }
 
 func (suite *StorageTestSuite) TestInsertWithoutQueueShouldError() {
-	messages := make([]*entities.Message, 10)
+	messages := make([]*message.Message, 10)
 	for i := range messages {
-		messages[i] = &entities.Message{ID: "123"}
+		messages[i] = &message.Message{ID: "123"}
 	}
 
 	_, _, err := suite.storage.Insert(ctx, messages...)
@@ -255,9 +256,9 @@ func (suite *StorageTestSuite) TestInsertWithoutQueueShouldError() {
 }
 
 func (suite *StorageTestSuite) TestInsertWithoutIDShouldError() {
-	messages := make([]*entities.Message, 10)
+	messages := make([]*message.Message, 10)
 	for i := range messages {
-		messages[i] = &entities.Message{Queue: "123"}
+		messages[i] = &message.Message{Queue: "123"}
 	}
 
 	_, _, err := suite.storage.Insert(ctx, messages...)
@@ -266,17 +267,17 @@ func (suite *StorageTestSuite) TestInsertWithoutIDShouldError() {
 }
 
 func (suite *StorageTestSuite) TestUpdateOk() {
-	message := entities.Message{
+	msg := message.Message{
 		ID:         "Id",
 		Queue:      "Queue",
 		ExpiryDate: futureTime(),
 	}
 
-	suite.insertDataNoError(&message)
+	suite.insertDataNoError(&msg)
 
 	now := time.Now()
-	newTime := utils.MsToTime(int64(1610300607851))
-	firstAckModified, err := suite.storage.Ack(ctx, &entities.Message{
+	newTime := dtime.MsToTime(int64(1610300607851))
+	firstAckModified, err := suite.storage.Ack(ctx, &message.Message{
 		ID:                "Id",
 		Queue:             "Queue",
 		LastScoreSubtract: 123,
@@ -287,7 +288,7 @@ func (suite *StorageTestSuite) TestUpdateOk() {
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), int64(1), firstAckModified)
 
-	secondAckModified, err := suite.storage.Ack(ctx, &entities.Message{
+	secondAckModified, err := suite.storage.Ack(ctx, &message.Message{
 		ID:                "Id",
 		Queue:             "Queue",
 		LastScoreSubtract: 54325,
@@ -303,18 +304,18 @@ func (suite *StorageTestSuite) TestUpdateOk() {
 	require.NoError(suite.T(), err)
 	require.Len(suite.T(), messages, 1)
 
-	msTime := utils.MsPrecision(&newTime).Local()
+	msTime := dtime.MsPrecision(&newTime).Local()
 
-	require.Equal(suite.T(), msTime, utils.MsPrecision(messages[0].LastUsage).Local())
+	require.Equal(suite.T(), msTime, dtime.MsPrecision(messages[0].LastUsage).Local())
 	messages[0].LastUsage = nil
-	message.LastUsage = nil
+	msg.LastUsage = nil
 
-	messages[0].ExpiryDate = utils.MsPrecision(&messages[0].ExpiryDate).Local()
+	messages[0].ExpiryDate = dtime.MsPrecision(&messages[0].ExpiryDate).Local()
 
-	require.Equal(suite.T(), entities.Message{
+	require.Equal(suite.T(), message.Message{
 		ID:                 "Id",
 		Queue:              "Queue",
-		ExpiryDate:         utils.MsPrecision(&message.ExpiryDate).Local(),
+		ExpiryDate:         dtime.MsPrecision(&msg.ExpiryDate).Local(),
 		InternalId:         messages[0].InternalId,
 		Breakpoint:         "breakpoint2",
 		LastScoreSubtract:  54325,
@@ -324,8 +325,8 @@ func (suite *StorageTestSuite) TestUpdateOk() {
 }
 
 func (suite *StorageTestSuite) TestListQueueNamesOk() {
-	messages := make([]entities.Message, 100)
-	toInsert := make([]*entities.Message, 100)
+	messages := make([]message.Message, 100)
+	toInsert := make([]*message.Message, 100)
 
 	queues := make([]string, 100)
 
@@ -350,11 +351,11 @@ func (suite *StorageTestSuite) TestListQueueNamesOk() {
 }
 
 func (suite *StorageTestSuite) TestListQueueNamesShouldNotResultDeletedMessageQueue() {
-	toInsert := make([]*entities.Message, 100)
+	toInsert := make([]*message.Message, 100)
 	queues := make([]string, 100)
 
 	for i := 0; i < 100; i++ {
-		message := entities.Message{
+		message := message.Message{
 			Queue: strconv.Itoa(i),
 			ID:    strconv.Itoa(i),
 		}
@@ -388,8 +389,8 @@ func (suite *StorageTestSuite) TestListQueueNamesShouldNotResultDeletedMessageQu
 }
 
 func (suite *StorageTestSuite) TestClearOk() {
-	messages := make([]entities.Message, 100)
-	toInsert := make([]*entities.Message, 100)
+	messages := make([]message.Message, 100)
+	toInsert := make([]*message.Message, 100)
 
 	for i := range messages {
 		messages[i].Queue = "test"
@@ -417,7 +418,7 @@ func (suite *StorageTestSuite) TestClearOk() {
 }
 
 func (suite *StorageTestSuite) TestClearShouldClearQueueConfigurations() {
-	err := suite.storage.EditQueueConfiguration(ctx, &entities.QueueConfiguration{
+	err := suite.storage.EditQueueConfiguration(ctx, &configuration.QueueConfiguration{
 		Queue:       "queue",
 		MaxElements: 1234,
 	})
@@ -435,7 +436,7 @@ func (suite *StorageTestSuite) TestClearShouldClearQueueConfigurations() {
 }
 
 func (suite *StorageTestSuite) TestInsertOneOk() {
-	message := entities.Message{
+	message := message.Message{
 		ID:         "id",
 		Queue:      "test",
 		ExpiryDate: time.Now().Add(10 * time.Hour),
@@ -479,7 +480,7 @@ func (suite *StorageTestSuite) TestInsertWithPayloadOk() {
 	boolData, _ := anypb.New(wrapperspb.Bool(true))
 	boolFalseData, _ := anypb.New(wrapperspb.Bool(false))
 
-	message := entities.Message{
+	message := message.Message{
 		ID:    "id",
 		Queue: "test",
 		Payload: map[string]*anypb.Any{
@@ -544,10 +545,10 @@ func (suite *StorageTestSuite) TestInsertWithPayloadOk() {
 }
 
 func (suite *StorageTestSuite) TestInsertManyOk() {
-	messages := make([]*entities.Message, 200)
+	messages := make([]*message.Message, 200)
 
 	for i := range messages {
-		messages[i] = &entities.Message{
+		messages[i] = &message.Message{
 			Queue:      "test",
 			ID:         strconv.Itoa(i),
 			ExpiryDate: time.Now().Add(time.Duration(i+1) * time.Hour),
@@ -572,9 +573,9 @@ func (suite *StorageTestSuite) TestInsertManyOk() {
 		messages[i].InternalId = data[i].InternalId
 		messages[i].LastUsage = data[i].LastUsage
 
-		storageTime := utils.MsPrecision(&messages[i].ExpiryDate).Local()
+		storageTime := dtime.MsPrecision(&messages[i].ExpiryDate).Local()
 		messages[i].ExpiryDate = storageTime
-		data[i].ExpiryDate = utils.MsPrecision(&data[i].ExpiryDate).Local()
+		data[i].ExpiryDate = dtime.MsPrecision(&data[i].ExpiryDate).Local()
 
 		require.Equal(suite.T(), *messages[i], data[i])
 	}
@@ -588,7 +589,7 @@ func (suite *StorageTestSuite) TestGetConfigurationNotExistsShouldReturnNil() {
 }
 
 func (suite *StorageTestSuite) TestEditConfigurationShouldEditConfiguration() {
-	err := suite.storage.EditQueueConfiguration(ctx, &entities.QueueConfiguration{MaxElements: 2, Queue: "queue"})
+	err := suite.storage.EditQueueConfiguration(ctx, &configuration.QueueConfiguration{MaxElements: 2, Queue: "queue"})
 
 	require.NoError(suite.T(), err)
 
@@ -599,10 +600,10 @@ func (suite *StorageTestSuite) TestEditConfigurationShouldEditConfiguration() {
 }
 
 func (suite *StorageTestSuite) TestListAllQueueConfigurations() {
-	err := suite.storage.EditQueueConfiguration(ctx, &entities.QueueConfiguration{MaxElements: 2, Queue: "queue"})
+	err := suite.storage.EditQueueConfiguration(ctx, &configuration.QueueConfiguration{MaxElements: 2, Queue: "queue"})
 	require.NoError(suite.T(), err)
 
-	err = suite.storage.EditQueueConfiguration(ctx, &entities.QueueConfiguration{MaxElements: 43, Queue: "queue2"})
+	err = suite.storage.EditQueueConfiguration(ctx, &configuration.QueueConfiguration{MaxElements: 43, Queue: "queue2"})
 	require.NoError(suite.T(), err)
 
 	queues, err := suite.storage.ListQueueConfigurations(ctx)
@@ -611,18 +612,18 @@ func (suite *StorageTestSuite) TestListAllQueueConfigurations() {
 	require.Equal(suite.T(), 2, len(queues))
 
 	if queues[0].Queue == "queue" {
-		require.Equal(suite.T(), entities.QueueConfiguration{MaxElements: 2, Queue: "queue"}, *queues[0])
-		require.Equal(suite.T(), entities.QueueConfiguration{MaxElements: 43, Queue: "queue2"}, *queues[1])
+		require.Equal(suite.T(), configuration.QueueConfiguration{MaxElements: 2, Queue: "queue"}, *queues[0])
+		require.Equal(suite.T(), configuration.QueueConfiguration{MaxElements: 43, Queue: "queue2"}, *queues[1])
 
 	} else {
-		require.Equal(suite.T(), entities.QueueConfiguration{MaxElements: 2, Queue: "queue"}, *queues[1])
-		require.Equal(suite.T(), entities.QueueConfiguration{MaxElements: 43, Queue: "queue2"}, *queues[0])
+		require.Equal(suite.T(), configuration.QueueConfiguration{MaxElements: 2, Queue: "queue"}, *queues[1])
+		require.Equal(suite.T(), configuration.QueueConfiguration{MaxElements: 43, Queue: "queue2"}, *queues[0])
 	}
 
 }
 
 func (suite *StorageTestSuite) TestEditConfigurationWithNegativeNumberShouldMakeMaxElementsAsZero() {
-	err := suite.storage.EditQueueConfiguration(ctx, &entities.QueueConfiguration{MaxElements: -1, Queue: "queue"})
+	err := suite.storage.EditQueueConfiguration(ctx, &configuration.QueueConfiguration{MaxElements: -1, Queue: "queue"})
 
 	require.NoError(suite.T(), err)
 
@@ -633,11 +634,11 @@ func (suite *StorageTestSuite) TestEditConfigurationWithNegativeNumberShouldMake
 }
 
 func (suite *StorageTestSuite) TestEditConfigurationWithMaxElementsZeroShouldDoNothing() {
-	err := suite.storage.EditQueueConfiguration(ctx, &entities.QueueConfiguration{MaxElements: 2, Queue: "queue"})
+	err := suite.storage.EditQueueConfiguration(ctx, &configuration.QueueConfiguration{MaxElements: 2, Queue: "queue"})
 
 	require.NoError(suite.T(), err)
 
-	err = suite.storage.EditQueueConfiguration(ctx, &entities.QueueConfiguration{MaxElements: 0, Queue: "queue"})
+	err = suite.storage.EditQueueConfiguration(ctx, &configuration.QueueConfiguration{MaxElements: 0, Queue: "queue"})
 
 	require.NoError(suite.T(), err)
 
@@ -648,7 +649,7 @@ func (suite *StorageTestSuite) TestEditConfigurationWithMaxElementsZeroShouldDoN
 }
 
 func (suite *StorageTestSuite) TestFindWithNilOptionsOk() {
-	message := entities.Message{
+	message := message.Message{
 		ID:         "id",
 		Queue:      "test",
 		ExpiryDate: time.Now().Add(10 * time.Hour),

@@ -9,7 +9,7 @@ import (
 	"github.com/takenet/deckard"
 	"github.com/takenet/deckard/internal/queue"
 	"github.com/takenet/deckard/internal/queue/cache"
-	"github.com/takenet/deckard/internal/queue/entities"
+	"github.com/takenet/deckard/internal/queue/score"
 	"github.com/takenet/deckard/internal/queue/storage"
 )
 
@@ -31,7 +31,7 @@ func (suite *DeckardIntegrationTestSuite) BeforeTest(_, _ string) {
 	suite.deckardStorage.Flush(ctx)
 }
 
-func (suite *DeckardIntegrationTestSuite) TestAddMessageIntegration() {
+func (suite *DeckardIntegrationTestSuite) TestAddMessageDefaultScoreIntegration() {
 	start := time.Now()
 
 	response, err := suite.deckard.Add(ctx, &deckard.AddRequest{
@@ -63,11 +63,8 @@ func (suite *DeckardIntegrationTestSuite) TestAddMessageIntegration() {
 	require.NoError(suite.T(), err)
 
 	message := result.Messages[0]
-	score := message.Score
-	require.GreaterOrEqual(suite.T(), score, entities.GetScore(&start, 0))
-
-	after := time.Now()
-	require.LessOrEqual(suite.T(), score, entities.GetScore(&after, 0))
+	require.GreaterOrEqual(suite.T(), message.Score, score.GetScoreFromTime(&start))
+	require.LessOrEqual(suite.T(), message.Score, score.GetScoreByDefaultAlgorithm())
 
 	message.Score = 0
 
@@ -75,6 +72,48 @@ func (suite *DeckardIntegrationTestSuite) TestAddMessageIntegration() {
 		Id:            "123",
 		Queue:         "test",
 		StringPayload: "Hello",
+	}, message)
+}
+
+func (suite *DeckardIntegrationTestSuite) TestAddMessageWithScoreIntegration() {
+	response, err := suite.deckard.Add(ctx, &deckard.AddRequest{
+		Messages: []*deckard.AddMessage{
+			{
+				Id:       "123",
+				Queue:    "test",
+				Score:    100,
+				Timeless: true,
+			},
+		},
+	})
+	require.NoError(suite.T(), err)
+	require.Equal(suite.T(), int64(1), response.CreatedCount)
+
+	// Validate stored message
+	messages, err := suite.deckardQueue.GetStorageMessages(ctx, &storage.FindOptions{
+		InternalFilter: &storage.InternalFilter{
+			Queue: "test",
+			Ids:   &[]string{"123"},
+		},
+	})
+	require.NoError(suite.T(), err)
+	require.Len(suite.T(), messages, 1)
+	require.Equal(suite.T(), float64(100), messages[0].Score)
+
+	result, err := suite.deckard.Pull(ctx, &deckard.PullRequest{
+		Queue:  "test",
+		Amount: 1,
+	})
+
+	require.NoError(suite.T(), err)
+
+	message := result.Messages[0]
+	require.Equal(suite.T(), float64(100), message.Score)
+
+	message.Score = 0
+	require.Equal(suite.T(), &deckard.Message{
+		Id:    "123",
+		Queue: "test",
 	}, message)
 }
 

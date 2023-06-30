@@ -9,15 +9,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/takenet/deckard/internal/queue/entities"
+	"github.com/takenet/deckard/internal/dtime"
+	"github.com/takenet/deckard/internal/queue/configuration"
+	"github.com/takenet/deckard/internal/queue/message"
 	"github.com/takenet/deckard/internal/queue/utils"
 )
 
 // MemoryStorage is an implementation of the Storage Interface using memory.
 // Currently only insert and pull functions are implemented.
 type MemoryStorage struct {
-	docs            map[string]*entities.Message
-	configurations  map[string]*entities.QueueConfiguration
+	docs            map[string]*message.Message
+	configurations  map[string]*configuration.QueueConfiguration
 	lock            *sync.RWMutex
 	internalCounter int64
 }
@@ -26,8 +28,8 @@ var _ Storage = &MemoryStorage{}
 
 func NewMemoryStorage(ctx context.Context) *MemoryStorage {
 	storage := &MemoryStorage{
-		docs:           make(map[string]*entities.Message),
-		configurations: make(map[string]*entities.QueueConfiguration),
+		docs:           make(map[string]*message.Message),
+		configurations: make(map[string]*configuration.QueueConfiguration),
 
 		lock:            &sync.RWMutex{},
 		internalCounter: int64(0),
@@ -36,8 +38,8 @@ func NewMemoryStorage(ctx context.Context) *MemoryStorage {
 	return storage
 }
 
-func (storage *MemoryStorage) ListQueueConfigurations(ctx context.Context) ([]*entities.QueueConfiguration, error) {
-	configurations := make([]*entities.QueueConfiguration, len(storage.configurations))
+func (storage *MemoryStorage) ListQueueConfigurations(ctx context.Context) ([]*configuration.QueueConfiguration, error) {
+	configurations := make([]*configuration.QueueConfiguration, len(storage.configurations))
 
 	configurationIndex := 0
 	for i := range storage.configurations {
@@ -49,7 +51,7 @@ func (storage *MemoryStorage) ListQueueConfigurations(ctx context.Context) ([]*e
 	return configurations, nil
 }
 
-func (storage *MemoryStorage) EditQueueConfiguration(_ context.Context, configuration *entities.QueueConfiguration) error {
+func (storage *MemoryStorage) EditQueueConfiguration(_ context.Context, configuration *configuration.QueueConfiguration) error {
 	if configuration.MaxElements == 0 {
 		return nil
 	}
@@ -63,7 +65,7 @@ func (storage *MemoryStorage) EditQueueConfiguration(_ context.Context, configur
 	return nil
 }
 
-func (storage *MemoryStorage) GetQueueConfiguration(_ context.Context, queue string) (*entities.QueueConfiguration, error) {
+func (storage *MemoryStorage) GetQueueConfiguration(_ context.Context, queue string) (*configuration.QueueConfiguration, error) {
 	return storage.configurations[queue], nil
 }
 
@@ -72,15 +74,15 @@ func (storage *MemoryStorage) Flush(_ context.Context) (deletedCount int64, err 
 	count := int64(len(storage.docs))
 	count += int64(len(storage.configurations))
 
-	storage.docs = make(map[string]*entities.Message)
-	storage.configurations = make(map[string]*entities.QueueConfiguration)
+	storage.docs = make(map[string]*message.Message)
+	storage.configurations = make(map[string]*configuration.QueueConfiguration)
 
 	storage.lock.Unlock()
 
 	return count, nil
 }
 
-func (storage *MemoryStorage) Insert(_ context.Context, messages ...*entities.Message) (int64, int64, error) {
+func (storage *MemoryStorage) Insert(_ context.Context, messages ...*message.Message) (int64, int64, error) {
 	inserted := int64(0)
 	modified := int64(0)
 
@@ -113,7 +115,7 @@ func (storage *MemoryStorage) Insert(_ context.Context, messages ...*entities.Me
 
 			storage.internalCounter += 1
 			messages[i].InternalId = storage.internalCounter
-			now := time.Now()
+			now := dtime.Now()
 			messages[i].LastUsage = &now
 			storage.docs[key] = messages[i]
 		}
@@ -124,7 +126,7 @@ func (storage *MemoryStorage) Insert(_ context.Context, messages ...*entities.Me
 	return inserted, modified, nil
 }
 
-func (storage *MemoryStorage) GetStringInternalId(_ context.Context, message *entities.Message) string {
+func (storage *MemoryStorage) GetStringInternalId(_ context.Context, message *message.Message) string {
 	if message.InternalId == nil {
 		return ""
 	}
@@ -132,7 +134,7 @@ func (storage *MemoryStorage) GetStringInternalId(_ context.Context, message *en
 	return strconv.FormatInt(message.InternalId.(int64), 10)
 }
 
-func getKey(message *entities.Message) string {
+func getKey(message *message.Message) string {
 	return message.Queue + ":" + message.ID
 }
 
@@ -156,7 +158,7 @@ func (storage *MemoryStorage) Count(_ context.Context, opts *FindOptions) (int64
 	return count, nil
 }
 
-func messageMatchesFilter(q *entities.Message, opts *FindOptions) (bool, error) {
+func messageMatchesFilter(q *message.Message, opts *FindOptions) (bool, error) {
 	if opts == nil {
 		return true, nil
 	}
@@ -166,7 +168,7 @@ func messageMatchesFilter(q *entities.Message, opts *FindOptions) (bool, error) 
 	return matchesInternal, err
 }
 
-func matchesInternalFilter(message *entities.Message, filter *InternalFilter) (bool, error) {
+func matchesInternalFilter(message *message.Message, filter *InternalFilter) (bool, error) {
 	if filter == nil {
 		return true, nil
 	}
@@ -226,8 +228,8 @@ func matchesInternalFilter(message *entities.Message, filter *InternalFilter) (b
 	return true, nil
 }
 
-func (storage *MemoryStorage) Find(_ context.Context, opt *FindOptions) ([]entities.Message, error) {
-	var messages []entities.Message
+func (storage *MemoryStorage) Find(_ context.Context, opt *FindOptions) ([]message.Message, error) {
+	var messages []message.Message
 
 	storage.lock.RLock()
 	defer storage.lock.RUnlock()
@@ -288,8 +290,8 @@ func (storage *MemoryStorage) Find(_ context.Context, opt *FindOptions) ([]entit
 	return messages, nil
 }
 
-func isExpired(message *entities.Message) bool {
-	return !message.Timeless && (message.ExpiryDate.Before(time.Now()) || message.ExpiryDate.Equal(time.Now()))
+func isExpired(message *message.Message) bool {
+	return !message.Timeless && (message.ExpiryDate.Before(dtime.Now()) || message.ExpiryDate.Equal(dtime.Now()))
 }
 
 func (storage *MemoryStorage) Remove(_ context.Context, queue string, ids ...string) (deleted int64, err error) {
@@ -314,7 +316,7 @@ func (storage *MemoryStorage) Remove(_ context.Context, queue string, ids ...str
 	return count, nil
 }
 
-func (storage *MemoryStorage) Ack(_ context.Context, message *entities.Message) (modifiedCount int64, err error) {
+func (storage *MemoryStorage) Ack(_ context.Context, message *message.Message) (modifiedCount int64, err error) {
 	storage.lock.RLock()
 	value, contains := storage.docs[getKey(message)]
 	storage.lock.RUnlock()

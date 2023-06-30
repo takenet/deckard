@@ -14,11 +14,11 @@ import (
 	"time"
 
 	"github.com/takenet/deckard/internal/config"
+	"github.com/takenet/deckard/internal/dtime"
 	"github.com/takenet/deckard/internal/logger"
 	"github.com/takenet/deckard/internal/metrics"
 	"github.com/takenet/deckard/internal/project"
-	"github.com/takenet/deckard/internal/queue/entities"
-	"github.com/takenet/deckard/internal/queue/utils"
+	"github.com/takenet/deckard/internal/queue/message"
 	"go.uber.org/zap"
 
 	"github.com/elastic/go-elasticsearch/v7"
@@ -36,7 +36,7 @@ type Entry struct {
 	Queue             string    `json:"queue"`
 	QueuePrefix       string    `json:"queue_prefix"`
 	QueueSuffix       string    `json:"queue_suffix"`
-	LastScoreSubtract float64   `json:"last_score_subtract"`
+	LastScoreSubtract float64   `json:"last_score_subtract"` // deprecated
 	Timestamp         time.Time `json:"timestamp"`
 	Breakpoint        string    `json:"breakpoint"`
 	Signal            Signal    `json:"signal"`
@@ -146,9 +146,9 @@ func (a *AuditorImpl) send(ctx context.Context, entries ...Entry) {
 		return
 	}
 
-	start := time.Now()
+	start := dtime.Now()
 	defer func() {
-		metrics.AuditorStoreLatency.Record(ctx, utils.ElapsedTime(start))
+		metrics.AuditorStoreLatency.Record(ctx, dtime.ElapsedTime(start))
 	}()
 
 	body := ""
@@ -192,9 +192,9 @@ func (a *AuditorImpl) Store(ctx context.Context, entry Entry) {
 		return
 	}
 
-	entry.Timestamp = time.Now()
+	entry.Timestamp = dtime.Now()
 
-	queuePrefix, queueSuffix := entities.GetQueueParts(entry.Queue)
+	queuePrefix, queueSuffix := message.GetQueueParts(entry.Queue)
 
 	entry.QueuePrefix = queuePrefix
 
@@ -203,7 +203,7 @@ func (a *AuditorImpl) Store(ctx context.Context, entry Entry) {
 	}
 
 	defer func() {
-		metrics.AuditorAddToStoreLatency.Record(ctx, utils.ElapsedTime(entry.Timestamp))
+		metrics.AuditorAddToStoreLatency.Record(ctx, dtime.ElapsedTime(entry.Timestamp))
 	}()
 
 	a.entries <- entry

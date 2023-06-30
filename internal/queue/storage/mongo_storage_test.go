@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/takenet/deckard/internal/config"
-	"github.com/takenet/deckard/internal/queue/entities"
+	"github.com/takenet/deckard/internal/queue/message"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -53,7 +53,7 @@ func TestMongoConnectionWithURIIntegration(t *testing.T) {
 
 	defer storage.Flush(context.Background())
 
-	insert, updated, err := storage.Insert(context.Background(), &entities.Message{
+	insert, updated, err := storage.Insert(context.Background(), &message.Message{
 		ID:    "123",
 		Queue: "queue",
 	})

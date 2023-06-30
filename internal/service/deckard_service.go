@@ -12,13 +12,17 @@ import (
 
 	"github.com/takenet/deckard"
 	"github.com/takenet/deckard/internal/config"
+	"github.com/takenet/deckard/internal/dtime"
 	"github.com/takenet/deckard/internal/logger"
 	"github.com/takenet/deckard/internal/queue"
-	"github.com/takenet/deckard/internal/queue/entities"
+	"github.com/takenet/deckard/internal/queue/configuration"
+	"github.com/takenet/deckard/internal/queue/message"
+	"github.com/takenet/deckard/internal/queue/score"
 	"github.com/takenet/deckard/internal/queue/storage"
+	"github.com/takenet/deckard/internal/trace"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -30,7 +34,7 @@ import (
 )
 
 type Deckard struct {
-	pool                      queue.DeckardQueue
+	queue                     queue.DeckardQueue
 	queueConfigurationService queue.QueueConfigurationService
 	memoryInstance            bool
 
@@ -44,7 +48,7 @@ var _ deckard.DeckardServer = (*Deckard)(nil)
 
 func NewDeckardInstance(qpool queue.DeckardQueue, queueConfigurationService queue.QueueConfigurationService, memoryInstance bool) *Deckard {
 	return &Deckard{
-		pool:                      qpool,
+		queue:                     qpool,
 		queueConfigurationService: queueConfigurationService,
 		memoryInstance:            memoryInstance,
 		healthServer:              health.NewServer(),
@@ -223,7 +227,7 @@ func (d *Deckard) EditQueue(ctx context.Context, request *deckard.EditQueueReque
 		}, nil
 	}
 
-	err := d.queueConfigurationService.EditQueueConfiguration(ctx, &entities.QueueConfiguration{
+	err := d.queueConfigurationService.EditQueueConfiguration(ctx, &configuration.QueueConfiguration{
 		Queue:       request.Queue,
 		MaxElements: request.Configuration.MaxElements,
 	})
@@ -264,10 +268,13 @@ func (d *Deckard) Remove(ctx context.Context, request *deckard.RemoveRequest) (*
 		}, nil
 	}
 
-	addTransactionIds(ctx, request.Ids)
-	addTransactionQueue(ctx, request.Queue)
+	addSpanAttributes(
+		ctx,
+		attribute.StringSlice(trace.Id, request.Ids),
+		attribute.StringSlice(trace.Queue, []string{request.Queue}),
+	)
 
-	cacheRemoved, storageRemoved, err := d.pool.Remove(ctx, request.Queue, "REQUEST", request.Ids...)
+	cacheRemoved, storageRemoved, err := d.queue.Remove(ctx, request.Queue, "REQUEST", request.Ids...)
 
 	if err != nil {
 		return nil, status.Error(codes.Internal, "error removing messages from pool")
@@ -280,9 +287,12 @@ func (d *Deckard) Remove(ctx context.Context, request *deckard.RemoveRequest) (*
 }
 
 func (d *Deckard) Count(ctx context.Context, request *deckard.CountRequest) (*deckard.CountResponse, error) {
-	addTransactionQueue(ctx, request.Queue)
+	addSpanAttributes(
+		ctx,
+		attribute.StringSlice(trace.Queue, []string{request.Queue}),
+	)
 
-	result, err := d.pool.Count(ctx, &storage.FindOptions{
+	result, err := d.queue.Count(ctx, &storage.FindOptions{
 		InternalFilter: &storage.InternalFilter{
 			Queue: request.Queue,
 		},
@@ -298,15 +308,13 @@ func (d *Deckard) Count(ctx context.Context, request *deckard.CountRequest) (*de
 }
 
 func (d *Deckard) Add(ctx context.Context, request *deckard.AddRequest) (*deckard.AddResponse, error) {
-	messages := make([]*entities.Message, len(request.Messages))
+	messages := make([]*message.Message, len(request.Messages))
 
 	ids := make([]string, len(request.Messages))
 	queues := make(map[string]int)
 
 	for i, m := range request.Messages {
-		t := time.Now()
-
-		score := entities.GetScore(&t, 0)
+		t := dtime.Now()
 
 		if m.TtlMinutes != 0 {
 			t = t.Add(time.Minute * time.Duration(m.TtlMinutes))
@@ -319,11 +327,11 @@ func (d *Deckard) Add(ctx context.Context, request *deckard.AddRequest) (*deckar
 		ids[i] = m.Id
 		queues[m.Queue] = 1
 
-		message := entities.Message{
+		msg := message.Message{
 			ID:            m.Id,
 			Queue:         m.Queue,
 			Timeless:      m.Timeless,
-			Score:         score,
+			Score:         score.GetAddScore(m.Score),
 			Description:   m.Description,
 			ExpiryDate:    t,
 			Payload:       m.Payload,
@@ -331,15 +339,13 @@ func (d *Deckard) Add(ctx context.Context, request *deckard.AddRequest) (*deckar
 			Metadata:      m.Metadata,
 		}
 
-		queuePrefix, queueSuffix := entities.GetQueueParts(m.Queue)
+		queuePrefix, queueSuffix := message.GetQueueParts(m.Queue)
 
-		message.QueuePrefix = queuePrefix
-		message.QueueSuffix = queueSuffix
+		msg.QueuePrefix = queuePrefix
+		msg.QueueSuffix = queueSuffix
 
-		messages[i] = &message
+		messages[i] = &msg
 	}
-
-	addTransactionIds(ctx, ids)
 
 	queueNames := make([]string, len(queues))
 	i := 0
@@ -348,14 +354,18 @@ func (d *Deckard) Add(ctx context.Context, request *deckard.AddRequest) (*deckar
 		i++
 	}
 
-	addTransactionQueues(ctx, queueNames)
+	addSpanAttributes(
+		ctx,
+		attribute.StringSlice(trace.Id, ids),
+		attribute.StringSlice(trace.Queue, queueNames),
+	)
 
-	inserted, updated, err := d.pool.AddMessagesToStorage(ctx, messages...)
+	inserted, updated, err := d.queue.AddMessagesToStorage(ctx, messages...)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "error adding messages")
 	}
 
-	cacheInserted, err := d.pool.AddMessagesToCache(ctx, messages...)
+	cacheInserted, err := d.queue.AddMessagesToCache(ctx, messages...)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "error adding messages")
 	}
@@ -369,18 +379,34 @@ func (d *Deckard) Add(ctx context.Context, request *deckard.AddRequest) (*deckar
 }
 
 func (d *Deckard) Pull(ctx context.Context, request *deckard.PullRequest) (*deckard.PullResponse, error) {
-	addTransactionQueue(ctx, request.Queue)
-	addTransactionLabel(ctx, "amount", fmt.Sprint(request.Amount))
+	amount := int64(request.Amount)
 
-	if request.Amount <= 0 {
-		request.Amount = 1
+	addSpanAttributes(
+		ctx,
+		attribute.StringSlice(trace.Queue, []string{request.Queue}),
+		attribute.Int64(trace.Amount, amount),
+		attribute.Float64(trace.MaxScore, request.MaxScore),
+		attribute.Float64(trace.MinScore, request.MinScore),
+		attribute.Int64(trace.ScoreFilter, request.ScoreFilter),
+	)
+
+	if amount <= 0 {
+		amount = 1
 	}
 
-	if request.Amount > 1000 {
-		request.Amount = 1000
+	if amount > 1000 {
+		amount = 1000
 	}
 
-	messages, err := d.pool.Pull(ctx, request.Queue, int64(request.Amount), request.ScoreFilter)
+	// Compatibility with old clients using the deprecated ScoreFilter
+	if request.MaxScore == 0 && request.ScoreFilter > 0 {
+		request.MaxScore = float64(dtime.NowMs() - request.ScoreFilter)
+	}
+
+	minScore := score.GetPullMinScore(request.MinScore)
+	maxScore := score.GetPullMaxScore(request.MaxScore)
+
+	messages, err := d.queue.Pull(ctx, request.Queue, amount, minScore, maxScore)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "error pulling messages")
 	}
@@ -421,7 +447,7 @@ func (d *Deckard) Pull(ctx context.Context, request *deckard.PullRequest) (*deck
 		ids[i] = res.Messages[i].Id
 	}
 
-	addTransactionIds(ctx, ids)
+	addSpanAttributes(ctx, attribute.StringSlice(trace.Id, ids))
 
 	return &res, nil
 }
@@ -435,10 +461,13 @@ func (d *Deckard) GetById(ctx context.Context, request *deckard.GetByIdRequest) 
 		return nil, status.Error(codes.InvalidArgument, "invalid queue")
 	}
 
-	addTransactionId(ctx, request.Id)
-	addTransactionQueue(ctx, request.Queue)
+	addSpanAttributes(
+		ctx,
+		attribute.StringSlice(trace.Id, []string{request.Id}),
+		attribute.StringSlice(trace.Queue, []string{request.Queue}),
+	)
 
-	messages, err := d.pool.GetStorageMessages(ctx, &storage.FindOptions{
+	messages, err := d.queue.GetStorageMessages(ctx, &storage.FindOptions{
 		Limit: 1,
 		InternalFilter: &storage.InternalFilter{
 			Ids:   &[]string{request.Id},
@@ -487,18 +516,42 @@ func convertAnyDataToString(anyData map[string]*anypb.Any) map[string]string {
 }
 
 func (d *Deckard) Ack(ctx context.Context, request *deckard.AckRequest) (*deckard.AckResponse, error) {
-	addTransactionId(ctx, request.Id)
-	addTransactionQueue(ctx, request.Queue)
+	addSpanAttributes(
+		ctx,
+		attribute.StringSlice(trace.Id, []string{request.Id}),
+		attribute.StringSlice(trace.Queue, []string{request.Queue}),
+		attribute.Float64(trace.ScoreSubtract, request.ScoreSubtract),
+		attribute.Float64(trace.Score, request.Score),
+	)
 
-	message := entities.Message{
+	// Should set the new score only when not locking the message or if score is provided
+	// On unlock process the score is computed by the default algorithm if the score is not set
+	newScore := score.Undefined
+	if request.Score != 0 {
+		newScore = request.Score
+
+	} else if request.LockMs == 0 {
+		newScore = score.GetScoreByDefaultAlgorithm() - request.ScoreSubtract
+
+		if newScore < score.Min {
+			newScore = score.Min
+		} else if newScore > score.Max {
+			newScore = score.Max
+		}
+	}
+
+	now := dtime.Now()
+	message := message.Message{
 		ID:                request.Id,
 		Queue:             request.Queue,
 		LastScoreSubtract: request.ScoreSubtract,
+		LastUsage:         &now,
+		Score:             newScore,
 		Breakpoint:        request.Breakpoint,
 		LockMs:            request.LockMs,
 	}
 
-	result, err := d.pool.Ack(ctx, &message, time.Now(), request.Reason)
+	result, err := d.queue.Ack(ctx, &message, request.Reason)
 
 	response := &deckard.AckResponse{Success: result}
 
@@ -514,18 +567,32 @@ func (d *Deckard) Ack(ctx context.Context, request *deckard.AckRequest) (*deckar
 }
 
 func (d *Deckard) Nack(ctx context.Context, request *deckard.AckRequest) (*deckard.AckResponse, error) {
-	addTransactionId(ctx, request.Id)
-	addTransactionQueue(ctx, request.Queue)
+	addSpanAttributes(
+		ctx,
+		attribute.StringSlice(trace.Id, []string{request.Id}),
+		attribute.StringSlice(trace.Queue, []string{request.Queue}),
+	)
 
-	message := entities.Message{
+	// Should set the new score only when not locking the message or if score is provided
+	// On unlock process the minimum score will be used if the score is not set
+	newScore := score.Undefined
+	if request.Score != 0 {
+		newScore = request.Score
+
+	} else if request.LockMs == 0 {
+		newScore = score.Min
+	}
+
+	message := message.Message{
 		ID:                request.Id,
 		Queue:             request.Queue,
 		LastScoreSubtract: request.ScoreSubtract,
 		Breakpoint:        request.Breakpoint,
 		LockMs:            request.LockMs,
+		Score:             newScore,
 	}
 
-	result, err := d.pool.Nack(ctx, &message, time.Now(), request.Reason)
+	result, err := d.queue.Nack(ctx, &message, dtime.Now(), request.Reason)
 
 	response := &deckard.AckResponse{Success: result}
 
@@ -554,12 +621,12 @@ func (d *Deckard) removeMessageFromAckNack(ctx context.Context, request *deckard
 }
 
 func (d *Deckard) Flush(ctx context.Context, request *deckard.FlushRequest) (*deckard.FlushResponse, error) {
-	// Flush is only available for in-memory data layer, to prevent accidental flushes
+	// Flush is only available for in-memory data layer, to prevent accidental flushes of persistent data
 	if !d.memoryInstance {
 		return &deckard.FlushResponse{Success: false}, nil
 	}
 
-	result, err := d.pool.Flush(ctx)
+	result, err := d.queue.Flush(ctx)
 
 	response := &deckard.FlushResponse{Success: result}
 
@@ -570,34 +637,16 @@ func (d *Deckard) Flush(ctx context.Context, request *deckard.FlushRequest) (*de
 	return response, nil
 }
 
-func addTransactionQueue(ctx context.Context, queue string) {
-	addTransactionLabels(ctx, map[string]string{"queue": queue})
-}
+func addSpanAttributes(ctx context.Context, attributes ...attribute.KeyValue) {
+	if len(attributes) == 0 {
+		return
+	}
 
-func addTransactionQueues(ctx context.Context, queue []string) {
-	addTransactionLabels(ctx, map[string]string{"queue": strings.Join(queue, "")})
-}
-
-func addTransactionId(ctx context.Context, id string) {
-	addTransactionLabels(ctx, map[string]string{"id": id})
-}
-
-func addTransactionIds(ctx context.Context, ids []string) {
-	addTransactionLabels(ctx, map[string]string{"id": strings.Join(ids, ",")})
-}
-
-func addTransactionLabel(ctx context.Context, key string, value string) {
-	addTransactionLabels(ctx, map[string]string{key: value})
-}
-
-func addTransactionLabels(ctx context.Context, labels map[string]string) {
-	span := trace.SpanFromContext(ctx)
+	span := oteltrace.SpanFromContext(ctx)
 
 	if !span.SpanContext().HasTraceID() {
 		return
 	}
 
-	for key := range labels {
-		span.SetAttributes(attribute.String(key, labels[key]))
-	}
+	span.SetAttributes(attributes...)
 }

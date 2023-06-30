@@ -5,13 +5,13 @@ import (
 	"time"
 
 	"github.com/patrickmn/go-cache"
-	"github.com/takenet/deckard/internal/queue/entities"
+	"github.com/takenet/deckard/internal/queue/configuration"
 	"github.com/takenet/deckard/internal/queue/storage"
 )
 
 type QueueConfigurationService interface {
-	EditQueueConfiguration(ctx context.Context, configuration *entities.QueueConfiguration) error
-	GetQueueConfiguration(ctx context.Context, queue string) (*entities.QueueConfiguration, error)
+	EditQueueConfiguration(ctx context.Context, configuration *configuration.QueueConfiguration) error
+	GetQueueConfiguration(ctx context.Context, queue string) (*configuration.QueueConfiguration, error)
 }
 
 type DefaultQueueConfigurationService struct {
@@ -30,7 +30,7 @@ func NewQueueConfigurationService(_ context.Context, storage storage.Storage) *D
 
 var _ QueueConfigurationService = &DefaultQueueConfigurationService{}
 
-func (queueService *DefaultQueueConfigurationService) EditQueueConfiguration(ctx context.Context, cfg *entities.QueueConfiguration) error {
+func (queueService *DefaultQueueConfigurationService) EditQueueConfiguration(ctx context.Context, cfg *configuration.QueueConfiguration) error {
 	if cfg == nil {
 		return nil
 	}
@@ -39,13 +39,13 @@ func (queueService *DefaultQueueConfigurationService) EditQueueConfiguration(ctx
 		return nil
 	}
 
-	configuration, found := queueService.localCache.Get(cfg.Queue)
+	config, found := queueService.localCache.Get(cfg.Queue)
 
 	if !found {
 		return queueService.storage.EditQueueConfiguration(ctx, cfg)
 	}
 
-	cacheConfiguration := configuration.(*entities.QueueConfiguration)
+	cacheConfiguration := config.(*configuration.QueueConfiguration)
 
 	// Check if the new configuration is different
 	if cacheConfiguration.MaxElements != cfg.MaxElements {
@@ -57,29 +57,29 @@ func (queueService *DefaultQueueConfigurationService) EditQueueConfiguration(ctx
 	return nil
 }
 
-func (queueService *DefaultQueueConfigurationService) GetQueueConfiguration(ctx context.Context, queue string) (*entities.QueueConfiguration, error) {
+func (queueService *DefaultQueueConfigurationService) GetQueueConfiguration(ctx context.Context, queue string) (*configuration.QueueConfiguration, error) {
 	cacheConfig, found := queueService.localCache.Get(queue)
 
 	if found {
-		return cacheConfig.(*entities.QueueConfiguration), nil
+		return cacheConfig.(*configuration.QueueConfiguration), nil
 	}
 
 	var err error
-	var configuration *entities.QueueConfiguration
+	var config *configuration.QueueConfiguration
 
-	configuration, err = queueService.storage.GetQueueConfiguration(ctx, queue)
+	config, err = queueService.storage.GetQueueConfiguration(ctx, queue)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if configuration == nil {
-		configuration = &entities.QueueConfiguration{
+	if config == nil {
+		config = &configuration.QueueConfiguration{
 			Queue: queue,
 		}
 	}
 
-	queueService.localCache.Set(queue, configuration, cache.DefaultExpiration)
+	queueService.localCache.Set(queue, config, cache.DefaultExpiration)
 
-	return configuration, nil
+	return config, nil
 }

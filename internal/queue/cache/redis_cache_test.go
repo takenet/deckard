@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/takenet/deckard/internal/config"
-	"github.com/takenet/deckard/internal/queue/entities"
+	"github.com/takenet/deckard/internal/queue/message"
 )
 
 func TestRedisCacheIntegration(t *testing.T) {
@@ -54,16 +54,16 @@ func TestInsertShouldInsertWithCorrectScoreIntegration(t *testing.T) {
 
 	cache.Flush(ctx)
 
-	data := make([]*entities.Message, 2)
+	data := make([]*message.Message, 2)
 
-	data[0] = &entities.Message{
+	data[0] = &message.Message{
 		ID:          "123",
 		Description: "desc",
 		Queue:       "queue",
 		Score:       654231,
 	}
 
-	data[1] = &entities.Message{
+	data[1] = &message.Message{
 		ID:          "234",
 		Description: "desc",
 		Queue:       "queue",
@@ -112,8 +112,8 @@ func TestConnectWithRedisUsingConnectionURI(t *testing.T) {
 
 	cache.Flush(ctx)
 
-	data := make([]*entities.Message, 1)
-	data[0] = &entities.Message{
+	data := make([]*message.Message, 1)
+	data[0] = &message.Message{
 		ID:          "234",
 		Description: "desc",
 		Queue:       "queue",

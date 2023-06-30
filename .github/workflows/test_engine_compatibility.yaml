@@ -1,4 +1,4 @@
-name: Test
+name: Test Engine Compatibility
 
 on:
   pull_request:
@@ -16,19 +16,19 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  test-compatibility:
     runs-on: ubuntu-latest
 
     services:
       mongodb:
-        image: mongo:latest
+        image: mongo:5.0.18
         ports:
-        - 27017:27017
+          - '27017:27017'
 
       redis:
-        image: redis:latest
+        image: redis:5.0.14
         ports:
-        - 6379:6379
+          - 6379:6379
 
     steps:
     - name: Set up Go
@@ -64,33 +64,4 @@ jobs:
       run: go mod tidy
 
     - name: Make test
-      run: make test
-
-    - name: Publish test results
-      uses: actions/upload-artifact@v3
-      if: always()
-      with:
-        name: gotest.out
-        path: gotest.out
-
-    - name: Publish JUnit report
-      uses: actions/upload-artifact@v3
-      if: always()
-      with:
-        name: junit.xml
-        path: junit.xml
-
-    - name: JUnit report action
-      uses: mikepenz/action-junit-report@v3
-      if: always()
-      with:
-        report_paths: junit.xml
-
-    - name: Coverage Report
-      uses: codecov/codecov-action@v3
-      if: always()
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        fail_ci_if_error: true
-        files: coverage.out
-        verbose: true
+      run: make integration-test

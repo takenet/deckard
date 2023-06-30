@@ -14,21 +14,22 @@ import (
 	"github.com/takenet/deckard/internal/logger"
 	"github.com/takenet/deckard/internal/metrics"
 	"github.com/takenet/deckard/internal/queue/cache"
-	"github.com/takenet/deckard/internal/queue/entities"
+	"github.com/takenet/deckard/internal/queue/message"
+	"github.com/takenet/deckard/internal/queue/score"
 	"github.com/takenet/deckard/internal/queue/storage"
 	"go.opentelemetry.io/otel/attribute"
 )
 
 type DeckardQueue interface {
-	AddMessagesToCache(ctx context.Context, messages ...*entities.Message) (int64, error)
-	AddMessagesToStorage(ctx context.Context, messages ...*entities.Message) (inserted int64, updated int64, err error)
-	Nack(ctx context.Context, message *entities.Message, timestamp time.Time, reason string) (bool, error)
-	Ack(ctx context.Context, message *entities.Message, timestamp time.Time, reason string) (bool, error)
+	AddMessagesToCache(ctx context.Context, messages ...*message.Message) (int64, error)
+	AddMessagesToStorage(ctx context.Context, messages ...*message.Message) (inserted int64, updated int64, err error)
+	Nack(ctx context.Context, message *message.Message, timestamp time.Time, reason string) (bool, error)
+	Ack(ctx context.Context, message *message.Message, reason string) (bool, error)
 	TimeoutMessages(ctx context.Context, queue string) ([]string, error)
-	Pull(ctx context.Context, queue string, n int64, scoreFilter int64) (*[]entities.Message, error)
+	Pull(ctx context.Context, queue string, n int64, minScore *float64, maxScore *float64) (*[]message.Message, error)
 	Remove(ctx context.Context, queue string, reason string, ids ...string) (cacheRemoved int64, storageRemoved int64, err error)
 	Count(ctx context.Context, opts *storage.FindOptions) (int64, error)
-	GetStorageMessages(ctx context.Context, opt *storage.FindOptions) ([]entities.Message, error)
+	GetStorageMessages(ctx context.Context, opt *storage.FindOptions) ([]message.Message, error)
 
 	// Flushes all deckard content from cache and storage.
 	// Used only for memory instance.
@@ -73,7 +74,7 @@ func (pool *Queue) Count(ctx context.Context, opts *storage.FindOptions) (int64,
 	return result, nil
 }
 
-func (pool *Queue) GetStorageMessages(ctx context.Context, opt *storage.FindOptions) ([]entities.Message, error) {
+func (pool *Queue) GetStorageMessages(ctx context.Context, opt *storage.FindOptions) ([]message.Message, error) {
 	result, err := pool.storage.Find(ctx, opt)
 
 	if err != nil {
@@ -85,7 +86,7 @@ func (pool *Queue) GetStorageMessages(ctx context.Context, opt *storage.FindOpti
 	return result, nil
 }
 
-func (pool *Queue) AddMessagesToStorage(ctx context.Context, messages ...*entities.Message) (inserted int64, updated int64, err error) {
+func (pool *Queue) AddMessagesToStorage(ctx context.Context, messages ...*message.Message) (inserted int64, updated int64, err error) {
 	queues := make(map[string]bool)
 
 	for i := range messages {
@@ -109,16 +110,16 @@ func (pool *Queue) AddMessagesToStorage(ctx context.Context, messages ...*entiti
 	return insertions, updates, err
 }
 
-func (pool *Queue) AddMessagesToCache(ctx context.Context, messages ...*entities.Message) (int64, error) {
+func (pool *Queue) AddMessagesToCache(ctx context.Context, messages ...*message.Message) (int64, error) {
 	return pool.AddMessagesToCacheWithAuditReason(ctx, "", messages...)
 }
 
-func (pool *Queue) AddMessagesToCacheWithAuditReason(ctx context.Context, reason string, messages ...*entities.Message) (int64, error) {
-	membersByQueue := make(map[string][]*entities.Message)
+func (pool *Queue) AddMessagesToCacheWithAuditReason(ctx context.Context, reason string, messages ...*message.Message) (int64, error) {
+	membersByQueue := make(map[string][]*message.Message)
 	for i := range messages {
 		queueMessages, ok := membersByQueue[messages[i].Queue]
 		if !ok {
-			queueMessages = make([]*entities.Message, 0)
+			queueMessages = make([]*message.Message, 0)
 		}
 
 		queueMessages = append(queueMessages, messages[i])
@@ -152,25 +153,25 @@ func (pool *Queue) AddMessagesToCacheWithAuditReason(ctx context.Context, reason
 	return count, nil
 }
 
-func (pool *Queue) Nack(ctx context.Context, message *entities.Message, timestamp time.Time, reason string) (bool, error) {
-	if message == nil {
+func (pool *Queue) Nack(ctx context.Context, msg *message.Message, timestamp time.Time, reason string) (bool, error) {
+	if msg == nil {
 		return false, nil
 	}
 
-	if message.Queue == "" {
+	if msg.Queue == "" {
 		return false, fmt.Errorf("message has a invalid queue")
 	}
 
-	if message.ID == "" {
+	if msg.ID == "" {
 		return false, fmt.Errorf("message has a invalid ID")
 	}
 
 	defer func() {
-		metrics.QueueNack.Add(ctx, 1, attribute.String("queue", entities.GetQueuePrefix(message.Queue)), attribute.String("reason", reason))
+		metrics.QueueNack.Add(ctx, 1, attribute.String("queue", message.GetQueuePrefix(msg.Queue)), attribute.String("reason", reason))
 	}()
 
-	if message.LockMs > 0 {
-		result, err := pool.cache.LockMessage(ctx, message, cache.LOCK_NACK)
+	if msg.LockMs > 0 {
+		result, err := pool.cache.LockMessage(ctx, msg, cache.LOCK_NACK)
 
 		if err != nil {
 			logger.S(ctx).Error("Error locking message: ", err)
@@ -179,21 +180,21 @@ func (pool *Queue) Nack(ctx context.Context, message *entities.Message, timestam
 		}
 
 		pool.auditor.Store(ctx, audit.Entry{
-			ID:                message.ID,
-			Queue:             message.Queue,
-			LastScoreSubtract: message.LastScoreSubtract,
-			Breakpoint:        message.Breakpoint,
+			ID:                msg.ID,
+			Queue:             msg.Queue,
+			LastScoreSubtract: msg.LastScoreSubtract,
+			Breakpoint:        msg.Breakpoint,
 			Signal:            audit.NACK,
 			Reason:            reason,
-			LockMs:            message.LockMs,
+			LockMs:            msg.LockMs,
 		})
 
 		return result, nil
 	}
 
-	message.Score = entities.MaxScore()
+	msg.Score = score.Min
 
-	result, err := pool.cache.MakeAvailable(ctx, message)
+	result, err := pool.cache.MakeAvailable(ctx, msg)
 
 	if err != nil {
 		logger.S(ctx).Error("Error making element available: ", err)
@@ -202,10 +203,10 @@ func (pool *Queue) Nack(ctx context.Context, message *entities.Message, timestam
 	}
 
 	pool.auditor.Store(ctx, audit.Entry{
-		ID:                message.ID,
-		Queue:             message.Queue,
-		LastScoreSubtract: message.LastScoreSubtract,
-		Breakpoint:        message.Breakpoint,
+		ID:                msg.ID,
+		Queue:             msg.Queue,
+		LastScoreSubtract: msg.LastScoreSubtract,
+		Breakpoint:        msg.Breakpoint,
 		Signal:            audit.NACK,
 		Reason:            reason,
 	})
@@ -213,23 +214,20 @@ func (pool *Queue) Nack(ctx context.Context, message *entities.Message, timestam
 	return result, nil
 }
 
-func (pool *Queue) Ack(ctx context.Context, message *entities.Message, timestamp time.Time, reason string) (bool, error) {
-	if message == nil {
+func (pool *Queue) Ack(ctx context.Context, msg *message.Message, reason string) (bool, error) {
+	if msg == nil {
 		return false, nil
 	}
 
-	if message.Queue == "" {
+	if msg.Queue == "" {
 		return false, fmt.Errorf("message has a invalid queue")
 	}
 
-	if message.ID == "" {
+	if msg.ID == "" {
 		return false, fmt.Errorf("message has a invalid ID")
 	}
 
-	message.LastUsage = &timestamp
-	message.UpdateScore()
-
-	_, err := pool.storage.Ack(ctx, message)
+	_, err := pool.storage.Ack(ctx, msg)
 
 	if err != nil {
 		logger.S(ctx).Error("Error acking element on storage: ", err)
@@ -237,10 +235,10 @@ func (pool *Queue) Ack(ctx context.Context, message *entities.Message, timestamp
 		return false, err
 	}
 
-	metrics.QueueAck.Add(ctx, 1, attribute.String("queue", entities.GetQueuePrefix(message.Queue)), attribute.String("reason", reason))
+	metrics.QueueAck.Add(ctx, 1, attribute.String("queue", message.GetQueuePrefix(msg.Queue)), attribute.String("reason", reason))
 
-	if message.LockMs > 0 {
-		result, err := pool.cache.LockMessage(ctx, message, cache.LOCK_ACK)
+	if msg.LockMs > 0 {
+		result, err := pool.cache.LockMessage(ctx, msg, cache.LOCK_ACK)
 
 		if err != nil {
 			logger.S(ctx).Error("Error locking element: ", err)
@@ -249,19 +247,19 @@ func (pool *Queue) Ack(ctx context.Context, message *entities.Message, timestamp
 		}
 
 		pool.auditor.Store(ctx, audit.Entry{
-			ID:                message.ID,
-			Queue:             message.Queue,
-			LastScoreSubtract: message.LastScoreSubtract,
-			Breakpoint:        message.Breakpoint,
+			ID:                msg.ID,
+			Queue:             msg.Queue,
+			LastScoreSubtract: msg.LastScoreSubtract,
+			Breakpoint:        msg.Breakpoint,
 			Signal:            audit.ACK,
 			Reason:            reason,
-			LockMs:            message.LockMs,
+			LockMs:            msg.LockMs,
 		})
 
 		return result, nil
 	}
 
-	result, availableErr := pool.cache.MakeAvailable(ctx, message)
+	result, availableErr := pool.cache.MakeAvailable(ctx, msg)
 	if availableErr != nil {
 		logger.S(ctx).Error("Error making element available: ", availableErr)
 
@@ -269,10 +267,10 @@ func (pool *Queue) Ack(ctx context.Context, message *entities.Message, timestamp
 	}
 
 	pool.auditor.Store(ctx, audit.Entry{
-		ID:                message.ID,
-		Queue:             message.Queue,
-		LastScoreSubtract: message.LastScoreSubtract,
-		Breakpoint:        message.Breakpoint,
+		ID:                msg.ID,
+		Queue:             msg.Queue,
+		LastScoreSubtract: msg.LastScoreSubtract,
+		Breakpoint:        msg.Breakpoint,
 		Signal:            audit.ACK,
 		Reason:            reason,
 	})
@@ -290,7 +288,7 @@ func (pool *Queue) TimeoutMessages(ctx context.Context, queue string) ([]string,
 	}
 
 	if len(ids) > 0 {
-		metrics.QueueTimeout.Add(ctx, int64(len(ids)), attribute.String("queue", entities.GetQueuePrefix(queue)))
+		metrics.QueueTimeout.Add(ctx, int64(len(ids)), attribute.String("queue", message.GetQueuePrefix(queue)))
 
 		for _, id := range ids {
 			pool.auditor.Store(ctx, audit.Entry{
@@ -304,8 +302,8 @@ func (pool *Queue) TimeoutMessages(ctx context.Context, queue string) ([]string,
 	return ids, nil
 }
 
-func (pool *Queue) Pull(ctx context.Context, queue string, n int64, scoreFilter int64) (*[]entities.Message, error) {
-	ids, err := pool.cache.PullMessages(ctx, queue, n, scoreFilter)
+func (pool *Queue) Pull(ctx context.Context, queue string, n int64, minScore *float64, maxScore *float64) (*[]message.Message, error) {
+	ids, err := pool.cache.PullMessages(ctx, queue, n, minScore, maxScore)
 	if err != nil {
 		logger.S(ctx).Error("Error pulling cache elements: ", err)
 
@@ -313,7 +311,7 @@ func (pool *Queue) Pull(ctx context.Context, queue string, n int64, scoreFilter 
 	}
 
 	if len(ids) == 0 {
-		metrics.QueueEmptyQueue.Add(ctx, 1, attribute.String("queue", entities.GetQueuePrefix(queue)))
+		metrics.QueueEmptyQueue.Add(ctx, 1, attribute.String("queue", message.GetQueuePrefix(queue)))
 
 		return nil, nil
 	}
@@ -337,7 +335,7 @@ func (pool *Queue) Pull(ctx context.Context, queue string, n int64, scoreFilter 
 	}
 
 	if len(retryNotFound) > 0 {
-		metrics.QueueNotFoundInStorage.Add(ctx, int64(len(notFound)), attribute.String("queue", entities.GetQueuePrefix(queue)))
+		metrics.QueueNotFoundInStorage.Add(ctx, int64(len(notFound)), attribute.String("queue", message.GetQueuePrefix(queue)))
 
 		for _, id := range retryNotFound {
 			pool.auditor.Store(ctx, audit.Entry{
@@ -362,7 +360,7 @@ func (pool *Queue) Pull(ctx context.Context, queue string, n int64, scoreFilter 
 	}
 
 	if len(messages) == 0 {
-		metrics.QueueEmptyQueueStorage.Add(ctx, 1, attribute.String("queue", entities.GetQueuePrefix(queue)))
+		metrics.QueueEmptyQueueStorage.Add(ctx, 1, attribute.String("queue", message.GetQueuePrefix(queue)))
 
 		return nil, nil
 	}
@@ -370,7 +368,7 @@ func (pool *Queue) Pull(ctx context.Context, queue string, n int64, scoreFilter 
 	return &messages, nil
 }
 
-func (pool *Queue) getFromStorage(ctx context.Context, ids []string, queue string, sort *orderedmap.OrderedMap[string, int], retry bool) ([]entities.Message, []string, error) {
+func (pool *Queue) getFromStorage(ctx context.Context, ids []string, queue string, sort *orderedmap.OrderedMap[string, int], retry bool) ([]message.Message, []string, error) {
 	messages, err := pool.storage.Find(ctx, &storage.FindOptions{
 		Sort: sort,
 		InternalFilter: &storage.InternalFilter{
@@ -435,7 +433,7 @@ func (pool *Queue) Flush(ctx context.Context) (bool, error) {
 }
 
 // notFoundIds calculate the difference between the ids and the found messages.
-func notFoundIds(ids []string, messages []entities.Message) []string {
+func notFoundIds(ids []string, messages []message.Message) []string {
 	notFound := make([]string, 0)
 	found := make(map[string]struct{})
 
