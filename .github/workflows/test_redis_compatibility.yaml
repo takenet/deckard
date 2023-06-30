@@ -1,0 +1,67 @@
+name: Test Redis Compatibility
+
+on:
+  pull_request:
+    branches:    
+      - main
+  push:
+    branches:
+      - main
+
+env:
+  GO_VERSION: 1.18
+
+permissions:
+  checks: write
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:6.0
+        ports:
+        - 27017:27017
+
+      redis:
+        image: redis:5.0.14
+        ports:
+        - 6379:6379
+
+    steps:
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - uses: actions/checkout@v3
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-golang-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-golang-
+
+    - name: Install mockgen
+      run: go install github.com/golang/mock/mockgen@latest
+
+    - name: Install gotestsum
+      run: go install gotest.tools/gotestsum@latest
+
+    - name: Generate Mocks
+      run: make gen-mocks
+
+    - name: Generate TLS certificates
+      run: make gen-cert
+
+    - name: Go mod tidy
+      run: go mod tidy
+
+    - name: Make test
+      run: make test
