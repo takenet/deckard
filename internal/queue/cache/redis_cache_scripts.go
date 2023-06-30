@@ -161,7 +161,7 @@ return elements
 //
 // ARGV[3] -> the default score if no score is present in the score lock sorted set
 const unlockElementsScript = `
-local elements = redis.call('ZREVRANGEBYSCORE', KEYS[1], ARGV[2], '0', 'LIMIT', '0', tostring(ARGV[1]))
+local elements = redis.call('ZRANGE', KEYS[1], ARGV[2], '0', 'BYSCORE', 'REV', 'LIMIT', '0', tostring(ARGV[1]))
 if next(elements) == nil then
 	return ''
 end
@@ -205,7 +205,7 @@ local elements
 if ARGV[3] == '-inf' and ARGV[4] == '+inf' then
 	elements = redis.call('ZRANGE', KEYS[1], '0', tostring(tonumber(ARGV[1]) - 1))
 else
-	elements = redis.call('ZRANGEBYSCORE', KEYS[1], ARGV[3], ARGV[4], 'LIMIT', '0', tostring(ARGV[1]))
+	elements = redis.call('ZRANGE', KEYS[1], ARGV[3], ARGV[4], 'BYSCORE', 'LIMIT', '0', tostring(ARGV[1]))
 end
 if next(elements) == nil then
 	return ''
