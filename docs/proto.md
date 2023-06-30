@@ -39,11 +39,12 @@
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | ID of the message |
 | queue | [string](#string) |  | Queue where this message is stored |
-| reason | [string](#string) |  | Reason of this result. Useful for audit, mostly on 'nack' signals. |
-| score_subtract | [double](#double) |  | The value to subtract the score and increase final message score. For example if you want to make this message to have a better score you can add 10000 which will represent 10s of score benefit. If you want to penalize the message you can send a negative number.<br/><br/>IMPORTANT: The message will not be locked by, in the example, 10 seconds. This attribute is used only to increase or decrease the message priority in the priority queue.<br/><br/>This attribute is used only for ack requests and can't be used at the same time of 'lock_ms' attribute. |
-| breakpoint | [string](#string) |  | Breakpoint to set for this message |
-| lock_ms | [int64](#int64) |  | Time in milliseconds to lock a message before returning it to the queue. For nack requests the message will be locked before returning to first position in the priority queue. For ack requests the message will be locked before returning to last position in the priority queue.<br/><br/>IMPORTANT: The 'score_subtract' attribute will be ignored if this attribute is different than 0.<br/><br/>IMPORTANT: Deckard checks for locked messages in a 1-second delay meaning the lock have a second precision and not milliseconds. This field is in milliseconds because all scores and duration units on deckard are expressed in milliseconds. |
+| reason | [string](#string) |  | Reason of this result.<br/><br/>Useful for audit, mostly on 'nack' signals. |
+| score_subtract | [double](#double) |  | **Deprecated.** This field is deprecated and will be removed in the future. If you need to change the message score, use the 'score' field.<br/><br/>The value to subtract the score and increase final message priority. For example if you want to make this message to have a higher priority you can set 10000 which will represent 10s of score benefit in the default score algorithm. If you want to penalize the message you can send a negative number.<br/><br/>IMPORTANT: The message will not be locked by, in the example, 10 seconds. This field is used only to increase or decrease the message priority in the priority queue.<br/><br/>This field is used only for ack requests (since in nack requests the message will return with the lowest score to the queue). It will be ignored if used at the same time of 'score' or 'lock_ms' fields. |
+| breakpoint | [string](#string) |  | Breakpoint is a field to be used as an auxiliar field for some specific use cases. For example if you need to keep a record of the last result processing a message, or want to iteract with a pagination system.<br/><br/>Examples: imagine a message representing a web news portal and you want to navigate through the articles. This field could be used to store the last visited article id. Or imagine a message representing a user and you want to iterate through the user's publications pages. This field could be used to store the last page number you visited. |
+| lock_ms | [int64](#int64) |  | Time in milliseconds to lock a message before returning it to the queue. For NACK requests the message will be locked before returning to first position in the priority queue. You can change this behavior using the 'score' field.<br/><br/>For ACK requests the message will be locked before returning to last position in the priority queue. You can change this behavior using the 'score' field.<br/><br/>IMPORTANT: Deckard checks for locked messages in a 1-second precision meaning the lock have a second precision and not milliseconds. This field is in milliseconds because all duration units on deckard are expressed in milliseconds and the default score algorithm uses milliseconds as well. |
 | removeMessage | [bool](#bool) |  | Whether the message should be removed when acked/nacked |
+| score | [double](#double) |  | Sets the score of the message when ACKed, to override the default score algorithm.<br/><br/>If used at the same time with the 'lock_ms' attribute, the message will be locked for the specified time and then returned to the queue with the specified score.<br/><br/>For ACK requests, if the score is not provided (or set to 0), the message will return to the queue with the default score algorithm which is the current timestamp in milliseconds.<br/><br/>For NACKs requests, if the score is not provided (or set to 0), the message will return to the queue with the minimum score accepted by Deckard which is 0.<br/><br/>Negative values will be converted to 0, which is how to set the highest priority to a message in a ACK/NACK request.<br/><br/>REMEMBER: the maximum score accepted by Deckard is 9007199254740992 and the minimum is 0, so values outside this range will be capped. |
 
 
 
@@ -82,6 +83,7 @@
 | timeless | [bool](#bool) |  | Indicate this message will never expire and will only be deleted from the queue if explicitly removed. |
 | ttl_minutes | [int64](#int64) |  | TTL is the amount of time in minutes this message will live in the queue. TTL is not a exact time, the message may live a little longer than the specified TTL. |
 | description | [string](#string) |  | Description of the message, this should be used as a human readable string to be used in diagnostics. |
+| score | [double](#double) |  | Score represents the priority score the message currently have in the queue. The score is used to determine the order of the messages returned in a pull request. The lower the score, the higher the priority.<br/><br/>If the score is not set (or set to 0), the score will be set with the current timestamp in milliseconds at the moment of the message creation.<br/><br/>The maximum score accepted by Deckard is 9007199254740992 and the minimum is 0 Negative scores will be converted to 0, adding the message with the lowest score (and highest priority) |
 
 
 
@@ -190,7 +192,7 @@
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | queue | [string](#string) |  | Name of the queue to be updated This includes all prefixes and suffixes |
-| configuration | [QueueConfiguration](#blipai-deckard-QueueConfiguration) |  | Configuration to apply to the queue. It will always update the queue with the newer configuration. Only available fields will be updated, meaning that previously configured attributes will not be change unless you explicit set it. If you want to change a configuration to its default value, manually set it to its default value following each field documentation. |
+| configuration | [QueueConfiguration](#blipai-deckard-QueueConfiguration) |  | Configuration to apply to the queue. It will always update the queue with the newer configuration. Only available fields will be updated, meaning that previously configured fields will not be change unless you explicit set it. If you want to change a configuration to its default value, manually set it to its default value following each field documentation. |
 
 
 
@@ -332,8 +334,8 @@
 | payload | [Message.PayloadEntry](#blipai-deckard-Message-PayloadEntry) | repeated | A payload map with formatted data to be stored and used by clients. |
 | metadata | [Message.MetadataEntry](#blipai-deckard-Message-MetadataEntry) | repeated | Metadata is a map of string to be used as a key-value store. It is a simple way to store data that is not part of the message payload. |
 | string_payload | [string](#string) |  | Message string payload. Is responsibility of the caller to know how to encode/decode to a useful format for its purpose. This field can be used to store simple string data instead of using the payload field. |
-| score | [double](#double) |  | Score is the priority this message currently have in the queue. |
-| breakpoint | [string](#string) |  | Breakpoint is a field to be used as an auxiliar field for some specific use cases.<br/><br/>For example if you need to keep a record of the last result processing a message, use this field like iteracting with a pagination system. |
+| score | [double](#double) |  | Score represents the priority score the message currently have in the queue. The lower the score, the higher the priority. The maximum score accepted by Deckard is 9007199254740992 and the minimum is 0 |
+| breakpoint | [string](#string) |  | Breakpoint is a field to be used as an auxiliar field for some specific use cases. For example if you need to keep a record of the last result processing a message, or want to iteract with a pagination system.<br/><br/>Examples: imagine a message representing a web news portal and you want to navigate through the articles. This field could be used to store the last visited article id. Or imagine a message representing a user and you want to iterate through the user's publications pages. This field could be used to store the last page number you visited. |
 
 
 
@@ -382,7 +384,9 @@
 | ----- | ---- | ----- | ----------- |
 | queue | [string](#string) |  | Full name of the queue to pull messages (including any prefixes) |
 | amount | [int32](#int32) |  | Number of messages to fetch. Caution: as greater the amount, as more time it will take to process the request. Max value is 1000 and the default value is 1 |
-| score_filter | [int64](#int64) |  | Number to subtract to the current time to filter the max score to return. Useful to not return a message just moments after it was last used.<br/><br/>For example if in your queue the score is only based on the time (always acking with score_subtract as 0), this parameter will be the number of milliseconds since the message's last usage. |
+| score_filter | [int64](#int64) |  | **Deprecated.** Prefer using the max_score field instead of this one. This field is deprecated and will be removed in the future. The `score_filter` behaves differently than `max_score` field. The `max_score` field is the upper threshold itself, but the `score_filter` will result in an upper score threshold of the current timestamp minus the score_filter value.<br/><br/>Useful only when your queue's score is only based on the current timestamp to not return a message just moments after it was last used. It will only return messages with score lower than the current timestamp minus the score_filter value.<br/><br/>For example if your queue's score is only based on the current timestamp, this parameter will be the number of milliseconds a message must be in the queue before being returned. |
+| max_score | [double](#double) |  | Sets the upper threshold for the priority score of a message to be returned in the pull request.<br/><br/>Only messages with a priority score equal to or lower than the max_score value will be returned.<br/><br/>The maximum score accepted by Deckard is 9007199254740992, any value higher than this will be capped to the maximum score. To set this value to the minimum score accepted by Deckard, use any negative number. This parameter will be ignored if set to 0 (default value). |
+| min_score | [double](#double) |  | Sets the lower threshold for the priority score required for a message to be returned. Only messages with a priority score equal to or higher than the min_score value will be returned. The minimum score accepted by Deckard is 0 which is also the default value |
 
 
 
@@ -412,7 +416,7 @@ The queue configuration does not change instantly and can take up to 10 minutes 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| max_elements | [int64](#int64) |  | Number of max elements the queue can have.<br/><br/>To apply a max elements to a queue, set a value greater than 0. To remove the max elements from a queue, set the value to -1. 0 will be always ignored and the queue will not be updated.<br/><br/>All queues are unlimited by default. |
+| max_elements | [int64](#int64) |  | Number of max elements the queue can have.<br/><br/>To apply a max elements to a queue, set a value greater than 0. To remove the max elements from a queue, set the value to -1. 0 will be always ignored and the queue will not be updated.<br/><br/>All queues are unlimited by default.<br/><br/>The exclusion policy will be applied to the queue when the max elements is reached:<br/><br/>Messages are excluded ordered by its TTL, where the closest to expire will be excluded first. If all messages have the same TTL, the oldest message will be excluded first. |
 
 
 
