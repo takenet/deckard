@@ -21,12 +21,12 @@ jobs:
 
     services:
       mongodb:
-        image: mongo:6.0
+        image: mongo:latest
         ports:
         - 27017:27017
 
       redis:
-        image: redis:7.0
+        image: redis:latest
         ports:
         - 6379:6379
 

@@ -1,4 +1,4 @@
-name: Test Redis Compatibility
+name: Test Engine Compatibility
 
 on:
   pull_request:
@@ -10,25 +10,29 @@ on:
 
 env:
   GO_VERSION: 1.18
+  DECKARD_REDIS_PORT: 6380
+  DECKARD_MONGODB_PORT: 27018
 
 permissions:
   checks: write
   contents: read
 
 jobs:
-  test:
+  test-compatibility:
     runs-on: ubuntu-latest
 
     services:
       mongodb:
-        image: mongo:6.0
+        image: mongo:5.0.18
+        options: --port 27018
         ports:
-        - 27017:27017
+        - 27018:27018
 
       redis:
         image: redis:5.0.14
+        options: --port 6380
         ports:
-        - 6379:6379
+        - 6380:6380
 
     steps:
     - name: Set up Go
