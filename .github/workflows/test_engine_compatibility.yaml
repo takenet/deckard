@@ -24,15 +24,13 @@ jobs:
     services:
       mongodb:
         image: mongo:5.0.18
-        options: --port 27018
         ports:
-        - 27018:27018
+          - '27018:27017'
 
       redis:
         image: redis:5.0.14
-        options: --port 6380
         ports:
-        - 6380:6380
+        - 6380:6379
 
     steps:
     - name: Set up Go
