@@ -69,6 +69,12 @@ gen-mocks:
 
 	go generate ./...
 
+gen-docs:
+# https://github.com/pseudomuto/protoc-gen-doc/pull/520 or https://github.com/pseudomuto/protoc-gen-doc/pull/486
+	@if ! command -v protoc-gen-doc > /dev/null; then echo "Installing protoc-gen-doc" && go install -a -v github.com/lucasoares/protoc-gen-doc/cmd/protoc-gen-doc@change-module-name; fi;
+
+	protoc --doc_out=./docs/ --doc_opt=docs/markdown.tmpl,proto.md proto/*
+
 # Generate certificates for tests
 gen-cert:
 	cd internal/service/cert; ./gen.sh 2>/dev/null || echo "ERROR: Certificate generation failed"

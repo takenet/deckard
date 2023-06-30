@@ -218,6 +218,13 @@ When creating interfaces with the need to generate mocks, you must add the follo
 //go:generate mockgen -destination=<path_to_mocks>/mock_<file>.go -package=mocks -source=<file>.go
 ```
 
+## Documentation
+
+If you made any changes in the `.proto` file, you must generate the documentation with the following command:
+```shell
+make gen-docs
+```
+
 ## Docker Image
 
 To generate the Deckard image we use the [ko](https://github.com/google/ko) tool.
