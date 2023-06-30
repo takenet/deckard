@@ -10,8 +10,6 @@ on:
 
 env:
   GO_VERSION: 1.18
-  DECKARD_REDIS_PORT: 6380
-  DECKARD_MONGODB_PORT: 27018
 
 permissions:
   checks: write
@@ -25,12 +23,12 @@ jobs:
       mongodb:
         image: mongo:5.0.18
         ports:
-          - '27018:27017'
+          - '27017:27017'
 
       redis:
         image: redis:5.0.14
         ports:
-        - 6380:6379
+          - 6379:6379
 
     steps:
     - name: Set up Go
@@ -66,4 +64,4 @@ jobs:
       run: go mod tidy
 
     - name: Make test
-      run: make test
+      run: make integration-test
