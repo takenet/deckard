@@ -8,7 +8,7 @@
 
 <a name="blipai-deckard-Deckard"></a>
 
-### Deckard
+### Deckard Service
 
 
 | Method Name | Request Type | Response Type | Description |
