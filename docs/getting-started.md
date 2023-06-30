@@ -2,8 +2,23 @@
 
 This guide will help you to start using Deckard and consists of the following sections:
 
+- [Understanding Deckard](#understanding-deckard)
 - [Running Deckard](#running-deckard)
 - [Consuming Deckard](#consuming-deckard)
+
+## Understanding Deckard
+
+Deckard is a priority queue that uses gRPC to communicate with its clients.
+
+To learn more about its components please check the [components documentation](components.md).
+
+To check the available configuration options please check the [configuration section](/README.md?#configuration).
+
+To learn the structure of this git project and its folders, check the [contributing guide](/CONTRIBUTING.md).
+
+To learn how to integrate Deckard with your application please check [consuming section](#consuming-deckard).
+
+To understand which services are exposed by Deckard and its message and types, please check the documentation of Deckard's [protocol buffer definition](proto.md).
 
 ## Running Deckard
 
@@ -65,7 +80,7 @@ Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Force
 
 ## Consuming Deckard
 
-Deckard exposes a gRPC service that can be consumed by any gRPC client. You can find the proto file [here](/proto/deckard_service.proto).
+Deckard exposes a gRPC service that can be consumed by any gRPC client. You can find a documentation of the exposed service, messages and types [here](proto.md). Deckard contains a single proto file and it is located [here](/proto/deckard_service.proto).
 
 We suggest the usage of [Postman](https://www.postman.com/) to consume the gRPC service manually. You can follow the steps below to configure Postman to consume the gRPC service:
 

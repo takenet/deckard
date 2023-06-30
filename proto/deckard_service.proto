@@ -63,9 +63,9 @@ message GetByIdRequest {
 message GetByIdResponse {
   Message message = 1;
 
-  // A human readable string data map when the message is found
-  // This represents the payload map as a JSON string representation
-  // This is useful for debugging and diagnostics
+  // A human readable string data map of the message's payload.
+  //
+  // This represents the payload map as a JSON string representation, useful for debugging and diagnostics
   map <string, string> human_readable_payload = 3;
 
   bool found = 2;
