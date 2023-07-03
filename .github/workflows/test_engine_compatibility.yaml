@@ -85,3 +85,5 @@ jobs:
         if: always()
         with:
           report_paths: junit.xml
+          job_name: test-compatibility
+          check_name: JUnit Engine Compatibility Report

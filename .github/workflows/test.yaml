@@ -85,6 +85,8 @@ jobs:
         if: always()
         with:
           report_paths: junit.xml
+          job_name: test
+          check_name: JUnit Test Report
 
       - name: Coverage Report
         uses: codecov/codecov-action@v3
