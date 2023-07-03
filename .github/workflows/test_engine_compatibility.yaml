@@ -86,4 +86,6 @@ jobs:
         with:
           report_paths: junit.xml
           job_name: test-compatibility
+          annotate_only: true
+          detailed_summary: true
           check_name: JUnit Engine Compatibility Report
