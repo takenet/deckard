@@ -1,7 +1,5 @@
 name: Test
 
-concurrency: test-${{ github.ref }}
-
 on:
   pull_request:
     branches:    
@@ -19,6 +17,8 @@ permissions:
 
 jobs:
   test:
+    concurrency: test-${{ github.ref }}
+
     runs-on: ubuntu-latest
 
     services:
