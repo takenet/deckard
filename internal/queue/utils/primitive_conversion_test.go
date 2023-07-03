@@ -105,3 +105,13 @@ func TestStrToInt32TypeError(t *testing.T) {
 
 	require.Error(t, err)
 }
+
+func TestInt64Ptr(t *testing.T) {
+	t.Parallel()
+
+	value := int64(123)
+
+	ptr := Int64Ptr(value)
+
+	require.Equal(t, &value, ptr)
+}
