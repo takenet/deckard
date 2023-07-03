@@ -17,17 +17,15 @@ permissions:
 
 jobs:
   test-compatibility:
-    concurrency: test-${{ github.ref }}
-
     runs-on: ubuntu-latest
 
     services:
-      mongodb:
+      mongodb-compatibility:
         image: mongo:5.0.18
         ports:
           - "27017:27017"
 
-      redis:
+      redis-compatibility:
         image: redis:5.0.14
         ports:
           - 6379:6379
