@@ -1256,3 +1256,23 @@ func TestNackWithStorageErrorShouldResultError(t *testing.T) {
 	require.Error(t, err)
 	require.False(t, result)
 }
+
+func TestFlush(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockStorage := mocks.NewMockStorage(mockCtrl)
+	mockStorage.EXPECT().Flush(gomock.Any()).Return(int64(1), nil)
+
+	mockCache := mocks.NewMockCache(mockCtrl)
+	mockCache.EXPECT().Flush(gomock.Any()).Return()
+
+	mockAuditor := mocks.NewMockAuditor(mockCtrl)
+
+	q := NewQueue(mockAuditor, mockStorage, nil, mockCache)
+
+	val, err := q.Flush(context.Background())
+
+	require.NoError(t, err)
+	require.True(t, val)
+}
