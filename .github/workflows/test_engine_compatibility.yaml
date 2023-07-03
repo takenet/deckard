@@ -11,7 +11,7 @@ on:
 env:
   GO_VERSION: 1.18
   DECKARD_REDIS_PORT: 6380
-  DECKARD_MONGODB_PORT: 27018
+  DECKARD_MONGODB_ADDRESSES: "localhost:27018"
 
 permissions:
   checks: write
