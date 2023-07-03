@@ -10,8 +10,6 @@ on:
 
 env:
   GO_VERSION: 1.18
-  DECKARD_CACHE_URI: "redis://localhost:6380"
-  DECKARD_STORAGE_URI: "mongodb://localhost:27018"
 
 permissions:
   checks: write
@@ -25,12 +23,12 @@ jobs:
       mongodb-compatibility:
         image: mongo:5.0.18
         ports:
-          - "27018:27017"
+          - "27017:27017"
 
       redis-compatibility:
         image: redis:5.0.14
         ports:
-          - 6380:6379
+          - 6379:6379
 
     steps:
       - name: Set up Go
@@ -67,3 +65,23 @@ jobs:
 
       - name: Make test
         run: make integration-test
+
+      - name: Publish test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: gotest.out
+          path: gotest.out
+
+      - name: Publish JUnit report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: junit.xml
+          path: junit.xml
+
+      - name: JUnit report action
+        uses: mikepenz/action-junit-report@v3
+        if: always()
+        with:
+          report_paths: junit.xml
