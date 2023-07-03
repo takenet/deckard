@@ -10,8 +10,8 @@ on:
 
 env:
   GO_VERSION: 1.18
-  DECKARD_REDIS_PORT: 6380
-  DECKARD_MONGODB_ADDRESSES: "localhost:27018"
+  DECKARD_CACHE_URI: "redis://localhost:6380"
+  DECKARD_STORAGE_URI: "mongodb://localhost:27018"
 
 permissions:
   checks: write

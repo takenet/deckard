@@ -40,7 +40,7 @@ var _ Storage = &MongoStorage{}
 func NewMongoStorage(ctx context.Context) (*MongoStorage, error) {
 	mongoSecondaryOpts := createOptions()
 
-	logger.S(ctx).Debug("Connecting to ", mongoSecondaryOpts.Hosts, " MongoDB instance(s).")
+	logger.S(ctx).Info("Connecting to ", mongoSecondaryOpts.Hosts, " MongoDB instance(s).")
 
 	start := dtime.Now()
 
