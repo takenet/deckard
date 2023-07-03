@@ -1,5 +1,7 @@
 name: Test
 
+concurrency: test-${{ github.ref }}
+
 on:
   pull_request:
     branches:    
