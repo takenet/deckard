@@ -198,6 +198,7 @@ func TestNackMakeAvailableErrorShouldResultError(t *testing.T) {
 	}
 
 	mockStorage := mocks.NewMockStorage(mockCtrl)
+	mockStorage.EXPECT().Nack(gomock.Any(), msg).Return(int64(1), nil)
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().MakeAvailable(gomock.Any(), msg).Return(false, errors.New("make available error"))
 
@@ -226,6 +227,8 @@ func TestNackSuccessfulShouldAudit(t *testing.T) {
 		Score: score.Min,
 	}
 	mockStorage := mocks.NewMockStorage(mockCtrl)
+	mockStorage.EXPECT().Nack(gomock.Any(), expectCall).Return(int64(1), nil)
+
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().MakeAvailable(gomock.Any(), expectCall).Return(true, nil)
 
@@ -1159,6 +1162,7 @@ func TestNackWithLockShouldLock(t *testing.T) {
 	}
 
 	mockStorage := mocks.NewMockStorage(mockCtrl)
+	mockStorage.EXPECT().Nack(gomock.Any(), msg).Return(int64(1), nil)
 
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().LockMessage(gomock.Any(), msg, cache.LOCK_NACK).Return(true, nil)
@@ -1201,6 +1205,7 @@ func TestNackWithLockErrorShouldResultError(t *testing.T) {
 	}
 
 	mockStorage := mocks.NewMockStorage(mockCtrl)
+	mockStorage.EXPECT().Nack(gomock.Any(), msg).Return(int64(1), nil)
 
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().LockMessage(gomock.Any(), msg, cache.LOCK_NACK).Return(false, fmt.Errorf("error"))

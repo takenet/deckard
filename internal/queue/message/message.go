@@ -59,13 +59,19 @@ type Message struct {
 
 	// Statistical data about the 'performance' of this message.
 	TotalScoreSubtract float64 `json:"total_score_subtract" bson:"total_score_subtract"`
-	UsageCount         int64   `json:"usage_count" bson:"usage_count"`
+
+	// Deprecated: use diagnostics.Ack instead
+	UsageCount int64 `json:"usage_count" bson:"usage_count"`
 
 	// Poppulated with the first part of the queue name if it contains the :: separator or the queue name otherwise.
 	QueuePrefix string `json:"queue_prefix" bson:"queue_prefix"`
 
 	// Poppulated with the second part of the queue name if it contains the :: separator.
 	QueueSuffix string `json:"queue_suffix" bson:"queue_suffix"`
+
+	// Diagnostics contains diagnostic data about this message.
+	// Contains, for example, the number of times this message has been acked or nacked.
+	Diagnostics *MessageDiagnostics `json:"diagnostics" bson:"diagnostics"`
 }
 
 func (q *Message) GetQueueParts() (prefix string, suffix string) {

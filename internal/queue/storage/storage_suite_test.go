@@ -78,6 +78,136 @@ func (suite *StorageTestSuite) TestWithInternalFilterIdsOk() {
 	require.True(suite.T(), result[1].ID == "id" || result[1].ID == "id3")
 }
 
+func (suite *StorageTestSuite) TestAckShouldSetAckDiagnosticFields() {
+	msg := &message.Message{
+		Queue:      "q",
+		ID:         "id",
+		ExpiryDate: futureTime(),
+	}
+
+	suite.insertDataNoError(msg)
+
+	modified, err := suite.storage.Ack(ctx, msg)
+	require.NoError(suite.T(), err)
+	require.Equal(suite.T(), int64(1), modified)
+
+	result, err := suite.storage.Find(ctx, &FindOptions{
+		InternalFilter: &InternalFilter{
+			Ids:   &[]string{"id"},
+			Queue: "q",
+		},
+	})
+	require.NoError(suite.T(), err)
+
+	require.Equal(suite.T(), int64(1), *result[0].Diagnostics.Acks)
+	require.Equal(suite.T(), int64(1), *result[0].Diagnostics.ConsecutiveAcks)
+	require.Equal(suite.T(), int64(0), *result[0].Diagnostics.ConsecutiveNacks)
+}
+
+func (suite *StorageTestSuite) TestNackShouldSetAckDiagnosticFields() {
+	msg := &message.Message{
+		Queue:      "q",
+		ID:         "id",
+		ExpiryDate: futureTime(),
+	}
+
+	suite.insertDataNoError(msg)
+
+	modified, err := suite.storage.Nack(ctx, msg)
+	require.NoError(suite.T(), err)
+	require.Equal(suite.T(), int64(1), modified)
+
+	result, err := suite.storage.Find(ctx, &FindOptions{
+		InternalFilter: &InternalFilter{
+			Ids:   &[]string{"id"},
+			Queue: "q",
+		},
+	})
+	require.NoError(suite.T(), err)
+
+	require.Equal(suite.T(), int64(1), *result[0].Diagnostics.Nacks)
+	require.Equal(suite.T(), int64(0), *result[0].Diagnostics.ConsecutiveAcks)
+	require.Equal(suite.T(), int64(1), *result[0].Diagnostics.ConsecutiveNacks)
+}
+
+func (suite *StorageTestSuite) TestAckShouldIncrementCorrectly() {
+	msg := &message.Message{
+		Queue:      "q",
+		ID:         "id",
+		ExpiryDate: futureTime(),
+	}
+
+	suite.insertDataNoError(msg)
+
+	// Perform 5 Acks
+	for i := 0; i < 5; i++ {
+		_, err := suite.storage.Ack(ctx, msg)
+		require.NoError(suite.T(), err)
+	}
+
+	// Perform 10 Nacks
+	for i := 0; i < 10; i++ {
+		_, err := suite.storage.Nack(ctx, msg)
+		require.NoError(suite.T(), err)
+	}
+
+	// Another Ack
+	_, err := suite.storage.Ack(ctx, msg)
+	require.NoError(suite.T(), err)
+
+	result, err := suite.storage.Find(ctx, &FindOptions{
+		InternalFilter: &InternalFilter{
+			Ids:   &[]string{"id"},
+			Queue: "q",
+		},
+	})
+	require.NoError(suite.T(), err)
+
+	require.Equal(suite.T(), int64(6), *result[0].Diagnostics.Acks)
+	require.Equal(suite.T(), int64(1), *result[0].Diagnostics.ConsecutiveAcks)
+	require.Equal(suite.T(), int64(0), *result[0].Diagnostics.ConsecutiveNacks)
+	require.Equal(suite.T(), int64(10), *result[0].Diagnostics.Nacks)
+}
+
+func (suite *StorageTestSuite) TestNackShouldIncrementCorrectly() {
+	msg := &message.Message{
+		Queue:      "q",
+		ID:         "id",
+		ExpiryDate: futureTime(),
+	}
+
+	suite.insertDataNoError(msg)
+
+	// Perform 5 Nacks
+	for i := 0; i < 5; i++ {
+		_, err := suite.storage.Nack(ctx, msg)
+		require.NoError(suite.T(), err)
+	}
+
+	// Perform 10 Acks
+	for i := 0; i < 10; i++ {
+		_, err := suite.storage.Ack(ctx, msg)
+		require.NoError(suite.T(), err)
+	}
+
+	// Another Nack
+	_, err := suite.storage.Nack(ctx, msg)
+	require.NoError(suite.T(), err)
+
+	result, err := suite.storage.Find(ctx, &FindOptions{
+		InternalFilter: &InternalFilter{
+			Ids:   &[]string{"id"},
+			Queue: "q",
+		},
+	})
+	require.NoError(suite.T(), err)
+
+	require.Equal(suite.T(), int64(6), *result[0].Diagnostics.Nacks)
+	require.Equal(suite.T(), int64(1), *result[0].Diagnostics.ConsecutiveNacks)
+	require.Equal(suite.T(), int64(0), *result[0].Diagnostics.ConsecutiveAcks)
+	require.Equal(suite.T(), int64(10), *result[0].Diagnostics.Acks)
+}
+
 func (suite *StorageTestSuite) TestWithInternalFilterExpiryDateOk() {
 	messages := []*message.Message{{
 		Queue:      "q",
@@ -311,6 +441,7 @@ func (suite *StorageTestSuite) TestUpdateOk() {
 	msg.LastUsage = nil
 
 	messages[0].ExpiryDate = dtime.MsPrecision(&messages[0].ExpiryDate).Local()
+	messages[0].Diagnostics = nil
 
 	require.Equal(suite.T(), message.Message{
 		ID:                 "Id",

@@ -428,6 +428,7 @@ func (d *Deckard) Pull(ctx context.Context, request *deckard.PullRequest) (*deck
 			Payload:       q.Payload,
 			StringPayload: q.StringPayload,
 			Metadata:      q.Metadata,
+			Diagnostics:   getMessageDiagnostic(q.Diagnostics),
 		}
 
 		if q.Payload != nil {
@@ -450,6 +451,37 @@ func (d *Deckard) Pull(ctx context.Context, request *deckard.PullRequest) (*deck
 	addSpanAttributes(ctx, attribute.StringSlice(trace.Id, ids))
 
 	return &res, nil
+}
+
+func getMessageDiagnostic(messageDiagnostics *message.MessageDiagnostics) *deckard.MessageDiagnostics {
+	diagnostics := &deckard.MessageDiagnostics{
+		Acks:             0,
+		Nacks:            0,
+		ConsecutiveAcks:  0,
+		ConsecutiveNacks: 0,
+	}
+
+	if messageDiagnostics == nil {
+		return diagnostics
+	}
+
+	if messageDiagnostics.Acks != nil {
+		diagnostics.Acks = *messageDiagnostics.Acks
+	}
+
+	if messageDiagnostics.Nacks != nil {
+		diagnostics.Nacks = *messageDiagnostics.Nacks
+	}
+
+	if messageDiagnostics.ConsecutiveAcks != nil {
+		diagnostics.ConsecutiveAcks = *messageDiagnostics.ConsecutiveAcks
+	}
+
+	if messageDiagnostics.ConsecutiveNacks != nil {
+		diagnostics.ConsecutiveNacks = *messageDiagnostics.ConsecutiveNacks
+	}
+
+	return diagnostics
 }
 
 func (d *Deckard) GetById(ctx context.Context, request *deckard.GetByIdRequest) (*deckard.GetByIdResponse, error) {

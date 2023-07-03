@@ -316,9 +316,9 @@ func (storage *MemoryStorage) Remove(_ context.Context, queue string, ids ...str
 	return count, nil
 }
 
-func (storage *MemoryStorage) Ack(_ context.Context, message *message.Message) (modifiedCount int64, err error) {
+func (storage *MemoryStorage) Ack(_ context.Context, msg *message.Message) (modifiedCount int64, err error) {
 	storage.lock.RLock()
-	value, contains := storage.docs[getKey(message)]
+	value, contains := storage.docs[getKey(msg)]
 	storage.lock.RUnlock()
 
 	if !contains {
@@ -326,12 +326,57 @@ func (storage *MemoryStorage) Ack(_ context.Context, message *message.Message) (
 	}
 
 	storage.lock.Lock()
-	value.TotalScoreSubtract += message.LastScoreSubtract
+	value.TotalScoreSubtract += msg.LastScoreSubtract
 	value.UsageCount += 1
-	value.LastUsage = message.LastUsage
-	value.LastScoreSubtract = message.LastScoreSubtract
-	value.Score = message.Score
-	value.Breakpoint = message.Breakpoint
+	value.LastUsage = msg.LastUsage
+	value.LastScoreSubtract = msg.LastScoreSubtract
+	value.Score = msg.Score
+	value.LockMs = msg.LockMs
+	value.Breakpoint = msg.Breakpoint
+
+	if value.Diagnostics == nil {
+		value.Diagnostics = &message.MessageDiagnostics{
+			Acks:             utils.Int64Ptr(0),
+			Nacks:            utils.Int64Ptr(0),
+			ConsecutiveAcks:  utils.Int64Ptr(0),
+			ConsecutiveNacks: utils.Int64Ptr(0),
+		}
+	}
+
+	*value.Diagnostics.Acks = *value.Diagnostics.Acks + 1
+	*value.Diagnostics.ConsecutiveAcks = *value.Diagnostics.ConsecutiveAcks + 1
+	*value.Diagnostics.ConsecutiveNacks = 0
+
+	storage.lock.Unlock()
+
+	return 1, nil
+}
+
+func (storage *MemoryStorage) Nack(_ context.Context, msg *message.Message) (modifiedCount int64, err error) {
+	storage.lock.RLock()
+	value, contains := storage.docs[getKey(msg)]
+	storage.lock.RUnlock()
+
+	if !contains {
+		return 0, nil
+	}
+
+	storage.lock.Lock()
+	value.Score = msg.Score
+	value.LockMs = msg.LockMs
+
+	if value.Diagnostics == nil {
+		value.Diagnostics = &message.MessageDiagnostics{
+			Acks:             utils.Int64Ptr(0),
+			Nacks:            utils.Int64Ptr(0),
+			ConsecutiveAcks:  utils.Int64Ptr(0),
+			ConsecutiveNacks: utils.Int64Ptr(0),
+		}
+	}
+
+	*value.Diagnostics.Nacks = *value.Diagnostics.Nacks + 1
+	*value.Diagnostics.ConsecutiveNacks = *value.Diagnostics.ConsecutiveNacks + 1
+	*value.Diagnostics.ConsecutiveAcks = 0
 	storage.lock.Unlock()
 
 	return 1, nil

@@ -160,17 +160,17 @@ return elements
 // ARGV[2] -> current timestamp to filter elements to unlock
 //
 // ARGV[3] -> the default score if no score is present in the score lock sorted set
+//
+// TODO: Should change to ZMSCORE in the next breaking change release (works only with redis 6.2.0+)
 const unlockElementsScript = `
 local elements = redis.call('ZREVRANGEBYSCORE', KEYS[1], ARGV[2], '0', 'LIMIT', '0', tostring(ARGV[1]))
 if next(elements) == nil then
 	return ''
 end
 
-local scores = redis.call('ZMSCORE', KEYS[3], unpack(elements))
-
 local bulkData = {}
 for i, key in ipairs(elements) do
-	local lockScore = scores[i]
+	local lockScore = redis.call('ZSCORE', KEYS[3], key)
 
 	if lockScore == nil or not lockScore then
 		lockScore = ARGV[3]
