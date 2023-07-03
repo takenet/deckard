@@ -1223,3 +1223,36 @@ func TestNackWithLockErrorShouldResultError(t *testing.T) {
 	require.Error(t, err)
 	require.False(t, result)
 }
+
+func TestNackWithStorageErrorShouldResultError(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	now := time.Now()
+
+	msg := &message.Message{
+		ID:     "id",
+		Queue:  "queue",
+		LockMs: 10,
+	}
+
+	mockStorage := mocks.NewMockStorage(mockCtrl)
+	mockStorage.EXPECT().Nack(gomock.Any(), msg).Return(int64(0), errors.New("error"))
+
+	mockCache := mocks.NewMockCache(mockCtrl)
+
+	mockAuditor := mocks.NewMockAuditor(mockCtrl)
+
+	q := NewQueue(mockAuditor, mockStorage, nil, mockCache)
+
+	result, err := q.Nack(ctx, &message.Message{
+		ID:     "id",
+		Queue:  "queue",
+		LockMs: 10,
+	}, now, "reason")
+
+	require.Error(t, err)
+	require.False(t, result)
+}
