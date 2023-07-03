@@ -279,13 +279,13 @@ func (suite *DeckardIntegrationTestSuite) TestIncrementDiagnosticsIntegration() 
 	require.Equal(suite.T(), int64(0), response.UpdatedCount)
 
 	// One Ack
-	respose, err := suite.deckard.Pull(ctx, &deckard.PullRequest{Amount: 1, Queue: "queue"})
+	_, err = suite.deckard.Pull(ctx, &deckard.PullRequest{Amount: 1, Queue: "queue"})
 	require.NoError(suite.T(), err)
 	ack, err := suite.deckard.Ack(ctx, &deckard.AckRequest{Id: "1", Queue: "queue"})
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), ack.GetSuccess())
 
-	respose, err = suite.deckard.Pull(ctx, &deckard.PullRequest{Amount: 1, Queue: "queue"})
+	respose, err := suite.deckard.Pull(ctx, &deckard.PullRequest{Amount: 1, Queue: "queue"})
 	require.NoError(suite.T(), err)
 
 	require.Equal(suite.T(), int64(1), respose.Messages[0].Diagnostics.Acks)
@@ -294,7 +294,7 @@ func (suite *DeckardIntegrationTestSuite) TestIncrementDiagnosticsIntegration() 
 	require.Equal(suite.T(), int64(0), respose.Messages[0].Diagnostics.ConsecutiveNacks)
 
 	// One Nack
-	respose, err = suite.deckard.Pull(ctx, &deckard.PullRequest{Amount: 1, Queue: "queue"})
+	_, err = suite.deckard.Pull(ctx, &deckard.PullRequest{Amount: 1, Queue: "queue"})
 	require.NoError(suite.T(), err)
 	nack, err := suite.deckard.Nack(ctx, &deckard.AckRequest{Id: "1", Queue: "queue"})
 	require.NoError(suite.T(), err)
