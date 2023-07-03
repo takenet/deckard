@@ -20,8 +20,6 @@ func TestMongoStorageIntegration(t *testing.T) {
 	}
 
 	config.Configure(true)
-
-	config.MongoAddresses.Set("localhost:27017")
 	config.MongoDatabase.Set("unit_test")
 
 	storage, err := NewMongoStorage(context.Background())

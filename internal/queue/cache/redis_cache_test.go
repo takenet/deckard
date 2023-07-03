@@ -16,8 +16,8 @@ func TestRedisCacheIntegration(t *testing.T) {
 		t.Skip()
 	}
 
+	config.Configure(true)
 	config.RedisAddress.Set("localhost")
-	config.RedisPort.Set(6379)
 
 	cache, err := NewRedisCache(ctx)
 
