@@ -334,14 +334,7 @@ func (storage *MemoryStorage) Ack(_ context.Context, msg *message.Message) (modi
 	value.LockMs = msg.LockMs
 	value.Breakpoint = msg.Breakpoint
 
-	if value.Diagnostics == nil {
-		value.Diagnostics = &message.MessageDiagnostics{
-			Acks:             utils.Int64Ptr(0),
-			Nacks:            utils.Int64Ptr(0),
-			ConsecutiveAcks:  utils.Int64Ptr(0),
-			ConsecutiveNacks: utils.Int64Ptr(0),
-		}
-	}
+	setDiagnosticsStruct(value)
 
 	*value.Diagnostics.Acks = *value.Diagnostics.Acks + 1
 	*value.Diagnostics.ConsecutiveAcks = *value.Diagnostics.ConsecutiveAcks + 1
@@ -365,14 +358,7 @@ func (storage *MemoryStorage) Nack(_ context.Context, msg *message.Message) (mod
 	value.Score = msg.Score
 	value.LockMs = msg.LockMs
 
-	if value.Diagnostics == nil {
-		value.Diagnostics = &message.MessageDiagnostics{
-			Acks:             utils.Int64Ptr(0),
-			Nacks:            utils.Int64Ptr(0),
-			ConsecutiveAcks:  utils.Int64Ptr(0),
-			ConsecutiveNacks: utils.Int64Ptr(0),
-		}
-	}
+	setDiagnosticsStruct(value)
 
 	*value.Diagnostics.Nacks = *value.Diagnostics.Nacks + 1
 	*value.Diagnostics.ConsecutiveNacks = *value.Diagnostics.ConsecutiveNacks + 1
@@ -420,4 +406,33 @@ func (storage *MemoryStorage) Close(ctx context.Context) error {
 	// do nothing
 
 	return nil
+}
+
+func setDiagnosticsStruct(value *message.Message) {
+	if value.Diagnostics == nil {
+		value.Diagnostics = &message.MessageDiagnostics{
+			Acks:             utils.Int64Ptr(0),
+			Nacks:            utils.Int64Ptr(0),
+			ConsecutiveAcks:  utils.Int64Ptr(0),
+			ConsecutiveNacks: utils.Int64Ptr(0),
+		}
+
+		return
+	}
+
+	if value.Diagnostics.ConsecutiveNacks == nil {
+		value.Diagnostics.ConsecutiveNacks = utils.Int64Ptr(0)
+	}
+
+	if value.Diagnostics.ConsecutiveAcks == nil {
+		value.Diagnostics.ConsecutiveAcks = utils.Int64Ptr(0)
+	}
+
+	if value.Diagnostics.Acks == nil {
+		value.Diagnostics.Acks = utils.Int64Ptr(0)
+	}
+
+	if value.Diagnostics.Nacks == nil {
+		value.Diagnostics.Nacks = utils.Int64Ptr(0)
+	}
 }
