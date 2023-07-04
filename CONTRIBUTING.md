@@ -23,16 +23,19 @@ deckard                     # Root folder with project files and Golang service/
 │   ├── audit               # Audit system
 │   ├── cmd                 # Executable main file for the Deckard service
 │   ├── config              # Configuration variables managed by viper
+│   ├── dtime               # Utility package to manage time within the codebase
 │   ├── logger              # Logging configuration
-│   ├── queue               # Contains all queue implementation files and housekeeping program logic
-│   │   ├── cache           # Caching implementation
-│   │   ├── entities        # Message and QueueConfiguration internal definitions
-│   │   ├── queue           # Queue definition
-│   │   ├── storage         # Storage implementation
-│   │   └── utils           # Utility package for data conversion
 │   ├── metrics             # Package with metrics definitions
 │   ├── mocks               # Auto-generated files via mockgen (created after running `make gen-mocks`)
 │   ├── project             # Project package with information used by the version control system
+│   ├── queue               # Contains all queue implementation files and housekeeping program logic
+│   │   ├── cache           # Caching implementation
+│   │   ├── configuration   # Queue configuration internal struct
+│   │   ├── message         # Message internal struct
+│   │   ├── pool            # Pool package with internal pool constants
+│   │   ├── score           # Score algorithms and constants
+│   │   ├── storage         # Storage implementation
+│   │   └── utils           # Utility package to work with primitives
 │   ├── service             # Internal service implementation of the gRPC service
 │   ├── shutdown            # Shutdown package with graceful shutdown implementation
 │   └── trace               # Trace package with tracing implementation
