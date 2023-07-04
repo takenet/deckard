@@ -181,11 +181,11 @@ message MessageDiagnostics {
   int64 nacks = 2;
 
   // Track number of consecutive ACKs
-  // This field will be reset to 0 when a NACK is received
+  // This field will reset to 0 when a NACK is received
   int64 consecutive_acks = 3;
 
   // Track number of consecutive NACKs
-  // This field will be reset to 0 when an ACK is received
+  // This field will reset to 0 when an ACK is received
   int64 consecutive_nacks = 4;
 }
 
