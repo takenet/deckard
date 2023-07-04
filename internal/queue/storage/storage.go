@@ -28,6 +28,7 @@ type Storage interface {
 	Find(ctx context.Context, opt *FindOptions) ([]message.Message, error)
 	Remove(ctx context.Context, queue string, ids ...string) (deleted int64, err error)
 	Ack(ctx context.Context, message *message.Message) (modifiedCount int64, err error)
+	Nack(ctx context.Context, message *message.Message) (modifiedCount int64, err error)
 
 	ListQueueNames(ctx context.Context) (queues []string, err error)
 	ListQueuePrefixes(ctx context.Context) (queues []string, err error)

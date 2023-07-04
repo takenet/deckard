@@ -167,6 +167,26 @@ message Message {
   // Examples: imagine a message representing a web news portal and you want to navigate through the articles. This field could be used to store the last visited article id.
   // Or imagine a message representing a user and you want to iterate through the user's publications pages. This field could be used to store the last page number you visited.
   string breakpoint = 7;
+
+  // Diagnostics is a field holding information about the message's usage.
+  // It is useful to track how many times a message was ACKed or NACKed.
+  MessageDiagnostics diagnostics = 9;
+}
+
+message MessageDiagnostics {
+  // Track total number of ACKs
+  int64 acks = 1;
+
+  // Track total number of NACKs
+  int64 nacks = 2;
+
+  // Track number of consecutive ACKs
+  // This field will reset to 0 when a NACK is received
+  int64 consecutive_acks = 3;
+
+  // Track number of consecutive NACKs
+  // This field will reset to 0 when an ACK is received
+  int64 consecutive_nacks = 4;
 }
 
 message CountRequest {

@@ -336,6 +336,7 @@
 | string_payload | [string](#string) |  | Message string payload. Is responsibility of the caller to know how to encode/decode to a useful format for its purpose. This field can be used to store simple string data instead of using the payload field. |
 | score | [double](#double) |  | Score represents the priority score the message currently have in the queue. The lower the score, the higher the priority. The maximum score accepted by Deckard is 9007199254740992 and the minimum is 0 |
 | breakpoint | [string](#string) |  | Breakpoint is a field to be used as an auxiliar field for some specific use cases. For example if you need to keep a record of the last result processing a message, or want to iteract with a pagination system.<br/><br/>Examples: imagine a message representing a web news portal and you want to navigate through the articles. This field could be used to store the last visited article id. Or imagine a message representing a user and you want to iterate through the user's publications pages. This field could be used to store the last page number you visited. |
+| diagnostics | [MessageDiagnostics](#blipai-deckard-MessageDiagnostics) |  | Diagnostics is a field holding information about the message's usage. It is useful to track how many times a message was ACKed or NACKed. |
 
 
 
@@ -368,6 +369,24 @@
 | ----- | ---- | ----- | ----------- |
 | key | [string](#string) |  |  |
 | value | [google.protobuf.Any](#google-protobuf-Any) |  |  |
+
+
+
+
+
+
+<a name="blipai-deckard-MessageDiagnostics"></a>
+
+### MessageDiagnostics
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| acks | [int64](#int64) |  | Track total number of ACKs |
+| nacks | [int64](#int64) |  | Track total number of NACKs |
+| consecutive_acks | [int64](#int64) |  | Track number of consecutive ACKs This field will be reset to 0 when a NACK is received |
+| consecutive_nacks | [int64](#int64) |  | Track number of consecutive NACKs This field will be reset to 0 when an ACK is received |
 
 
 

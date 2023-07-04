@@ -198,6 +198,7 @@ func TestNackMakeAvailableErrorShouldResultError(t *testing.T) {
 	}
 
 	mockStorage := mocks.NewMockStorage(mockCtrl)
+	mockStorage.EXPECT().Nack(gomock.Any(), msg).Return(int64(1), nil)
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().MakeAvailable(gomock.Any(), msg).Return(false, errors.New("make available error"))
 
@@ -226,6 +227,8 @@ func TestNackSuccessfulShouldAudit(t *testing.T) {
 		Score: score.Min,
 	}
 	mockStorage := mocks.NewMockStorage(mockCtrl)
+	mockStorage.EXPECT().Nack(gomock.Any(), expectCall).Return(int64(1), nil)
+
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().MakeAvailable(gomock.Any(), expectCall).Return(true, nil)
 
@@ -1159,6 +1162,7 @@ func TestNackWithLockShouldLock(t *testing.T) {
 	}
 
 	mockStorage := mocks.NewMockStorage(mockCtrl)
+	mockStorage.EXPECT().Nack(gomock.Any(), msg).Return(int64(1), nil)
 
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().LockMessage(gomock.Any(), msg, cache.LOCK_NACK).Return(true, nil)
@@ -1201,6 +1205,7 @@ func TestNackWithLockErrorShouldResultError(t *testing.T) {
 	}
 
 	mockStorage := mocks.NewMockStorage(mockCtrl)
+	mockStorage.EXPECT().Nack(gomock.Any(), msg).Return(int64(1), nil)
 
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().LockMessage(gomock.Any(), msg, cache.LOCK_NACK).Return(false, fmt.Errorf("error"))
@@ -1217,4 +1222,57 @@ func TestNackWithLockErrorShouldResultError(t *testing.T) {
 
 	require.Error(t, err)
 	require.False(t, result)
+}
+
+func TestNackWithStorageErrorShouldResultError(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	now := time.Now()
+
+	msg := &message.Message{
+		ID:     "id",
+		Queue:  "queue",
+		LockMs: 10,
+	}
+
+	mockStorage := mocks.NewMockStorage(mockCtrl)
+	mockStorage.EXPECT().Nack(gomock.Any(), msg).Return(int64(0), errors.New("error"))
+
+	mockCache := mocks.NewMockCache(mockCtrl)
+
+	mockAuditor := mocks.NewMockAuditor(mockCtrl)
+
+	q := NewQueue(mockAuditor, mockStorage, nil, mockCache)
+
+	result, err := q.Nack(ctx, &message.Message{
+		ID:     "id",
+		Queue:  "queue",
+		LockMs: 10,
+	}, now, "reason")
+
+	require.Error(t, err)
+	require.False(t, result)
+}
+
+func TestFlush(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockStorage := mocks.NewMockStorage(mockCtrl)
+	mockStorage.EXPECT().Flush(gomock.Any()).Return(int64(1), nil)
+
+	mockCache := mocks.NewMockCache(mockCtrl)
+	mockCache.EXPECT().Flush(gomock.Any()).Return()
+
+	mockAuditor := mocks.NewMockAuditor(mockCtrl)
+
+	q := NewQueue(mockAuditor, mockStorage, nil, mockCache)
+
+	val, err := q.Flush(context.Background())
+
+	require.NoError(t, err)
+	require.True(t, val)
 }

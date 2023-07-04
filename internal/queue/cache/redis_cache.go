@@ -71,7 +71,7 @@ func NewRedisCache(ctx context.Context) (*RedisCache, error) {
 		}
 	}
 
-	logger.S(ctx).Debug("Connecting to ", options.Addr, " Redis instance")
+	logger.S(ctx).Info("Connecting to ", options.Addr, " Redis instance(s)")
 
 	start := dtime.Now()
 

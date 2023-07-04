@@ -67,6 +67,7 @@ func (suite *DeckardIntegrationTestSuite) TestAddMessageDefaultScoreIntegration(
 	require.LessOrEqual(suite.T(), message.Score, score.GetScoreByDefaultAlgorithm())
 
 	message.Score = 0
+	message.Diagnostics = nil
 
 	require.Equal(suite.T(), &deckard.Message{
 		Id:            "123",
@@ -111,6 +112,8 @@ func (suite *DeckardIntegrationTestSuite) TestAddMessageWithScoreIntegration() {
 	require.Equal(suite.T(), float64(100), message.Score)
 
 	message.Score = 0
+	message.Diagnostics = nil
+
 	require.Equal(suite.T(), &deckard.Message{
 		Id:    "123",
 		Queue: "test",
@@ -237,6 +240,73 @@ func (suite *DeckardIntegrationTestSuite) TestGetMessageShouldResultMostScoreFir
 	require.NoError(suite.T(), err)
 	require.Len(suite.T(), thirdMessageResult.GetMessages(), 1)
 	require.Equal(suite.T(), "2", thirdMessageResult.GetMessages()[0].Id)
+}
+
+func (suite *DeckardIntegrationTestSuite) TestPullMessageShouldContainsDiagnosticsIntegration() {
+	response, err := suite.deckard.Add(ctx, &deckard.AddRequest{
+		Messages: []*deckard.AddMessage{{
+			Id:       "1",
+			Queue:    "queue",
+			Timeless: true,
+		}},
+	})
+
+	require.NoError(suite.T(), err)
+	require.Equal(suite.T(), int64(1), response.CreatedCount)
+	require.Equal(suite.T(), int64(0), response.UpdatedCount)
+
+	respose, err := suite.deckard.Pull(ctx, &deckard.PullRequest{Amount: 1, Queue: "queue"})
+	require.NoError(suite.T(), err)
+	require.Equal(suite.T(), 1, len(respose.Messages))
+
+	require.Equal(suite.T(), int64(0), respose.Messages[0].Diagnostics.Acks)
+	require.Equal(suite.T(), int64(0), respose.Messages[0].Diagnostics.Nacks)
+	require.Equal(suite.T(), int64(0), respose.Messages[0].Diagnostics.ConsecutiveAcks)
+	require.Equal(suite.T(), int64(0), respose.Messages[0].Diagnostics.ConsecutiveNacks)
+}
+
+func (suite *DeckardIntegrationTestSuite) TestIncrementDiagnosticsIntegration() {
+	response, err := suite.deckard.Add(ctx, &deckard.AddRequest{
+		Messages: []*deckard.AddMessage{{
+			Id:       "1",
+			Queue:    "queue",
+			Timeless: true,
+		}},
+	})
+
+	require.NoError(suite.T(), err)
+	require.Equal(suite.T(), int64(1), response.CreatedCount)
+	require.Equal(suite.T(), int64(0), response.UpdatedCount)
+
+	// One Ack
+	_, err = suite.deckard.Pull(ctx, &deckard.PullRequest{Amount: 1, Queue: "queue"})
+	require.NoError(suite.T(), err)
+	ack, err := suite.deckard.Ack(ctx, &deckard.AckRequest{Id: "1", Queue: "queue"})
+	require.NoError(suite.T(), err)
+	require.True(suite.T(), ack.GetSuccess())
+
+	respose, err := suite.deckard.Pull(ctx, &deckard.PullRequest{Amount: 1, Queue: "queue"})
+	require.NoError(suite.T(), err)
+
+	require.Equal(suite.T(), int64(1), respose.Messages[0].Diagnostics.Acks)
+	require.Equal(suite.T(), int64(0), respose.Messages[0].Diagnostics.Nacks)
+	require.Equal(suite.T(), int64(1), respose.Messages[0].Diagnostics.ConsecutiveAcks)
+	require.Equal(suite.T(), int64(0), respose.Messages[0].Diagnostics.ConsecutiveNacks)
+
+	// One Nack
+	_, err = suite.deckard.Pull(ctx, &deckard.PullRequest{Amount: 1, Queue: "queue"})
+	require.NoError(suite.T(), err)
+	nack, err := suite.deckard.Nack(ctx, &deckard.AckRequest{Id: "1", Queue: "queue"})
+	require.NoError(suite.T(), err)
+	require.True(suite.T(), nack.GetSuccess())
+
+	respose, err = suite.deckard.Pull(ctx, &deckard.PullRequest{Amount: 1, Queue: "queue"})
+	require.NoError(suite.T(), err)
+
+	require.Equal(suite.T(), int64(1), respose.Messages[0].Diagnostics.Acks)
+	require.Equal(suite.T(), int64(1), respose.Messages[0].Diagnostics.Nacks)
+	require.Equal(suite.T(), int64(0), respose.Messages[0].Diagnostics.ConsecutiveAcks)
+	require.Equal(suite.T(), int64(1), respose.Messages[0].Diagnostics.ConsecutiveNacks)
 }
 
 type AckNackAction = func(context.Context, *deckard.AckRequest) (*deckard.AckResponse, error)

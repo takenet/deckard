@@ -166,6 +166,14 @@ func (pool *Queue) Nack(ctx context.Context, msg *message.Message, timestamp tim
 		return false, fmt.Errorf("message has a invalid ID")
 	}
 
+	_, err := pool.storage.Nack(ctx, msg)
+
+	if err != nil {
+		logger.S(ctx).Error("Error nacking element on storage: ", err)
+
+		return false, err
+	}
+
 	defer func() {
 		metrics.QueueNack.Add(ctx, 1, attribute.String("queue", message.GetQueuePrefix(msg.Queue)), attribute.String("reason", reason))
 	}()

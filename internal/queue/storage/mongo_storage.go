@@ -40,7 +40,7 @@ var _ Storage = &MongoStorage{}
 func NewMongoStorage(ctx context.Context) (*MongoStorage, error) {
 	mongoSecondaryOpts := createOptions()
 
-	logger.S(ctx).Debug("Connecting to ", mongoSecondaryOpts.Hosts, " MongoDB instance(s).")
+	logger.S(ctx).Info("Connecting to ", mongoSecondaryOpts.Hosts, " MongoDB instance(s).")
 
 	start := dtime.Now()
 
@@ -486,7 +486,7 @@ func (storage *MongoStorage) Insert(ctx context.Context, messages ...*message.Me
 	return res.InsertedCount + res.UpsertedCount, res.ModifiedCount, nil
 }
 
-// Ack updates the messages on mongostorage with updated status and score.
+// Ack updates the messages on mongostorage with updated status, score and diagnostic information.
 func (storage *MongoStorage) Ack(ctx context.Context, message *message.Message) (modifiedCount int64, err error) {
 	now := dtime.Now()
 	defer func() {
@@ -500,15 +500,53 @@ func (storage *MongoStorage) Ack(ctx context.Context, message *message.Message) 
 
 	update := bson.M{
 		"$set": bson.M{
-			"last_usage":          message.LastUsage,
-			"last_score_subtract": message.LastScoreSubtract,
-			"breakpoint":          message.Breakpoint,
-			"score":               message.Score,
-			"lock_ms":             message.LockMs,
+			"last_usage":                    message.LastUsage,
+			"last_score_subtract":           message.LastScoreSubtract,
+			"breakpoint":                    message.Breakpoint,
+			"score":                         message.Score,
+			"lock_ms":                       message.LockMs,
+			"diagnostics.consecutive_nacks": 0,
 		},
 		"$inc": bson.M{
-			"usage_count":          1,
-			"total_score_subtract": message.LastScoreSubtract,
+			"usage_count":                  1,
+			"total_score_subtract":         message.LastScoreSubtract,
+			"diagnostics.acks":             1,
+			"diagnostics.consecutive_acks": 1,
+		},
+	}
+
+	logger.S(ctx).Debugw("Storage operation: update one operation.", "filter", filter, "update", update)
+
+	res, err := storage.messagesCollection.UpdateOne(context.Background(), filter, update)
+
+	if err != nil {
+		return 0, fmt.Errorf("error updating storage element: %w", err)
+	}
+
+	return res.ModifiedCount, nil
+}
+
+// Nack updates the messages on mongostorage with updated status, score and diagnostic information.
+func (storage *MongoStorage) Nack(ctx context.Context, message *message.Message) (modifiedCount int64, err error) {
+	now := dtime.Now()
+	defer func() {
+		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "nack"))
+	}()
+
+	filter := bson.M{
+		"id":    message.ID,
+		"queue": message.Queue,
+	}
+
+	update := bson.M{
+		"$set": bson.M{
+			"score":                        message.Score,
+			"lock_ms":                      message.LockMs,
+			"diagnostics.consecutive_acks": 0,
+		},
+		"$inc": bson.M{
+			"diagnostics.nacks":             1,
+			"diagnostics.consecutive_nacks": 1,
 		},
 	}
 
