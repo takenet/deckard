@@ -26,7 +26,7 @@ jobs:
         sed -i -E "s/const Version = \"[0-9]+\.[0-9]+\.[0-9]+-SNAPSHOT\"/const Version = \"$NEW_VERSION\"/" internal/project/project.go
 
         # Replace version in Java pom.xml file
-        sed -i -E "1,10 s/    <version>[0-9]+\.[0-9]+\.[0-9]+-SNAPSHOT<\/version>/    <version>$NEW_VERSION<\/version>/" java/pom.xml
+        sed -i -E "1,10 s/  <version>[0-9]+\.[0-9]+\.[0-9]+-SNAPSHOT<\/version>/  <version>$NEW_VERSION<\/version>/" java/pom.xml
 
         # Replace version in .NET Deckard.csproj file
         sed -i -E "s/    <PackageVersion>[0-9]+\.[0-9]+\.[0-9]+-SNAPSHOT<\/PackageVersion>/    <PackageVersion>$NEW_VERSION<\/PackageVersion>/" csharp/Deckard.csproj
@@ -70,7 +70,7 @@ jobs:
         sed -i -E "s/const Version = \"[0-9]+\.[0-9]+\.[0-9]+\"/const Version = \"$NEW_SNAPSHOT_VERSION\"/" internal/project/project.go
 
         # Replace version in Java pom.xml file
-        sed -i -E "1,10 s/    <version>[0-9]+\.[0-9]+\.[0-9]+<\/version>/    <version>$NEW_SNAPSHOT_VERSION<\/version>/" java/pom.xml
+        sed -i -E "1,10 s/  <version>[0-9]+\.[0-9]+\.[0-9]+<\/version>/  <version>$NEW_SNAPSHOT_VERSION<\/version>/" java/pom.xml
 
         # Replace version in .NET Deckard.csproj file
         sed -i -E "s/    <PackageVersion>[0-9]+\.[0-9]+\.[0-9]+<\/PackageVersion>/    <PackageVersion>$NEW_SNAPSHOT_VERSION<\/PackageVersion>/" csharp/Deckard.csproj
