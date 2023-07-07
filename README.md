@@ -4,7 +4,7 @@
 
 [![Artifact Hub](https://img.shields.io/badge/helm-Artifact_Hub_%28Deckard%29-blue?logo=helm&link=https://artifacthub.io/packages/helm/deckard/deckard)](https://artifacthub.io/packages/helm/deckard/deckard) [![Docker](https://img.shields.io/docker/image-size/blipai/deckard/latest?logo=docker)](https://hub.docker.com/r/blipai/deckard)
 
-[![Nuget org](https://img.shields.io/nuget/v/deckard?logo=nuget)](https://www.nuget.org/packages/Deckard) [![Golang](https://img.shields.io/github/go-mod/go-version/takenet/deckard?logo=go)](https://pkg.go.dev/github.com/takenet/deckard)
+[![Golang](https://img.shields.io/github/go-mod/go-version/takenet/deckard?logo=go)](https://pkg.go.dev/github.com/takenet/deckard) [![Maven Central](https://img.shields.io/maven-central/v/ai.blip/deckard)](https://central.sonatype.com/artifact/ai.blip/deckard/) [![Nuget org](https://img.shields.io/nuget/v/deckard?logo=nuget)](https://www.nuget.org/packages/Deckard)
 
 [![Slack](https://img.shields.io/badge/slack-Gophers_%28Deckard%29-blue?logo=slack&link=https://gophers.slack.com/archives/C05E1TMS1FY)](https://gophers.slack.com/archives/C05E1TMS1FY)
 
