@@ -111,7 +111,7 @@ jobs:
 
       - name: Publish package
         working-directory: java
-        run: mvn --batch-mode --errors --show-version clean deploy jreleaser:deploy -DaltDeploymentRepository=local::default::file:./target/staging-deploy
+        run: mvn clean deploy jreleaser:deploy -Ppublication
         env:
           JRELEASER_NEXUS2_USERNAME: ${{ secrets.JRELEASER_NEXUS2_USERNAME }}
           JRELEASER_NEXUS2_PASSWORD: ${{ secrets.JRELEASER_NEXUS2_PASSWORD }}

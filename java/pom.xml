@@ -6,9 +6,10 @@
   <artifactId>deckard</artifactId>
   <version>0.0.20-SNAPSHOT</version>
 
-  <name>deckard</name>
+  <name>${project.groupId}:${project.artifactId}</name>
   <description>Client for Deckard - A Highly Scalable Cyclic Priority Queue</description>
   <url>https://github.com/takenet/deckard</url>
+  <inceptionYear>2019</inceptionYear>
   <licenses>
     <license>
       <name>MIT License</name>
@@ -19,7 +20,7 @@
 
   <developers>
     <developer>
-      <id>lucas-soares</id>
+      <id>lucasoares</id>
       <name>Lucas Soares</name>
       <email>lucas.soares@blip.ai</email>
       <organization>Blip</organization>
@@ -28,19 +29,11 @@
   </developers>
 
   <scm>
-    <developerConnection>scm:git:https://github.com/takenet/deckard.git</developerConnection>
+    <connection>scm:git:https://github.com/takenet/deckard.git</connection>
+    <developerConnection>scm:git:ssh://github.com/takenet/deckard.git</developerConnection>
+    <url>https://github.com/takenet/deckard.git</url>
     <tag>HEAD</tag>
   </scm>
-  <distributionManagement>
-    <snapshotRepository>
-      <id>ossrh</id>
-      <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
-    </snapshotRepository>
-    <repository>
-      <id>ossrh</id>
-      <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-    </repository>
-  </distributionManagement>
 
   <properties>
     <java.version>11</java.version>
@@ -79,13 +72,33 @@
       <plugins>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-javadoc-plugin</artifactId>
+          <version>3.5.0</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-source-plugin</artifactId>
+          <version>3.3.0</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-jar-plugin</artifactId>
           <version>3.2.0</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-deploy-plugin</artifactId>
-          <version>2.8.2</version>
+          <version>3.1.1</version>
+        </plugin>
+        <plugin>
+          <groupId>org.xolstice.maven.plugins</groupId>
+          <artifactId>protobuf-maven-plugin</artifactId>
+          <version>0.6.1</version>
+        </plugin>
+        <plugin>
+          <groupId>org.jreleaser</groupId>
+          <artifactId>jreleaser-maven-plugin</artifactId>
+          <version>1.7.0</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -111,35 +124,8 @@
     </pluginManagement>
     <plugins>
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-javadoc-plugin</artifactId>
-        <version>3.5.0</version>
-        <executions>
-          <execution>
-            <id>attach-javadoc</id>
-            <goals>
-              <goal>jar</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-source-plugin</artifactId>
-        <version>3.3.0</version>
-        <executions>
-          <execution>
-            <id>attach-sources</id>
-            <goals>
-              <goal>jar</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
         <groupId>org.xolstice.maven.plugins</groupId>
         <artifactId>protobuf-maven-plugin</artifactId>
-        <version>0.6.1</version>
         <configuration>
           <protocArtifact>
             com.google.protobuf:protoc:3.12.4:exe:${os.detected.classifier}
@@ -161,8 +147,8 @@
       <plugin>
         <groupId>org.jreleaser</groupId>
         <artifactId>jreleaser-maven-plugin</artifactId>
-        <version>1.7.0</version>
         <configuration>
+          <gitRootSearch>true</gitRootSearch>
           <jreleaser>
             <signing>
               <active>ALWAYS</active>
@@ -173,11 +159,11 @@
                 <nexus2>
                   <maven-central>
                     <active>ALWAYS</active>
-                          <url>https://s01.oss.sonatype.org/service/local</url>; <closeRepository>
-                    false</closeRepository>
-                          <releaseRepository>false</releaseRepository>
-                          <stagingRepositories>
-                    target/staging-deploy</stagingRepositories>
+                    <url>https://s01.oss.sonatype.org/service/local</url>
+                    <snapshotUrl>https://s01.oss.sonatype.org/content/repositories/snapshots/</snapshotUrl>
+                    <closeRepository>true</closeRepository>
+                    <releaseRepository>true</releaseRepository>
+                    <stagingRepositories>target/staging-deploy</stagingRepositories>
                   </maven-central>
                 </nexus2>
               </maven>
@@ -194,4 +180,48 @@
       </extension>
     </extensions>
   </build>
+
+  <profiles>
+    <profile>
+      <id>publication</id>
+      <properties>
+        <altDeploymentRepository>local::default::file:./target/staging-deploy</altDeploymentRepository>
+      </properties>
+      <build>
+        <defaultGoal>deploy</defaultGoal>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+                <configuration>
+                  <attach>true</attach>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+                <configuration>
+                  <attach>true</attach>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>
