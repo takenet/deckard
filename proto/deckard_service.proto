@@ -9,7 +9,7 @@ option go_package = "github.com/takenet/deckard";
 
 // Java configs
 option java_multiple_files = true;
-option java_package = "br.com.blipai.deckard";
+option java_package = "ai.blip.deckard";
 
 // C# configs
 option csharp_namespace = "Takenet.Deckard";
