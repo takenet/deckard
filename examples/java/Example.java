@@ -1,10 +1,10 @@
 package java;
 
-import br.com.blipai.deckard.AckRequest;
-import br.com.blipai.deckard.AddMessage;
-import br.com.blipai.deckard.AddRequest;
-import br.com.blipai.deckard.DeckardGrpc;
-import br.com.blipai.deckard.PullRequest;
+import ai.blip.deckard.AckRequest;
+import ai.blip.deckard.AddMessage;
+import ai.blip.deckard.AddRequest;
+import ai.blip.deckard.DeckardGrpc;
+import ai.blip.deckard.PullRequest;
 import io.grpc.ManagedChannelBuilder;
 
 public class Example {

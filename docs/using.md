@@ -39,11 +39,20 @@ make gen-proto
 
 ## Java
 
-We currently provide the Java API for the Deckard service in a Maven Repository.
+We currently provide the Java API for the Deckard service in the Maven Central Repository: https://central.sonatype.com/artifact/ai.blip/deckard
 
-First you must add Deckard to your project. Check [here](https://github.com/takenet/deckard/packages/1790378) for the maven repository documentation.
+To add it to your project you must add the following repository to your `pom.xml` file:
+```xml
+<dependency>
+  <groupId>ai.blip</groupId>
+  <artifactId>deckard</artifactId>
+  <version>${deckard.version}</version>
+</dependency>
+```
 
-After configuring the repository and adding the dependency you can import the Deckard package and use it.
+> Check the latest version and create the `deckard.version` property in your `pom.xml` file.
+
+After adding the dependency you can import the Deckard package and use it.
 
 **Check our [Java example](../examples/java/Example.java) for a complete example.**
 
