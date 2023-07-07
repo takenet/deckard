@@ -7,7 +7,7 @@
   <version>0.0.20-SNAPSHOT</version>
 
   <name>deckard</name>
-  <description>Client for Deckard - A Cyclic Priority Queue (CPQ)</description>
+  <description>Client for Deckard - A Highly Scalable Cyclic Priority Queue</description>
   <url>https://github.com/takenet/deckard</url>
   <licenses>
     <license>
