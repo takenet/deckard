@@ -2,4 +2,4 @@ package project
 
 const Name = "deckard"
 const DisplayName = "Deckard"
-const Version = "0.0.24"
+const Version = "0.0.25-SNAPSHOT"
