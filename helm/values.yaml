@@ -112,6 +112,7 @@ service:
   enabled: true
   type: ClusterIP
   port: 8081
+  annotations: {}
 
 ingress:
   enabled: false
