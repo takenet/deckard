@@ -385,8 +385,8 @@
 | ----- | ---- | ----- | ----------- |
 | acks | [int64](#int64) |  | Track total number of ACKs |
 | nacks | [int64](#int64) |  | Track total number of NACKs |
-| consecutive_acks | [int64](#int64) |  | Track number of consecutive ACKs This field will be reset to 0 when a NACK is received |
-| consecutive_nacks | [int64](#int64) |  | Track number of consecutive NACKs This field will be reset to 0 when an ACK is received |
+| consecutive_acks | [int64](#int64) |  | Track number of consecutive ACKs This field will reset to 0 when a NACK is received |
+| consecutive_nacks | [int64](#int64) |  | Track number of consecutive NACKs This field will reset to 0 when an ACK is received |
 
 
 
@@ -406,6 +406,7 @@
 | score_filter | [int64](#int64) |  | **Deprecated.** Prefer using the max_score field instead of this one. This field is deprecated and will be removed in the future. The `score_filter` behaves differently than `max_score` field. The `max_score` field is the upper threshold itself, but the `score_filter` will result in an upper score threshold of the current timestamp minus the score_filter value.<br/><br/>Useful only when your queue's score is only based on the current timestamp to not return a message just moments after it was last used. It will only return messages with score lower than the current timestamp minus the score_filter value.<br/><br/>For example if your queue's score is only based on the current timestamp, this parameter will be the number of milliseconds a message must be in the queue before being returned. |
 | max_score | [double](#double) |  | Sets the upper threshold for the priority score of a message to be returned in the pull request.<br/><br/>Only messages with a priority score equal to or lower than the max_score value will be returned.<br/><br/>The maximum score accepted by Deckard is 9007199254740992, any value higher than this will be capped to the maximum score. To set this value to the minimum score accepted by Deckard, use any negative number. This parameter will be ignored if set to 0 (default value). |
 | min_score | [double](#double) |  | Sets the lower threshold for the priority score required for a message to be returned. Only messages with a priority score equal to or higher than the min_score value will be returned. The minimum score accepted by Deckard is 0 which is also the default value |
+| ack_deadline_seconds | [int64](#int64) |  | Sets the amount of time in milliseconds a message will be available for processing before being returned to the queue if not ACKed. The default value is 300 (5 minutes). |
 
 
 
