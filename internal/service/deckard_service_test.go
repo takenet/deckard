@@ -307,7 +307,7 @@ func TestGetQueueError(t *testing.T) {
 		int64(1000),
 		nil,
 		nil,
-		0,
+		int64(0),
 	).Return(nil, errors.New("pool error"))
 
 	_, err := NewDeckardService(mockQueue, nil).Pull(ctx, &deckard.PullRequest{
@@ -329,7 +329,7 @@ func TestGetQueueNoMessages(t *testing.T) {
 		int64(1000),
 		nil,
 		nil,
-		0,
+		int64(0),
 	).Return(nil, nil)
 
 	response, err := NewDeckardService(mockQueue, nil).Pull(ctx, &deckard.PullRequest{
