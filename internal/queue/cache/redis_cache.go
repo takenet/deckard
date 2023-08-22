@@ -342,7 +342,7 @@ func (cache *RedisCache) UnlockMessages(ctx context.Context, queue string, lockT
 	return parseResult(cmd)
 }
 
-func (cache *RedisCache) PullMessages(ctx context.Context, queue string, n int64, minScore *float64, maxScore *float64) (ids []string, err error) {
+func (cache *RedisCache) PullMessages(ctx context.Context, queue string, n int64, minScore *float64, maxScore *float64, ackDeadlineSeconds int64) (ids []string, err error) {
 	var cmd *redis.Cmd
 
 	now := dtime.Now()
@@ -350,8 +350,14 @@ func (cache *RedisCache) PullMessages(ctx context.Context, queue string, n int64
 		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "pull"))
 	}()
 
+	if ackDeadlineSeconds == 0 {
+		ackDeadlineSeconds = 300
+	}
+
+	newScore := dtime.TimeToMs(&now) + ackDeadlineSeconds*1000
+
 	args := []any{
-		n, dtime.TimeToMs(&now),
+		n, newScore,
 	}
 
 	if minScore != nil {
@@ -410,13 +416,12 @@ func resultToIds(result interface{}) []string {
 	return nil
 }
 
-func (cache *RedisCache) TimeoutMessages(ctx context.Context, queue string, timeout time.Duration) ([]string, error) {
-	nowMinusTimeout := dtime.Now().Add(-1 * timeout)
-	timeoutTime := dtime.TimeToMs(&nowMinusTimeout)
+func (cache *RedisCache) TimeoutMessages(ctx context.Context, queue string) ([]string, error) {
+	now := dtime.Now()
+	timeoutTime := dtime.TimeToMs(&now)
 
-	execStart := dtime.Now()
 	defer func() {
-		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), attribute.String("op", "timeout"))
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "timeout"))
 	}()
 
 	cmd := cache.scripts[moveFilteredElements].Run(

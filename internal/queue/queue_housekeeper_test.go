@@ -276,8 +276,8 @@ func TestCheckTimeoutMessagesErrorForQueueShouldContinueOtherQueues(t *testing.T
 
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().ListQueues(gomock.Any(), gomock.Any(), gomock.Any()).Return([]string{"q1", "q2"}, nil)
-	mockCache.EXPECT().TimeoutMessages(gomock.Any(), "q1", cache.DefaultCacheTimeout).Return(nil, errors.New("error timeout messages"))
-	mockCache.EXPECT().TimeoutMessages(gomock.Any(), "q2", cache.DefaultCacheTimeout).Return([]string{"id2"}, nil)
+	mockCache.EXPECT().TimeoutMessages(gomock.Any(), "q1").Return(nil, errors.New("error timeout messages"))
+	mockCache.EXPECT().TimeoutMessages(gomock.Any(), "q2").Return([]string{"id2"}, nil)
 
 	q := NewQueue(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
 
@@ -715,8 +715,8 @@ func TestCheckTimeoutMessagesShouldExecuteTimeoutToAllQueues(t *testing.T) {
 
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().ListQueues(gomock.Any(), gomock.Any(), gomock.Any()).Return([]string{"q1", "q2"}, nil)
-	mockCache.EXPECT().TimeoutMessages(gomock.Any(), "q1", cache.DefaultCacheTimeout).Return([]string{"id1"}, nil)
-	mockCache.EXPECT().TimeoutMessages(gomock.Any(), "q2", cache.DefaultCacheTimeout).Return([]string{"id2"}, nil)
+	mockCache.EXPECT().TimeoutMessages(gomock.Any(), "q1").Return([]string{"id1"}, nil)
+	mockCache.EXPECT().TimeoutMessages(gomock.Any(), "q2").Return([]string{"id2"}, nil)
 
 	q := NewQueue(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
 

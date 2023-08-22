@@ -5,7 +5,6 @@ package cache
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/takenet/deckard/internal/queue/message"
 	"github.com/takenet/deckard/internal/queue/pool"
@@ -30,8 +29,8 @@ const (
 type Cache interface {
 	MakeAvailable(ctx context.Context, message *message.Message) (bool, error)
 	IsProcessing(ctx context.Context, queue string, id string) (bool, error)
-	PullMessages(ctx context.Context, queue string, n int64, minScore *float64, maxScore *float64) (ids []string, err error)
-	TimeoutMessages(ctx context.Context, queue string, timeout time.Duration) (ids []string, err error)
+	PullMessages(ctx context.Context, queue string, n int64, minScore *float64, maxScore *float64, ackDeadlineSeconds int64) (ids []string, err error)
+	TimeoutMessages(ctx context.Context, queue string) (ids []string, err error)
 
 	// Locks a message for message.LockMs milliseconds.
 	LockMessage(ctx context.Context, message *message.Message, lockType LockType) (bool, error)
@@ -56,8 +55,6 @@ type Cache interface {
 	// Close connection to the cache
 	Close(ctx context.Context) error
 }
-
-const DefaultCacheTimeout = 5 * time.Minute
 
 func CreateCache(ctx context.Context, cacheType Type) (Cache, error) {
 	switch cacheType {
