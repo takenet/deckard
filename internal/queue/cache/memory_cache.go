@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"sync"
-	"time"
 
 	"github.com/takenet/deckard/internal/dtime"
 	"github.com/takenet/deckard/internal/queue/message"
@@ -248,12 +247,16 @@ func (cache *MemoryCache) UnlockMessages(ctx context.Context, queue string, lock
 	return unlockedMessages, nil
 }
 
-func (cache *MemoryCache) PullMessages(ctx context.Context, queue string, n int64, minScore *float64, maxScore *float64) (ids []string, err error) {
+func (cache *MemoryCache) PullMessages(ctx context.Context, queue string, n int64, minScore *float64, maxScore *float64, ackDeadlineMs int64) (ids []string, err error) {
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
 
 	if cache.queues[queue] == nil || cache.queues[queue].Len() == 0 {
 		return nil, nil
+	}
+
+	if ackDeadlineMs == 0 {
+		ackDeadlineMs = DefaultTimeoutMs
 	}
 
 	total := int64(cache.queues[queue].Len())
@@ -276,7 +279,7 @@ func (cache *MemoryCache) PullMessages(ctx context.Context, queue string, n int6
 
 		processingEntry := &MemoryMessageEntry{
 			id:    entry.id,
-			score: float64(dtime.Now().Unix()),
+			score: float64(dtime.Now().Unix() + ackDeadlineMs),
 		}
 
 		cache.processingQueues[queue], _ = insertEntry(processingEntry, cache.processingQueues[queue])
@@ -291,7 +294,7 @@ func (cache *MemoryCache) PullMessages(ctx context.Context, queue string, n int6
 	return result, nil
 }
 
-func (cache *MemoryCache) TimeoutMessages(_ context.Context, queue string, timeout time.Duration) (ids []string, err error) {
+func (cache *MemoryCache) TimeoutMessages(_ context.Context, queue string) (ids []string, err error) {
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
 
@@ -299,7 +302,7 @@ func (cache *MemoryCache) TimeoutMessages(_ context.Context, queue string, timeo
 		return nil, nil
 	}
 
-	timeoutTime := dtime.Now().Add(-1 * timeout).Unix()
+	timeoutTime := dtime.Now().Unix()
 
 	count := int64(0)
 
