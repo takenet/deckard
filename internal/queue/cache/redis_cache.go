@@ -342,7 +342,7 @@ func (cache *RedisCache) UnlockMessages(ctx context.Context, queue string, lockT
 	return parseResult(cmd)
 }
 
-func (cache *RedisCache) PullMessages(ctx context.Context, queue string, n int64, minScore *float64, maxScore *float64, ackDeadlineSeconds int64) (ids []string, err error) {
+func (cache *RedisCache) PullMessages(ctx context.Context, queue string, n int64, minScore *float64, maxScore *float64, ackDeadlineMs int64) (ids []string, err error) {
 	var cmd *redis.Cmd
 
 	now := dtime.Now()
@@ -350,11 +350,11 @@ func (cache *RedisCache) PullMessages(ctx context.Context, queue string, n int64
 		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "pull"))
 	}()
 
-	if ackDeadlineSeconds == 0 {
-		ackDeadlineSeconds = 300
+	if ackDeadlineMs == 0 {
+		ackDeadlineMs = DefaultTimeoutMs
 	}
 
-	newScore := dtime.TimeToMs(&now) + ackDeadlineSeconds*1000
+	newScore := dtime.TimeToMs(&now) + ackDeadlineMs
 
 	args := []any{
 		n, newScore,

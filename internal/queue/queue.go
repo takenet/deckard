@@ -26,7 +26,7 @@ type DeckardQueue interface {
 	Nack(ctx context.Context, message *message.Message, timestamp time.Time, reason string) (bool, error)
 	Ack(ctx context.Context, message *message.Message, reason string) (bool, error)
 	TimeoutMessages(ctx context.Context, queue string) ([]string, error)
-	Pull(ctx context.Context, queue string, n int64, minScore *float64, maxScore *float64, ackDeadline int64) (*[]message.Message, error)
+	Pull(ctx context.Context, queue string, n int64, minScore *float64, maxScore *float64, ackDeadlineMs int64) (*[]message.Message, error)
 	Remove(ctx context.Context, queue string, reason string, ids ...string) (cacheRemoved int64, storageRemoved int64, err error)
 	Count(ctx context.Context, opts *storage.FindOptions) (int64, error)
 	GetStorageMessages(ctx context.Context, opt *storage.FindOptions) ([]message.Message, error)
@@ -310,8 +310,8 @@ func (pool *Queue) TimeoutMessages(ctx context.Context, queue string) ([]string,
 	return ids, nil
 }
 
-func (pool *Queue) Pull(ctx context.Context, queue string, n int64, minScore *float64, maxScore *float64, ackDeadlineSeconds int64) (*[]message.Message, error) {
-	ids, err := pool.cache.PullMessages(ctx, queue, n, minScore, maxScore, ackDeadlineSeconds)
+func (pool *Queue) Pull(ctx context.Context, queue string, n int64, minScore *float64, maxScore *float64, ackDeadlineMs int64) (*[]message.Message, error) {
+	ids, err := pool.cache.PullMessages(ctx, queue, n, minScore, maxScore, ackDeadlineMs)
 	if err != nil {
 		logger.S(ctx).Error("Error pulling cache elements: ", err)
 

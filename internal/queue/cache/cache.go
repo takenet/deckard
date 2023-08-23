@@ -5,6 +5,7 @@ package cache
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/takenet/deckard/internal/queue/message"
 	"github.com/takenet/deckard/internal/queue/pool"
@@ -26,10 +27,14 @@ const (
 	RECOVERY_BREAKPOINT_KEY         = "recovery_breakpoint"
 )
 
+var (
+	DefaultTimeoutMs = time.Duration(5 * time.Minute).Milliseconds()
+)
+
 type Cache interface {
 	MakeAvailable(ctx context.Context, message *message.Message) (bool, error)
 	IsProcessing(ctx context.Context, queue string, id string) (bool, error)
-	PullMessages(ctx context.Context, queue string, n int64, minScore *float64, maxScore *float64, ackDeadlineSeconds int64) (ids []string, err error)
+	PullMessages(ctx context.Context, queue string, n int64, minScore *float64, maxScore *float64, ackDeadlineMs int64) (ids []string, err error)
 	TimeoutMessages(ctx context.Context, queue string) (ids []string, err error)
 
 	// Locks a message for message.LockMs milliseconds.

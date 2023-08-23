@@ -406,7 +406,7 @@ func (d *Deckard) Pull(ctx context.Context, request *deckard.PullRequest) (*deck
 	minScore := score.GetPullMinScore(request.MinScore)
 	maxScore := score.GetPullMaxScore(request.MaxScore)
 
-	messages, err := d.queue.Pull(ctx, request.Queue, amount, minScore, maxScore, request.AckDeadlineSeconds)
+	messages, err := d.queue.Pull(ctx, request.Queue, amount, minScore, maxScore, request.AckDeadlineMs)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "error pulling messages")
 	}

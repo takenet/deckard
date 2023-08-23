@@ -247,7 +247,7 @@ func (cache *MemoryCache) UnlockMessages(ctx context.Context, queue string, lock
 	return unlockedMessages, nil
 }
 
-func (cache *MemoryCache) PullMessages(ctx context.Context, queue string, n int64, minScore *float64, maxScore *float64, ackDeadlineSeconds int64) (ids []string, err error) {
+func (cache *MemoryCache) PullMessages(ctx context.Context, queue string, n int64, minScore *float64, maxScore *float64, ackDeadlineMs int64) (ids []string, err error) {
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
 
@@ -255,8 +255,8 @@ func (cache *MemoryCache) PullMessages(ctx context.Context, queue string, n int6
 		return nil, nil
 	}
 
-	if ackDeadlineSeconds == 0 {
-		ackDeadlineSeconds = 300
+	if ackDeadlineMs == 0 {
+		ackDeadlineMs = DefaultTimeoutMs
 	}
 
 	total := int64(cache.queues[queue].Len())
@@ -279,7 +279,7 @@ func (cache *MemoryCache) PullMessages(ctx context.Context, queue string, n int6
 
 		processingEntry := &MemoryMessageEntry{
 			id:    entry.id,
-			score: float64(dtime.Now().Unix() + ackDeadlineSeconds*1000),
+			score: float64(dtime.Now().Unix() + ackDeadlineMs),
 		}
 
 		cache.processingQueues[queue], _ = insertEntry(processingEntry, cache.processingQueues[queue])
