@@ -128,7 +128,7 @@ message PullRequest {
   // The minimum score accepted by Deckard is 0 which is also the default value
   double min_score = 5;
 
-  // Sets the amount of time in seconds a message will be available for processing before being returned to the queue if not ACKed.
+  // Sets the amount of time in milliseconds a message will wait be available for processing before being returned to the queue if not ACKed.
   // The default value is 300000 (5 minutes).
   int64 ack_deadline_ms = 6;
 }

@@ -292,7 +292,7 @@ type PullRequest struct {
 	// Only messages with a priority score equal to or higher than the min_score value will be returned.
 	// The minimum score accepted by Deckard is 0 which is also the default value
 	MinScore float64 `protobuf:"fixed64,5,opt,name=min_score,json=minScore,proto3" json:"min_score,omitempty"`
-	// Sets the amount of time in seconds a message will be available for processing before being returned to the queue if not ACKed.
+	// Sets the amount of time in milliseconds a message will wait be available for processing before being returned to the queue if not ACKed.
 	// The default value is 300000 (5 minutes).
 	AckDeadlineMs int64 `protobuf:"varint,6,opt,name=ack_deadline_ms,json=ackDeadlineMs,proto3" json:"ack_deadline_ms,omitempty"`
 }
