@@ -317,7 +317,7 @@ func (suite *DeckardIntegrationTestSuite) TestShouldRemoveMessageAfterAnAckOrNac
 }
 
 func testMessageRemoval(suite *DeckardIntegrationTestSuite, ackOrNack AckNackAction) {
-	queue := "remove_after_ack"
+	queue := "remove_after_acknack"
 	response, err := suite.deckard.Add(ctx, &deckard.AddRequest{
 		Messages: []*deckard.AddMessage{
 			{
@@ -355,6 +355,7 @@ func testMessageRemoval(suite *DeckardIntegrationTestSuite, ackOrNack AckNackAct
 		Queue:         getMessageResp.Messages[0].GetQueue(),
 		Id:            getMessageResp.Messages[0].GetId(),
 		RemoveMessage: true,
+		LockMs:        10000,
 	}, ackOrNack)
 
 	require.True(suite.T(), res.RemovalResponse.GetCacheRemoved() == 1)
@@ -367,6 +368,13 @@ func testMessageRemoval(suite *DeckardIntegrationTestSuite, ackOrNack AckNackAct
 
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), len(getMessageResp.GetMessages()) == 0)
+
+	countResp, err := suite.deckard.Count(ctx, &deckard.CountRequest{
+		Queue: queue,
+	})
+
+	require.NoError(suite.T(), err)
+	require.True(suite.T(), countResp.GetCount() == 0)
 }
 
 func (suite *DeckardIntegrationTestSuite) performAckOrNack(req *deckard.AckRequest, ackOrNack AckNackAction) *deckard.AckResponse {
