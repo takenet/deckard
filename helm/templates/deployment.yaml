@@ -53,10 +53,14 @@ spec:
               value: {{ quote .Values.audit.enabled }}
             - name: DECKARD_HOUSEKEEPER_ENABLED
               value: {{ quote .Values.housekeeper.self.enabled }}
+            {{- if (include "deckard.storage.uri" .) }}
             - name: DECKARD_STORAGE_URI
               value: {{ include "deckard.storage.uri" . | quote }}
+            {{- end }}
+            {{- if (include "deckard.cache.uri" .) }}
             - name: DECKARD_CACHE_URI
               value: {{ include "deckard.cache.uri" . | quote }}
+            {{- end }}
             - name: DECKARD_REDIS_DB
               value: {{ quote .Values.cache.redis.database }}
           ports:
