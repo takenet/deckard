@@ -31,7 +31,7 @@ metrics:
   # Defines the path to access metrics
   path: /metrics
 
-env: []
+env: {}
 
 podAnnotations: {}
 
@@ -177,7 +177,7 @@ housekeeper:
 
   securityContext: {}
 
-  env: []
+  env: {}
 
   containerPorts: []
 
