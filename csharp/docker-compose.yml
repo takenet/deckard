@@ -1,0 +1,6 @@
+﻿services:
+  deckard.benchmark.api:
+    image: deckard.benchmark.api
+    build:
+      context: .
+      dockerfile: Deckard.Benchmark.Api/Dockerfile
