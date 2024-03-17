@@ -16,9 +16,10 @@ Briefly:
 - An application inserts a message to be queued and its configuration (TTL, metadata, payload, priority score, etc).
     - The message will be prioritized with a default timestamp-based algorithm if the provided score is 0 (the default value).
 - A worker application pull messages from Deckard at regular intervals and performs any processing.
+    - The worker can also send a score filter (max score and min score) in the pull request. This enables theoughput controlling with score algorithms and many other features.
     - When it finishes processing a message, the application must notify with the processing result.
-    - When notifying, the application may provide a lock time, to lock the message for a certain duration of time before being requeued and delivered again.
-    - It is also possible to notify a message changing its priority score.
+    - When notifying, the application may also provide a lock time, to lock the message for a certain duration of time before being requeued and delivered again. Locking mechanism have a 1-second precision.
+    - It is also possible to notify a message without lock but changing its priority score to be delivered again.
 - When the message's TTL is reached, it stops being delivered;
     - For some use cases the TTL can be set as infinite.
     - An application can also remove the message when notifying.
