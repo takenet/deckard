@@ -8,7 +8,7 @@
 
 [![Slack](https://img.shields.io/badge/slack-Gophers_%28Deckard%29-blue?logo=slack&link=https://gophers.slack.com/archives/C05E1TMS1FY)](https://gophers.slack.com/archives/C05E1TMS1FY)
 
-Deckard is a priority queue system inspired by projects such as Google Cloud PubSub, Nats, Kafka, and others. Its main distinction lies in its ability to associate a priority score with each message and have a queue that can be optionally cyclic. This means that messages can be delivered again after a user-managed time. Additionally, Deckard implements a locking mechanism to prevent message processing for a specified duration, all built using GoLang and gRPC to be as scalable as possible.
+Deckard is a priority queue system inspired by projects such as Google Cloud PubSub, Nats, Kafka, and others. Its main distinction lies in its ability to associate a priority score with each message and have a queue that can be optionally cyclic. This means that messages can be delivered again after a user-managed time, allowing throughput configuration and many other features, all built using GoLang and gRPC to be as scalable as possible.
 
 ![deckard](docs/deckard_cartoon.webp)
 
@@ -100,7 +100,7 @@ You may also download the latest release from the [releases](https://github.com/
 
 ## Configuration
 
-We currently use the [viper](github.com/spf13/viper) project to manage configurations and the current implementation delegates the configuration to environment variables.
+The current implementation delegates the configuration to environment variables.
 
 All available environment variables are listed below:
 
