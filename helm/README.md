@@ -132,7 +132,7 @@ Check the [values.yaml](https://github.com/takenet/deckard/blob/main/helm/values
 
 ### Redis' Chart configuration
 
-The following table lists the default configuration values for the Redis chart.
+If the Redis is enabled and you want to deploy your own Redis using this chart, you may set redis configurations as above:
 
 For more `redis` configurations check [bitnami's chart available configurations](https://github.com/bitnami/charts/tree/main/bitnami/redis/)
 
@@ -143,9 +143,11 @@ For more `redis` configurations check [bitnami's chart available configurations]
 | `redis.auth.enabled` | Enable Redis authentication | `true` |
 | `redis.auth.password` | Redis password | `deckard` |
 
+> If you disabled the redis chart using `redis.enabled` as `false`, any property with the prefix `redis.` will be ignored.
+
 ### MongoDB's Chart configuration
 
-The following table lists the default configuration values for the MongoDB chart.
+If the MongoDB is enabled and you want to deploy your own MongoDB using this chart, you may set MongoDB configurations as above:
 
 For more `mongodb` configurations check [bitnami's chart available configurations](https://github.com/bitnami/charts/tree/main/bitnami/mongodb/)
 
@@ -156,6 +158,8 @@ For more `mongodb` configurations check [bitnami's chart available configuration
 | `mongodb.auth.rootUser` | MongoDB root username | `deckard` |
 | `mongodb.auth.rootPassword` | MongoDB root password | `deckard` |
 | `mongodb.architecture` | MongoDB architectur | `standalone` |
+
+> If you disabled the MongoDB chart using `mongodb.enabled` as `false`, any property with the prefix `mongodb.` will be ignored.
 
 ## Contributing
 
