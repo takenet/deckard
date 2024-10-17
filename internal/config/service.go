@@ -10,6 +10,26 @@ var GrpcPort = Create(&ViperConfigKey{
 	Default: 8081,
 })
 
+var GrpcServerKeepaliveTime = Create(&ViperConfigKey{
+	Key: "grpc.server.keepalive_time",
+})
+
+var GrpcServerKeepaliveTimeout = Create(&ViperConfigKey{
+	Key: "grpc.server.keepalive_timeout",
+})
+
+var GrpcServerMaxConnectionIdle = Create(&ViperConfigKey{
+	Key: "grpc.server.max_connection_idle",
+})
+
+var GrpcServerMaxConnectionAge = Create(&ViperConfigKey{
+	Key: "grpc.server.max_connection_age",
+})
+
+var GrpcServerMaxConnectionAgeGrace = Create(&ViperConfigKey{
+	Key: "grpc.server.max_connection_age_grace",
+})
+
 var TlsServerCertFilePaths = Create(&ViperConfigKey{
 	Key: "tls.server.cert_file_paths",
 })

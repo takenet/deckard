@@ -28,6 +28,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
 	grpchealth "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -76,6 +77,7 @@ func (d *Deckard) ServeGRPCServer(ctx context.Context) (*grpc.Server, error) {
 	options := []grpc.ServerOption{
 		grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
 		grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor()),
+		getGrpcKeepaliveParams(),
 	}
 
 	credentials, err := loadTLSCredentials()
@@ -681,4 +683,30 @@ func addSpanAttributes(ctx context.Context, attributes ...attribute.KeyValue) {
 	}
 
 	span.SetAttributes(attributes...)
+}
+
+func getGrpcKeepaliveParams() grpc.ServerOption {
+	parameters := keepalive.ServerParameters{}
+
+	if config.GrpcServerKeepaliveTime.Get() != "" {
+		parameters.Time = config.GrpcServerKeepaliveTime.GetDuration()
+	}
+
+	if config.GrpcServerKeepaliveTimeout.Get() != "" {
+		parameters.Timeout = config.GrpcServerKeepaliveTimeout.GetDuration()
+	}
+
+	if config.GrpcServerMaxConnectionIdle.Get() != "" {
+		parameters.MaxConnectionIdle = config.GrpcServerMaxConnectionIdle.GetDuration()
+	}
+
+	if config.GrpcServerMaxConnectionAge.Get() != "" {
+		parameters.MaxConnectionAge = config.GrpcServerMaxConnectionAge.GetDuration()
+	}
+
+	if config.GrpcServerMaxConnectionAgeGrace.Get() != "" {
+		parameters.MaxConnectionAgeGrace = config.GrpcServerMaxConnectionAgeGrace.GetDuration()
+	}
+
+	return grpc.KeepaliveParams(parameters)
 }

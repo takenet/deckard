@@ -113,6 +113,22 @@ All available environment variables are listed below:
 | `DECKARD_GRPC_ENABLED` | `true` | To enable the gRPC service. You can disable gRPC service if you want an instance to perform only housekeeper tasks. |
 | `DECKARD_GRPC_PORT` | `8081` | The gRPC port to listen. |
 
+### gRPC Server Configuration
+
+| Environment Variable         | Default | Description |
+|------------------------------|---------|-------------|
+| `DECKARD_GRPC_SERVER_KEEPALIVE_TIME` |  | The interval after which a keepalive ping is sent. |
+| `DECKARD_GRPC_SERVER_KEEPALIVE_TIMEOUT` |  | The duration the gRPC server waits for a keepalive response before closing the connection. |
+| `DECKARD_GRPC_SERVER_MAX_CONNECTION_IDLE` |  | The maximum duration a connection can remain idle. |
+| `DECKARD_GRPC_SERVER_MAX_CONNECTION_AGE` |  | The maximum duration a connection can exist. |
+| `DECKARD_GRPC_SERVER_MAX_CONNECTION_AGE_GRACE` |  | The additional time the gRPC server allows for a connection to complete its current operations before closing it after reaching the maximum connection age. |
+
+> Values should be specified using time units such as `1s` for seconds, `1m` for minutes, `1h` for hours.
+
+The default values depends on the server implementation. For more information check these links:
+- [Keepalive configuration specification](https://grpc.io/docs/guides/keepalive/#keepalive-configuration-specification)
+- [`grpc-go/internal/transport/defaults.go`](https://github.com/grpc/grpc-go/blob/master/internal/transport/defaults.go)
+
 ### Cache Configuration
 
 | Environment Variable         | Default | Description |
