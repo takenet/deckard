@@ -704,10 +704,65 @@ func TestDeckardServerKeepalive(t *testing.T) {
 	}
 	t.Parallel()
 
-	t.Run("with max connection age", func(t *testing.T) {
+	t.Run("set all fields", func(t *testing.T) {
 		config.Configure(true)
 
 		config.GrpcPort.Set("8088")
+
+		config.GrpcServerKeepaliveTime.Set(1 * time.Second)
+		config.GrpcServerKeepaliveTimeout.Set(5 * time.Second)
+		config.GrpcServerMaxConnectionIdle.Set(30 * time.Second)
+		config.GrpcServerMaxConnectionAge.Set(1 * time.Minute)
+		config.GrpcServerMaxConnectionAgeGrace.Set(2 * time.Minute)
+
+		storage := storage.NewMemoryStorage(ctx)
+		cache := cache.NewMemoryCache()
+
+		queueService := queue.NewQueueConfigurationService(ctx, storage)
+
+		queue := queue.NewQueue(&audit.AuditorImpl{}, storage, queueService, cache)
+
+		srv := NewMemoryDeckardService(queue, queueService)
+
+		server, err := srv.ServeGRPCServer(ctx)
+		require.NoError(t, err)
+		defer server.Stop()
+
+		// Set up a connection to the server.
+		ctx, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
+		defer cancel()
+		conn, err := grpc.DialContext(ctx, fmt.Sprint("localhost:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+		if err != nil {
+			log.Fatalf("did not connect: %v", err)
+		}
+		defer conn.Close()
+
+		client := deckard.NewDeckardClient(conn)
+
+		response, err := client.Add(ctx, &deckard.AddRequest{
+			Messages: []*deckard.AddMessage{
+				{
+					Id:       "1",
+					Queue:    "queue",
+					Timeless: true,
+				},
+			},
+		})
+
+		require.NoError(t, err)
+		require.Equal(t, int64(1), response.CreatedCount)
+		require.Equal(t, int64(0), response.UpdatedCount)
+
+		getResponse, err := client.Pull(ctx, &deckard.PullRequest{Queue: "queue"})
+		require.NoError(t, err)
+		require.Len(t, getResponse.Messages, 1)
+		require.Equal(t, "1", getResponse.Messages[0].Id)
+	})
+
+	t.Run("with max connection age", func(t *testing.T) {
+		config.Configure(true)
+
+		config.GrpcPort.Set("8089")
 		maxConnectionAge := 1 * time.Second
 		config.GrpcServerMaxConnectionAge.Set(maxConnectionAge.String())
 
@@ -750,7 +805,7 @@ func TestDeckardServerKeepalive(t *testing.T) {
 	t.Run("without max connection age", func(t *testing.T) {
 		config.Configure(true)
 
-		config.GrpcPort.Set("8089")
+		config.GrpcPort.Set("8090")
 
 		storage := storage.NewMemoryStorage(ctx)
 		cache := cache.NewMemoryCache()
