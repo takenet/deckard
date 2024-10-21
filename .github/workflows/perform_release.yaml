@@ -5,11 +5,11 @@ on:
 
 jobs:
   perform-release:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Change versions
       run: |
@@ -44,13 +44,13 @@ jobs:
         echo "deckard_patch=$PATCH" >> $GITHUB_ENV
 
     - name: Commit changes
-      uses: stefanzweifel/git-auto-commit-action@v4
+      uses: stefanzweifel/git-auto-commit-action@v5
       with:
         commit_message: 'build: ${{ env.deckard_new_version }} release'
         file_pattern: 'internal/project/project.go java/pom.xml csharp/Deckard.csproj helm/Chart.yaml'
 
     - name: Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ env.deckard_new_version }}
         generate_release_notes: true
@@ -78,7 +78,7 @@ jobs:
         echo "deckard_new_snapshot_version=$NEW_SNAPSHOT_VERSION" >> $GITHUB_ENV
 
     - name: Commit changes
-      uses: stefanzweifel/git-auto-commit-action@v4
+      uses: stefanzweifel/git-auto-commit-action@v5
       with:
         commit_message: 'chore: ${{ env.deckard_new_snapshot_version }}'
         file_pattern: 'internal/project/project.go java/pom.xml csharp/Deckard.csproj'
