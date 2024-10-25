@@ -19,6 +19,7 @@ import (
 	"github.com/takenet/deckard/internal/queue/pool"
 	"github.com/takenet/deckard/internal/queue/score"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 )
 
 type RedisCache struct {
@@ -124,7 +125,7 @@ func waitForClient(options *redis.Options) (*redis.Client, error) {
 func (cache *RedisCache) Flush(ctx context.Context) {
 	now := dtime.Now()
 	defer func() {
-		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "flush"))
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(now), metric.WithAttributes(attribute.String("op", "flush")))
 	}()
 
 	cache.Client.FlushDB(ctx)
@@ -135,7 +136,7 @@ func (cache *RedisCache) Remove(ctx context.Context, queue string, ids ...string
 
 	execStart := dtime.Now()
 	defer func() {
-		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), attribute.String("op", "remove"))
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), metric.WithAttributes(attribute.String("op", "remove")))
 	}()
 
 	idList := make([]interface{}, len(ids))
@@ -177,7 +178,7 @@ func (cache *RedisCache) Remove(ctx context.Context, queue string, ids ...string
 func (cache *RedisCache) ListQueues(ctx context.Context, pattern string, poolType pool.PoolType) (queues []string, err error) {
 	execStart := dtime.Now()
 	defer func() {
-		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), attribute.String("op", "list_queue"))
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), metric.WithAttributes(attribute.String("op", "list_queue")))
 	}()
 
 	var searchPattern string
@@ -270,7 +271,7 @@ func (cache *RedisCache) MakeAvailable(ctx context.Context, message *message.Mes
 
 	execStart := dtime.Now()
 	defer func() {
-		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), attribute.String("op", "make_available"))
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), metric.WithAttributes(attribute.String("op", "make_available")))
 	}()
 
 	cmd := cache.scripts[moveElement].Run(
@@ -301,7 +302,7 @@ func (cache *RedisCache) LockMessage(ctx context.Context, message *message.Messa
 
 	execStart := dtime.Now()
 	defer func() {
-		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), attribute.String("op", "lock"))
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), metric.WithAttributes(attribute.String("op", "lock")))
 	}()
 
 	cmd := cache.scripts[lockElement].Run(
@@ -329,7 +330,7 @@ func (cache *RedisCache) UnlockMessages(ctx context.Context, queue string, lockT
 
 	execStart := dtime.Now()
 	defer func() {
-		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), attribute.String("op", "unlock_messages"))
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), metric.WithAttributes(attribute.String("op", "unlock_messages")))
 	}()
 
 	cmd := cache.scripts[unlockElements].Run(
@@ -347,7 +348,7 @@ func (cache *RedisCache) PullMessages(ctx context.Context, queue string, n int64
 
 	now := dtime.Now()
 	defer func() {
-		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "pull"))
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(now), metric.WithAttributes(attribute.String("op", "pull")))
 	}()
 
 	if ackDeadlineMs == 0 {
@@ -421,7 +422,7 @@ func (cache *RedisCache) TimeoutMessages(ctx context.Context, queue string) ([]s
 	timeoutTime := dtime.TimeToMs(&now)
 
 	defer func() {
-		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "timeout"))
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(now), metric.WithAttributes(attribute.String("op", "timeout")))
 	}()
 
 	cmd := cache.scripts[moveFilteredElements].Run(
@@ -459,7 +460,7 @@ func (cache *RedisCache) Insert(ctx context.Context, queue string, messages ...*
 		func() {
 			execStart := dtime.Now()
 			defer func() {
-				metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), attribute.String("op", "insert"))
+				metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), metric.WithAttributes(attribute.String("op", "insert")))
 			}()
 
 			cmd = cache.scripts[addElements].Run(
@@ -485,7 +486,7 @@ func (cache *RedisCache) Insert(ctx context.Context, queue string, messages ...*
 func (cache *RedisCache) IsProcessing(ctx context.Context, queue string, id string) (bool, error) {
 	execStart := dtime.Now()
 	defer func() {
-		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), attribute.String("op", "is_processing"))
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), metric.WithAttributes(attribute.String("op", "is_processing")))
 	}()
 
 	return cache.containsElement(ctx, cache.processingPool(queue), id)
@@ -508,7 +509,7 @@ func (cache *RedisCache) containsElement(ctx context.Context, queuePool string, 
 func (cache *RedisCache) Get(ctx context.Context, key string) (string, error) {
 	execStart := dtime.Now()
 	defer func() {
-		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), attribute.String("op", "get"))
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), metric.WithAttributes(attribute.String("op", "get")))
 	}()
 
 	cmd := cache.Client.Get(context.Background(), fmt.Sprint("deckard:", key))
@@ -528,7 +529,7 @@ func (cache *RedisCache) Get(ctx context.Context, key string) (string, error) {
 func (cache *RedisCache) Set(ctx context.Context, key string, value string) error {
 	execStart := dtime.Now()
 	defer func() {
-		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), attribute.String("op", "set"))
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), metric.WithAttributes(attribute.String("op", "set")))
 	}()
 
 	cmd := cache.Client.Set(context.Background(), fmt.Sprint("deckard:", key), value, 0)

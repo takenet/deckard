@@ -18,6 +18,7 @@ import (
 	"github.com/takenet/deckard/internal/queue/score"
 	"github.com/takenet/deckard/internal/queue/storage"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 )
 
 type DeckardQueue interface {
@@ -175,7 +176,7 @@ func (pool *Queue) Nack(ctx context.Context, msg *message.Message, timestamp tim
 	}
 
 	defer func() {
-		metrics.QueueNack.Add(ctx, 1, attribute.String("queue", message.GetQueuePrefix(msg.Queue)), attribute.String("reason", reason))
+		metrics.QueueNack.Add(ctx, 1, metric.WithAttributes(attribute.String("queue", message.GetQueuePrefix(msg.Queue)), attribute.String("reason", reason)))
 	}()
 
 	if msg.LockMs > 0 {
@@ -243,7 +244,7 @@ func (pool *Queue) Ack(ctx context.Context, msg *message.Message, reason string)
 		return false, err
 	}
 
-	metrics.QueueAck.Add(ctx, 1, attribute.String("queue", message.GetQueuePrefix(msg.Queue)), attribute.String("reason", reason))
+	metrics.QueueAck.Add(ctx, 1, metric.WithAttributes(attribute.String("queue", message.GetQueuePrefix(msg.Queue)), attribute.String("reason", reason)))
 
 	if msg.LockMs > 0 {
 		result, err := pool.cache.LockMessage(ctx, msg, cache.LOCK_ACK)
@@ -296,7 +297,7 @@ func (pool *Queue) TimeoutMessages(ctx context.Context, queue string) ([]string,
 	}
 
 	if len(ids) > 0 {
-		metrics.QueueTimeout.Add(ctx, int64(len(ids)), attribute.String("queue", message.GetQueuePrefix(queue)))
+		metrics.QueueTimeout.Add(ctx, int64(len(ids)), metric.WithAttributes(attribute.String("queue", message.GetQueuePrefix(queue))))
 
 		for _, id := range ids {
 			pool.auditor.Store(ctx, audit.Entry{
@@ -319,7 +320,7 @@ func (pool *Queue) Pull(ctx context.Context, queue string, n int64, minScore *fl
 	}
 
 	if len(ids) == 0 {
-		metrics.QueueEmptyQueue.Add(ctx, 1, attribute.String("queue", message.GetQueuePrefix(queue)))
+		metrics.QueueEmptyQueue.Add(ctx, 1, metric.WithAttributes(attribute.String("queue", message.GetQueuePrefix(queue))))
 
 		return nil, nil
 	}
@@ -343,7 +344,7 @@ func (pool *Queue) Pull(ctx context.Context, queue string, n int64, minScore *fl
 	}
 
 	if len(retryNotFound) > 0 {
-		metrics.QueueNotFoundInStorage.Add(ctx, int64(len(notFound)), attribute.String("queue", message.GetQueuePrefix(queue)))
+		metrics.QueueNotFoundInStorage.Add(ctx, int64(len(notFound)), metric.WithAttributes(attribute.String("queue", message.GetQueuePrefix(queue))))
 
 		for _, id := range retryNotFound {
 			pool.auditor.Store(ctx, audit.Entry{
@@ -368,7 +369,7 @@ func (pool *Queue) Pull(ctx context.Context, queue string, n int64, minScore *fl
 	}
 
 	if len(messages) == 0 {
-		metrics.QueueEmptyQueueStorage.Add(ctx, 1, attribute.String("queue", message.GetQueuePrefix(queue)))
+		metrics.QueueEmptyQueueStorage.Add(ctx, 1, metric.WithAttributes(attribute.String("queue", message.GetQueuePrefix(queue))))
 
 		return nil, nil
 	}
