@@ -109,13 +109,15 @@ jobs:
       - name: Copy .proto
         run: mkdir -p java/src/main/proto && cp -r proto java/src/main/proto
 
-      - id: install-secret-key
-        name: Install gpg secret key
+      - name: Install gpg secret key
         run: |
           # Install gpg secret key
           cat <(echo -e "${{ secrets.JRELEASER_GPG_SECRET_KEY }}") | gpg --batch --import
           # Verify gpg secret key
           gpg --list-secret-keys --keyid-format LONG
+
+      - name: Create maven settings.xml
+        run: echo "${{secrets.MAVEN_CENTRAL_SETTINGS_XML}}" > ~/.m2/settings.xml
 
       - name: Publish package
         working-directory: java
