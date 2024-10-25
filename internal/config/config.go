@@ -50,14 +50,5 @@ func Configure(reset ...bool) {
 	viper.SetEnvPrefix(project.Name)
 	viper.AutomaticEnv()
 
-	// Default configuration values
-	for _, config := range defaultConfigs {
-		viper.SetDefault(config.GetKey(), config.GetDefault())
-
-		for _, alias := range config.GetAliases() {
-			viper.SetDefault(alias, config.GetDefault())
-		}
-	}
-
 	configured = true
 }
