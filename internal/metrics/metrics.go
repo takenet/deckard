@@ -15,14 +15,11 @@ import (
 	"github.com/takenet/deckard/internal/logger"
 	"github.com/takenet/deckard/internal/project"
 	"github.com/takenet/deckard/internal/queue/utils"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/prometheus"
-	otelmetric "go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/global"
-	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/unit"
-	"go.opentelemetry.io/otel/sdk/metric"
-	"go.opentelemetry.io/otel/sdk/metric/aggregation"
+	"go.opentelemetry.io/otel/metric"
+	instrument "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.uber.org/zap"
 )
@@ -31,39 +28,39 @@ var (
 	prometheusStarted bool
 	mutex             = sync.Mutex{}
 
-	meter      otelmetric.Meter
+	meter      metric.Meter
 	MetricsMap *QueueMetricsMap
 
 	// Keep tracking of features used by clients to be able to deprecate them
-	CodeUsage instrument.Int64Counter
+	CodeUsage metric.Int64Counter
 
-	// Housekeeper
-	HousekeeperExceedingStorageRemoved instrument.Int64Counter
-	HousekeeperExceedingCacheRemoved   instrument.Int64Counter
-	HousekeeperTTLStorageRemoved       instrument.Int64Counter
-	HousekeeperTTLCacheRemoved         instrument.Int64Counter
-	HousekeeperUnlock                  instrument.Int64Counter
-	HousekeeperTaskLatency             instrument.Int64Histogram
-	HousekeeperOldestMessage           instrument.Int64ObservableGauge
-	HousekeeperTotalElements           instrument.Int64ObservableGauge
+	// Housekeepermetric
+	HousekeeperExceedingStorageRemoved metric.Int64Counter
+	HousekeeperExceedingCacheRemoved   metric.Int64Counter
+	HousekeeperTTLStorageRemoved       metric.Int64Counter
+	HousekeeperTTLCacheRemoved         metric.Int64Counter
+	HousekeeperUnlock                  metric.Int64Counter
+	HousekeeperTaskLatency             metric.Int64Histogram
+	HousekeeperOldestMessage           metric.Int64ObservableGauge
+	HousekeeperTotalElements           metric.Int64ObservableGauge
 
 	// Message Pool
-	QueueTimeout           instrument.Int64Counter
-	QueueAck               instrument.Int64Counter
-	QueueNack              instrument.Int64Counter
-	QueueEmptyQueue        instrument.Int64Counter
-	QueueEmptyQueueStorage instrument.Int64Counter
-	QueueNotFoundInStorage instrument.Int64Counter
+	QueueTimeout           metric.Int64Counter
+	QueueAck               metric.Int64Counter
+	QueueNack              metric.Int64Counter
+	QueueEmptyQueue        metric.Int64Counter
+	QueueEmptyQueueStorage metric.Int64Counter
+	QueueNotFoundInStorage metric.Int64Counter
 
 	// Storage
-	StorageLatency instrument.Int64Histogram
+	StorageLatency metric.Int64Histogram
 
 	// Cache
-	CacheLatency instrument.Int64Histogram
+	CacheLatency metric.Int64Histogram
 
 	// Auditor
-	AuditorAddToStoreLatency instrument.Int64Histogram
-	AuditorStoreLatency      instrument.Int64Histogram
+	AuditorAddToStoreLatency metric.Int64Histogram
+	AuditorStoreLatency      metric.Int64Histogram
 
 	exporter *prometheus.Exporter
 	registry *WrappedRegistry
@@ -82,28 +79,28 @@ func init() {
 	exporter, err = prometheus.New(
 		prometheus.WithRegisterer(registry),
 		prometheus.WithoutUnits(),
-		prometheus.WithAggregationSelector(func(ik metric.InstrumentKind) aggregation.Aggregation {
+		prometheus.WithAggregationSelector(func(ik instrument.InstrumentKind) instrument.Aggregation {
 			switch ik {
-			case metric.InstrumentKindHistogram:
-				return aggregation.ExplicitBucketHistogram{
+			case instrument.InstrumentKindHistogram:
+				return instrument.AggregationExplicitBucketHistogram{
 					Boundaries: getHistogramBuckets(),
 					NoMinMax:   false,
 				}
 			}
 
-			return metric.DefaultAggregationSelector(ik)
+			return instrument.DefaultAggregationSelector(ik)
 		}))
 
 	if err != nil {
 		logger.S(context.Background()).Errorf("Failed to initialize prometheus exporter %v", err)
 	}
 
-	provider := metric.NewMeterProvider(
-		metric.WithReader(exporter),
-		metric.WithResource(resource.Environment()),
+	provider := instrument.NewMeterProvider(
+		instrument.WithReader(exporter),
+		instrument.WithResource(resource.Environment()),
 	)
 
-	global.SetMeterProvider(provider)
+	otel.SetMeterProvider(provider)
 
 	createMetrics()
 }
@@ -176,7 +173,7 @@ func createDefaultMetrics() []*dto.LabelPair {
 }
 
 func createMetrics() {
-	meter = global.MeterProvider().Meter(project.Name)
+	meter = otel.GetMeterProvider().Meter(project.Name)
 
 	MetricsMap = NewQueueMetricsMap()
 
@@ -186,60 +183,60 @@ func createMetrics() {
 
 	CodeUsage, err = meter.Int64Counter(
 		"deckard_code_usage",
-		instrument.WithDescription("Number of times a specific feature was used by a client"),
+		metric.WithDescription("Number of times a specific feature was used by a client"),
 	)
 	panicInstrumentationError(err)
 
 	HousekeeperExceedingStorageRemoved, err = meter.Int64Counter(
 		"deckard_exceeding_messages_removed",
-		instrument.WithDescription("Number of messages removed from storage for exceeding maximum queue size"),
+		metric.WithDescription("Number of messages removed from storage for exceeding maximum queue size"),
 	)
 	panicInstrumentationError(err)
 
 	HousekeeperExceedingCacheRemoved, err = meter.Int64Counter(
 		"deckard_exceeding_messages_cache_removed",
-		instrument.WithDescription("Number of messages removed from cache for exceeding maximum queue size"),
+		metric.WithDescription("Number of messages removed from cache for exceeding maximum queue size"),
 	)
 	panicInstrumentationError(err)
 
 	HousekeeperTaskLatency, err = meter.Int64Histogram(
 		"deckard_housekeeper_task_latency",
-		instrument.WithDescription("Time in milliseconds to complete a housekeeper task."),
-		instrument.WithUnit(unit.Milliseconds),
+		metric.WithDescription("Time in milliseconds to complete a housekeeper task."),
+		metric.WithUnit("ms"),
 	)
 	panicInstrumentationError(err)
 
 	HousekeeperOldestMessage, err = meter.Int64ObservableGauge(
 		"deckard_oldest_message",
-		instrument.WithDescription("Time the oldest queue message was used."),
-		instrument.WithInt64Callback(func(_ context.Context, obs instrument.Int64Observer) error {
+		metric.WithDescription("Time the oldest queue message was used."),
+		metric.WithInt64Callback(func(_ context.Context, obs metric.Int64Observer) error {
 			return metrifyOldestMessages(obs)
 		}))
 	panicInstrumentationError(err)
 
 	HousekeeperTotalElements, err = meter.Int64ObservableGauge(
 		"deckard_total_messages",
-		instrument.WithDescription("Number of messages a queue has."),
-		instrument.WithInt64Callback(func(_ context.Context, obs instrument.Int64Observer) error {
+		metric.WithDescription("Number of messages a queue has."),
+		metric.WithInt64Callback(func(_ context.Context, obs metric.Int64Observer) error {
 			return metrifyTotalElements(obs)
 		}))
 	panicInstrumentationError(err)
 
 	HousekeeperTTLStorageRemoved, err = meter.Int64Counter(
 		"deckard_ttl_messages_removed",
-		instrument.WithDescription("Number of messages removed from storage for ttl"),
+		metric.WithDescription("Number of messages removed from storage for ttl"),
 	)
 	panicInstrumentationError(err)
 
 	HousekeeperTTLCacheRemoved, err = meter.Int64Counter(
 		"deckard_ttl_messages_cache_removed",
-		instrument.WithDescription("Number of messages removed from cache for ttl"),
+		metric.WithDescription("Number of messages removed from cache for ttl"),
 	)
 	panicInstrumentationError(err)
 
 	HousekeeperUnlock, err = meter.Int64Counter(
 		"deckard_message_unlock",
-		instrument.WithDescription("Number of unlocked messages."),
+		metric.WithDescription("Number of unlocked messages."),
 	)
 	panicInstrumentationError(err)
 
@@ -247,37 +244,37 @@ func createMetrics() {
 
 	QueueTimeout, err = meter.Int64Counter(
 		"deckard_message_timeout",
-		instrument.WithDescription("Number of message timeouts"),
+		metric.WithDescription("Number of message timeouts"),
 	)
 	panicInstrumentationError(err)
 
 	QueueAck, err = meter.Int64Counter(
 		"deckard_ack",
-		instrument.WithDescription("Number of acks received"),
+		metric.WithDescription("Number of acks received"),
 	)
 	panicInstrumentationError(err)
 
 	QueueNack, err = meter.Int64Counter(
 		"deckard_nack",
-		instrument.WithDescription("Number of nacks received"),
+		metric.WithDescription("Number of nacks received"),
 	)
 	panicInstrumentationError(err)
 
 	QueueEmptyQueue, err = meter.Int64Counter(
 		"deckard_messages_empty_queue",
-		instrument.WithDescription("Number of times a pull is made against an empty queue."),
+		metric.WithDescription("Number of times a pull is made against an empty queue."),
 	)
 	panicInstrumentationError(err)
 
 	QueueEmptyQueueStorage, err = meter.Int64Counter(
 		"deckard_messages_empty_queue_not_found_storage",
-		instrument.WithDescription("Number of times a pull is made against an empty queue because the messages were not found in the storage."),
+		metric.WithDescription("Number of times a pull is made against an empty queue because the messages were not found in the storage."),
 	)
 	panicInstrumentationError(err)
 
 	QueueNotFoundInStorage, err = meter.Int64Counter(
 		"deckard_messages_not_found_in_storage",
-		instrument.WithDescription("Number of messages in cache but not found in the storage."),
+		metric.WithDescription("Number of messages in cache but not found in the storage."),
 	)
 	panicInstrumentationError(err)
 
@@ -285,8 +282,8 @@ func createMetrics() {
 
 	StorageLatency, err = meter.Int64Histogram(
 		"deckard_storage_latency",
-		instrument.WithDescription("Storage access latency"),
-		instrument.WithUnit(unit.Milliseconds),
+		metric.WithDescription("Storage access latency"),
+		metric.WithUnit("ms"),
 	)
 	panicInstrumentationError(err)
 
@@ -294,8 +291,8 @@ func createMetrics() {
 
 	CacheLatency, err = meter.Int64Histogram(
 		"deckard_cache_latency",
-		instrument.WithDescription("Cache access latency"),
-		instrument.WithUnit(unit.Milliseconds),
+		metric.WithDescription("Cache access latency"),
+		metric.WithUnit("ms"),
 	)
 	panicInstrumentationError(err)
 
@@ -303,30 +300,30 @@ func createMetrics() {
 
 	AuditorAddToStoreLatency, err = meter.Int64Histogram(
 		"deckard_auditor_store_add_latency",
-		instrument.WithDescription("Latency to add an entry to be saved by the audit storer"),
-		instrument.WithUnit(unit.Milliseconds),
+		metric.WithDescription("Latency to add an entry to be saved by the audit storer"),
+		metric.WithUnit("ms"),
 	)
 	panicInstrumentationError(err)
 
 	AuditorStoreLatency, err = meter.Int64Histogram(
 		"deckard_auditor_store_latency",
-		instrument.WithDescription("Latency sending elements to the audit database"),
-		instrument.WithUnit(unit.Milliseconds),
+		metric.WithDescription("Latency sending elements to the audit database"),
+		metric.WithUnit("ms"),
 	)
 	panicInstrumentationError(err)
 }
 
-func metrifyOldestMessages(obs instrument.Int64Observer) error {
+func metrifyOldestMessages(obs metric.Int64Observer) error {
 	return metrify(obs, &MetricsMap.OldestElement)
 }
 
-func metrifyTotalElements(obs instrument.Int64Observer) error {
+func metrifyTotalElements(obs metric.Int64Observer) error {
 	return metrify(obs, &MetricsMap.TotalElements)
 }
 
-func metrify(obs instrument.Int64Observer, data *map[string]int64) error {
+func metrify(obs metric.Int64Observer, data *map[string]int64) error {
 	for key := range *data {
-		obs.Observe((*data)[key], attribute.String("queue", key))
+		obs.Observe((*data)[key], metric.WithAttributeSet(attribute.NewSet(attribute.String("queue", key))))
 	}
 
 	return nil

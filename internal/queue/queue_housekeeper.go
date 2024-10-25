@@ -17,6 +17,7 @@ import (
 	"github.com/takenet/deckard/internal/queue/storage"
 	"github.com/takenet/deckard/internal/shutdown"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 )
 
 // ProcessTimeoutMessages process messages timeout that have not been acked (or nacked) for more
@@ -124,7 +125,7 @@ func unlockMessages(ctx context.Context, pool *Queue, queues []string, lockType 
 			})
 		}
 
-		metrics.HousekeeperUnlock.Add(ctx, int64(len(ids)), attribute.String("queue", message.GetQueuePrefix(queues[i])), attribute.String("lock_type", string(lockType)))
+		metrics.HousekeeperUnlock.Add(ctx, int64(len(ids)), metric.WithAttributes(attribute.String("queue", message.GetQueuePrefix(queues[i])), attribute.String("lock_type", string(lockType))))
 	}
 }
 
@@ -332,8 +333,8 @@ func RemoveTTLMessages(ctx context.Context, pool *Queue, filterDate *time.Time) 
 			return true, err
 		}
 
-		metrics.HousekeeperTTLCacheRemoved.Add(ctx, cacheRemoved, attribute.String("queue", message.GetQueuePrefix(queue)))
-		metrics.HousekeeperTTLStorageRemoved.Add(ctx, storageRemoved, attribute.String("queue", message.GetQueuePrefix(queue)))
+		metrics.HousekeeperTTLCacheRemoved.Add(ctx, cacheRemoved, metric.WithAttributes(attribute.String("queue", message.GetQueuePrefix(queue))))
+		metrics.HousekeeperTTLStorageRemoved.Add(ctx, storageRemoved, metric.WithAttributes(attribute.String("queue", message.GetQueuePrefix(queue))))
 	}
 
 	return true, nil
@@ -424,8 +425,8 @@ func (pool *Queue) removeExceedingMessagesFromQueue(ctx context.Context, queueCo
 		return err
 	}
 
-	metrics.HousekeeperExceedingCacheRemoved.Add(ctx, cacheRemoved, attribute.String("queue", message.GetQueuePrefix(queue)))
-	metrics.HousekeeperExceedingStorageRemoved.Add(ctx, storageRemoved, attribute.String("queue", message.GetQueuePrefix(queue)))
+	metrics.HousekeeperExceedingCacheRemoved.Add(ctx, cacheRemoved, metric.WithAttributes(attribute.String("queue", message.GetQueuePrefix(queue))))
+	metrics.HousekeeperExceedingStorageRemoved.Add(ctx, storageRemoved, metric.WithAttributes(attribute.String("queue", message.GetQueuePrefix(queue))))
 
 	return nil
 }

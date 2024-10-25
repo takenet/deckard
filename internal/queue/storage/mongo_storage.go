@@ -24,6 +24,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 )
 
 // MongoStorage is an implementation of the Storage Interface using MongoDB.
@@ -176,7 +177,7 @@ func (storage *MongoStorage) EditQueueConfiguration(ctx context.Context, configu
 
 	now := dtime.Now()
 	defer func() {
-		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "edit_configuration"))
+		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), metric.WithAttributes(attribute.String("op", "edit_configuration")))
 	}()
 
 	upsert := true
@@ -199,7 +200,7 @@ func (storage *MongoStorage) EditQueueConfiguration(ctx context.Context, configu
 func (storage *MongoStorage) ListQueueConfigurations(ctx context.Context) ([]*configuration.QueueConfiguration, error) {
 	now := dtime.Now()
 	defer func() {
-		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "list_configuration"))
+		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), metric.WithAttributes(attribute.String("op", "list_configuration")))
 	}()
 
 	cursor, err := storage.queueConfigurationCollection.Find(context.Background(), bson.M{})
@@ -222,7 +223,7 @@ func (storage *MongoStorage) ListQueueConfigurations(ctx context.Context) ([]*co
 func (storage *MongoStorage) GetQueueConfiguration(ctx context.Context, queue string) (*configuration.QueueConfiguration, error) {
 	now := dtime.Now()
 	defer func() {
-		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "find_configuration"))
+		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), metric.WithAttributes(attribute.String("op", "find_configuration")))
 	}()
 
 	var configuration configuration.QueueConfiguration
@@ -248,7 +249,7 @@ func (storage *MongoStorage) GetQueueConfiguration(ctx context.Context, queue st
 func (storage *MongoStorage) Flush(ctx context.Context) (int64, error) {
 	now := dtime.Now()
 	defer func() {
-		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "flush"))
+		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), metric.WithAttributes(attribute.String("op", "flush")))
 	}()
 
 	result, err := storage.messagesCollection.DeleteMany(context.Background(), bson.M{})
@@ -271,7 +272,7 @@ func (storage *MongoStorage) Flush(ctx context.Context) (int64, error) {
 func (storage *MongoStorage) Count(ctx context.Context, opt *FindOptions) (int64, error) {
 	now := dtime.Now()
 	defer func() {
-		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "count"))
+		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), metric.WithAttributes(attribute.String("op", "count")))
 	}()
 
 	mongoFilter, err := getMongoMessage(opt)
@@ -294,7 +295,7 @@ func (storage *MongoStorage) Count(ctx context.Context, opt *FindOptions) (int64
 func (storage *MongoStorage) ListQueueNames(ctx context.Context) (queues []string, err error) {
 	now := dtime.Now()
 	defer func() {
-		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "list_queue"))
+		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), metric.WithAttributes(attribute.String("op", "list_queue")))
 	}()
 
 	return storage.distinct(ctx, "queue")
@@ -303,7 +304,7 @@ func (storage *MongoStorage) ListQueueNames(ctx context.Context) (queues []strin
 func (storage *MongoStorage) ListQueuePrefixes(ctx context.Context) (queues []string, err error) {
 	now := dtime.Now()
 	defer func() {
-		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "list_queue_prefix"))
+		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), metric.WithAttributes(attribute.String("op", "list_queue_prefix")))
 	}()
 
 	return storage.distinct(ctx, "queue_prefix")
@@ -364,7 +365,7 @@ func (storage *MongoStorage) Find(ctx context.Context, opt *FindOptions) ([]mess
 
 	now := dtime.Now()
 	defer func() {
-		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "find"), attribute.String("retry", strconv.FormatBool(opt.Retry)))
+		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), metric.WithAttributes(attribute.String("op", "find"), attribute.String("retry", strconv.FormatBool(opt.Retry))))
 	}()
 
 	collection := storage.messagesCollection
@@ -405,7 +406,7 @@ func (storage *MongoStorage) Remove(ctx context.Context, queue string, ids ...st
 
 	now := dtime.Now()
 	defer func() {
-		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "remove"))
+		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), metric.WithAttributes(attribute.String("op", "remove")))
 	}()
 
 	res, err := storage.messagesCollection.DeleteMany(context.Background(), filter)
@@ -475,7 +476,7 @@ func (storage *MongoStorage) Insert(ctx context.Context, messages ...*message.Me
 	}
 
 	defer func() {
-		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "insert"))
+		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), metric.WithAttributes(attribute.String("op", "insert")))
 	}()
 
 	res, err := storage.messagesCollection.BulkWrite(context.Background(), updates, options.BulkWrite().SetOrdered(false))
@@ -490,7 +491,7 @@ func (storage *MongoStorage) Insert(ctx context.Context, messages ...*message.Me
 func (storage *MongoStorage) Ack(ctx context.Context, message *message.Message) (modifiedCount int64, err error) {
 	now := dtime.Now()
 	defer func() {
-		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "ack"))
+		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), metric.WithAttributes(attribute.String("op", "ack")))
 	}()
 
 	filter := bson.M{
@@ -530,7 +531,7 @@ func (storage *MongoStorage) Ack(ctx context.Context, message *message.Message) 
 func (storage *MongoStorage) Nack(ctx context.Context, message *message.Message) (modifiedCount int64, err error) {
 	now := dtime.Now()
 	defer func() {
-		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("op", "nack"))
+		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), metric.WithAttributes(attribute.String("op", "nack")))
 	}()
 
 	filter := bson.M{

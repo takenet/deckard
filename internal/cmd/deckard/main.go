@@ -20,6 +20,7 @@ import (
 	"github.com/takenet/deckard/internal/shutdown"
 	"github.com/takenet/deckard/internal/trace"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
@@ -226,7 +227,7 @@ func executeTask(taskName string, fn func() bool) {
 	var metrify bool
 	defer func() {
 		if metrify {
-			metrics.HousekeeperTaskLatency.Record(ctx, dtime.ElapsedTime(now), attribute.String("task", taskName))
+			metrics.HousekeeperTaskLatency.Record(ctx, dtime.ElapsedTime(now), metric.WithAttributes(attribute.String("task", taskName)))
 		}
 	}()
 
