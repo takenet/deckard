@@ -4,7 +4,7 @@
 
   <groupId>ai.blip</groupId>
   <artifactId>deckard</artifactId>
-  <version>0.0.32-SNAPSHOT</version>
+  <version>0.0.32</version>
 
   <name>${project.groupId}:${project.artifactId}</name>
   <description>Client for Deckard - A Highly Scalable Cyclic Priority Queue</description>
