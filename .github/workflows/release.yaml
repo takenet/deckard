@@ -90,7 +90,7 @@ jobs:
         env:
           auth_token: ${{ secrets.DOCKER_HUB_TOKEN }}
         run: |
-          echo "${auth_token}" | ko login index.docker.io --username lucasoares3 --password-stdin
+          echo "${auth_token}" | ko login index.docker.io --username albertosilvablipai --password-stdin
           make build-image
 
   release-java-package:
