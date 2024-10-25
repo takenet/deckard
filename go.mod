@@ -1,6 +1,6 @@
 module github.com/takenet/deckard
 
-go 1.18
+go 1.23
 
 require (
 	github.com/elastic/go-elasticsearch/v7 v7.4.0

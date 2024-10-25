@@ -7,7 +7,7 @@ permissions:
   pull-requests: read
 
 env:
-  GO_VERSION: 1.18
+  GO_VERSION: 1.23
 
 jobs:
   lint:

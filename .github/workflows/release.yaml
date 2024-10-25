@@ -6,7 +6,7 @@ on:
 
 env:
   KO_DOCKER_REPO: index.docker.io/blipai
-  GO_VERSION: 1.18
+  GO_VERSION: 1.23
   DOTNET_VERSION: 6.0.x
 
 jobs:
@@ -103,8 +103,8 @@ jobs:
 
       - uses: actions/setup-java@v4
         with:
-          java-version: '11'
-          distribution: 'adopt'
+          java-version: '21'
+          distribution: 'temurin'
 
       - name: Copy .proto
         run: mkdir -p java/src/main/proto && cp -r proto java/src/main/proto
