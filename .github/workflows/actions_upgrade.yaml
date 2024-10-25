@@ -1,11 +1,7 @@
 name: GitHub Actions Version Updater
 
-# Controls when the action will run.
 on:
   workflow_dispatch:
-  schedule:
-    # Automatically run on every Sunday
-    - cron:  '0 0 * * 0'
 
 jobs:
   build:
@@ -14,9 +10,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PAT }}
 
       - name: Run GitHub Actions Version Updater
         uses: saadmk11/github-actions-version-updater@v0.8.1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PAT }}
