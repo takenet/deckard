@@ -9,7 +9,7 @@ on:
       - main
 
 env:
-  GO_VERSION: 1.18
+  GO_VERSION: 1.23
 
 permissions:
   checks: write
