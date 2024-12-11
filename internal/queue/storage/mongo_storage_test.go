@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
@@ -12,7 +13,53 @@ import (
 	"github.com/takenet/deckard/internal/queue/message"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+type MockCollection struct {
+	deleteManyArgs  []interface{}
+	deleteManyCalls int
+	errorDeleteMany error
+}
+
+func newMockCollection() *MockCollection {
+	return newMockCollectionErr(nil)
+}
+func newMockCollectionErr(err error) *MockCollection {
+	return &MockCollection{
+		deleteManyArgs:  []interface{}{},
+		deleteManyCalls: 0,
+		errorDeleteMany: err,
+	}
+}
+
+func (this *MockCollection) UpdateOne(ctx context.Context, filter interface{}, update interface{}, opts ...*options.UpdateOptions) (*mongo.UpdateResult, error) {
+	return nil, nil
+}
+func (this *MockCollection) BulkWrite(ctx context.Context, models []mongo.WriteModel,
+	opts ...*options.BulkWriteOptions) (*mongo.BulkWriteResult, error) {
+	return nil, nil
+}
+func (this *MockCollection) Distinct(ctx context.Context, fieldName string, filter interface{},
+	opts ...*options.DistinctOptions) ([]interface{}, error) {
+	return nil, nil
+}
+func (this *MockCollection) DeleteMany(ctx context.Context, filter interface{},
+	opts ...*options.DeleteOptions) (*mongo.DeleteResult, error) {
+	this.deleteManyArgs = append(this.deleteManyArgs, filter)
+	this.deleteManyCalls++
+	return &mongo.DeleteResult{
+		DeletedCount: 1,
+	}, this.errorDeleteMany
+}
+func (this *MockCollection) CountDocuments(ctx context.Context, filter interface{}, opts ...*options.CountOptions) (int64, error) {
+	return 0, nil
+}
+func (this *MockCollection) Find(ctx context.Context, filter interface{},
+	opts ...*options.FindOptions) (cur *mongo.Cursor, err error) {
+	return nil, nil
+}
 
 func TestMongoStorageIntegration(t *testing.T) {
 	if testing.Short() {
@@ -232,4 +279,53 @@ func TestGetMongoMessageWithManyIds(t *testing.T) {
 		},
 		message,
 	)
+}
+
+func TestRemove(t *testing.T) {
+	deleteChunkSize = 1
+	defer func() {
+		deleteChunkSize = 100
+	}()
+
+	colMock := newMockCollection()
+	storage := &MongoStorage{
+		messagesCollection: colMock,
+	}
+
+	queue := "test_queue"
+	count, err := storage.Remove(context.Background(), queue, "1", "2")
+	require.NoError(t, err)
+	require.Equal(t, int64(2), count)
+	require.Equal(t, 2, colMock.deleteManyCalls)
+	require.Equal(t, []interface{}{bson.M{
+		"queue": queue,
+		"id": bson.M{
+			"$in": []string{"1"},
+		},
+	},
+		bson.M{
+			"queue": queue,
+			"id": bson.M{
+				"$in": []string{"2"},
+			},
+		}}, colMock.deleteManyArgs)
+}
+
+func TestRemoveErrors(t *testing.T) {
+	colMock := newMockCollectionErr(fmt.Errorf("Mocked error"))
+	storage := &MongoStorage{
+		messagesCollection: colMock,
+	}
+
+	queue := "test_queue"
+	count, err := storage.Remove(context.Background(), queue, "1", "2")
+	require.ErrorContains(t, err, "Mocked error")
+	require.Equal(t, int64(0), count)
+	require.Equal(t, 1, colMock.deleteManyCalls)
+	require.Equal(t, []interface{}{bson.M{
+		"queue": queue,
+		"id": bson.M{
+			"$in": []string{"1", "2"},
+		},
+	}}, colMock.deleteManyArgs)
 }
