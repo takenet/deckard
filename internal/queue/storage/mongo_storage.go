@@ -27,16 +27,30 @@ import (
 	"go.opentelemetry.io/otel/metric"
 )
 
+type MongoCollectionInterface interface {
+	UpdateOne(ctx context.Context, filter interface{}, update interface{}, opts ...*options.UpdateOptions) (*mongo.UpdateResult, error)
+	BulkWrite(ctx context.Context, models []mongo.WriteModel,
+		opts ...*options.BulkWriteOptions) (*mongo.BulkWriteResult, error)
+	Distinct(ctx context.Context, fieldName string, filter interface{},
+		opts ...*options.DistinctOptions) ([]interface{}, error)
+	DeleteMany(ctx context.Context, filter interface{},
+		opts ...*options.DeleteOptions) (*mongo.DeleteResult, error)
+	CountDocuments(ctx context.Context, filter interface{}, opts ...*options.CountOptions) (int64, error)
+	Find(ctx context.Context, filter interface{},
+		opts ...*options.FindOptions) (cur *mongo.Cursor, err error)
+}
+
 // MongoStorage is an implementation of the Storage Interface using MongoDB.
 type MongoStorage struct {
 	client                        *mongo.Client
 	clientPrimaryPreference       *mongo.Client
-	messagesCollection            *mongo.Collection
+	messagesCollection            MongoCollectionInterface
 	messagesCollectionPrimaryRead *mongo.Collection
 	queueConfigurationCollection  *mongo.Collection
 }
 
 var _ Storage = &MongoStorage{}
+var deleteChunkSize = 100
 
 func NewMongoStorage(ctx context.Context) (*MongoStorage, error) {
 	mongoSecondaryOpts := createOptions()
@@ -394,27 +408,41 @@ func (storage *MongoStorage) Remove(ctx context.Context, queue string, ids ...st
 		return 0, nil
 	}
 
-	filter := bson.M{
-		"queue": queue,
-
-		"id": bson.M{
-			"$in": ids,
-		},
-	}
-
-	logger.S(ctx).Debugw("Storage operation: delete many operation.", "filter", filter)
-
 	now := dtime.Now()
 	defer func() {
 		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), metric.WithAttributes(attribute.String("op", "remove")))
 	}()
 
-	res, err := storage.messagesCollection.DeleteMany(context.Background(), filter)
-	if err != nil {
-		return 0, fmt.Errorf("rrror deleting storage elements: %w", err)
+	for i := 0; i < len(ids); i += deleteChunkSize {
+		res, err := attemptChunkDeletion(ctx, i, ids, queue, storage)
+		if err != nil {
+			return deleted, fmt.Errorf("error deleting storage elements: %w, ids = %v", err, ids)
+		}
+
+		deleted += res.DeletedCount
 	}
 
-	return res.DeletedCount, nil
+	return deleted, nil
+}
+
+func attemptChunkDeletion(ctx context.Context, i int, ids []string, queue string, storage *MongoStorage) (*mongo.DeleteResult, error) {
+	end := i + deleteChunkSize
+	if end > len(ids) {
+		end = len(ids)
+	}
+	chunk := ids[i:end]
+
+	filter := bson.M{
+		"queue": queue,
+		"id": bson.M{
+			"$in": chunk,
+		},
+	}
+
+	logger.S(ctx).Debugw("Storage operation: delete many operation.", "filter", filter)
+
+	res, err := storage.messagesCollection.DeleteMany(context.Background(), filter)
+	return res, err
 }
 
 func (storage *MongoStorage) Insert(ctx context.Context, messages ...*message.Message) (insertedCount int64, modifiedCount int64, err error) {
