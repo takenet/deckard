@@ -32,7 +32,7 @@ unit-test:
 	make gen-mocks
 	@if ! command -v gotestsum > /dev/null; then echo "Installing gotestsum" && go install -a -v gotest.tools/gotestsum@latest; fi;
 
-	gotestsum --junitfile junit.xml -- -p 6 --parallel 6 -v -short -covermode=atomic -coverprofile coverage.out ./... 2>&1 | tee gotest.out
+	gotestsum --junitfile junit.xml -- -p 6 --parallel 6 -v -short -covermode=atomic -coverprofile coverage.out ./internal/... 2>&1 | tee gotest.out
 	go tool cover -func coverage.out | tee coverage.txt
 
 # Run all tests including integration tests
@@ -41,7 +41,7 @@ test:
 	make gen-mocks
 	@if ! command -v gotestsum > /dev/null; then echo "Installing gotestsum" && go install -a -v gotest.tools/gotestsum@latest; fi;
 
-	gotestsum --junitfile junit.xml -- -v -p 1 -parallel 1 -covermode=atomic -coverprofile coverage.out ./... 2>&1 | tee gotest.out
+	gotestsum --junitfile junit.xml -- -v -p 1 -parallel 1 -covermode=atomic -coverprofile coverage.out ./internal/... 2>&1 | tee gotest.out
 	go tool cover -func coverage.out | tee coverage.txt
 
 # Run only integration tests
@@ -50,7 +50,7 @@ integration-test:
 	make gen-mocks
 	@if ! command -v gotestsum > /dev/null; then echo "Installing gotestsum" && go install -a -v gotest.tools/gotestsum@latest; fi;
 
-	gotestsum --junitfile junit.xml -- -v -p 1 -parallel 1 -run Integration -covermode=atomic -coverprofile coverage.out  ./... 2>&1 | tee gotest.out
+	gotestsum --junitfile junit.xml -- -v -p 1 -parallel 1 -run Integration -covermode=atomic -coverprofile coverage.out ./internal/... 2>&1 | tee gotest.out
 	go tool cover -func coverage.out | tee coverage.txt
 
 gen-proto:

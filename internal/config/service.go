@@ -30,6 +30,16 @@ var GrpcServerMaxConnectionAgeGrace = Create(&ViperConfigKey{
 	Key: "grpc.server.max_connection_age_grace",
 })
 
+var GrpcServerMaxRecvMsgSize = Create(&ViperConfigKey{
+	Key:     "grpc.server.max_recv_msg_size",
+	Default: 4194304,
+})
+
+var GrpcServerMaxSendMsgSize = Create(&ViperConfigKey{
+	Key:     "grpc.server.max_send_msg_size",
+	Default: 4194304,
+})
+
 var TlsServerCertFilePaths = Create(&ViperConfigKey{
 	Key: "tls.server.cert_file_paths",
 })
