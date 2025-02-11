@@ -32,6 +32,56 @@ import (
 
 var ctx = context.Background()
 
+func TestMessageSizeLimitDeckardGRPCServeIntegration(t *testing.T) {
+	if testing.Short() {
+		return
+	}
+
+	config.Configure(true)
+
+	config.GrpcPort.Set("8085")
+	config.GrpcServerMaxRecvMsgSize.Set(1)
+	config.GrpcServerMaxSendMsgSize.Set(1)
+
+	storage := storage.NewMemoryStorage(ctx)
+	cache := cache.NewMemoryCache()
+
+	queueService := queue.NewQueueConfigurationService(ctx, storage)
+
+	queue := queue.NewQueue(&audit.AuditorImpl{}, storage, queueService, cache)
+
+	srv := NewMemoryDeckardService(queue, queueService)
+
+	server, err := srv.ServeGRPCServer(ctx)
+	require.NoError(t, err)
+	defer server.Stop()
+
+	// Set up a connection to the server.
+	ctx, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
+	defer cancel()
+	conn, err := grpc.DialContext(ctx, fmt.Sprint("localhost:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	defer conn.Close()
+
+	client := deckard.NewDeckardClient(conn)
+
+	_, err = client.Add(ctx, &deckard.AddRequest{
+		Messages: []*deckard.AddMessage{
+			{
+				Id:       "1",
+				Queue:    "queue",
+				Timeless: true,
+				StringPayload: "This is a message test",
+			},
+		},
+	})
+
+	require.Error(t, err)
+	require.EqualError(t, err, "rpc error: code = ResourceExhausted desc = grpc: received message larger than max (38 vs. 1)")
+}
+
 func TestMemoryDeckardGRPCServeIntegration(t *testing.T) {
 	if testing.Short() {
 		return
