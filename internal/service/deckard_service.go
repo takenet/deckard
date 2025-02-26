@@ -68,6 +68,8 @@ func NewDeckardService(qpool queue.DeckardQueue, queueConfigurationService queue
 
 func (d *Deckard) ServeGRPCServer(ctx context.Context) (*grpc.Server, error) {
 	port := config.GrpcPort.GetInt()
+	maxMsgRecvSize := config.GrpcServerMaxRecvMsgSize.GetInt()
+	maxMsgSendSize := config.GrpcServerMaxSendMsgSize.GetInt()
 
 	listen, err := net.Listen("tcp", fmt.Sprint(":", port))
 	if err != nil {
@@ -78,6 +80,8 @@ func (d *Deckard) ServeGRPCServer(ctx context.Context) (*grpc.Server, error) {
 		grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
 		grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor()),
 		getGrpcKeepaliveParams(),
+		grpc.MaxRecvMsgSize(maxMsgRecvSize),
+		grpc.MaxSendMsgSize(maxMsgSendSize),
 	}
 
 	credentials, err := loadTLSCredentials()
