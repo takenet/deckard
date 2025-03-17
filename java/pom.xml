@@ -48,17 +48,17 @@
     <dependency>
       <groupId>io.grpc</groupId>
       <artifactId>grpc-netty-shaded</artifactId>
-      <version>1.68.0</version>
+      <version>1.68.3</version>
     </dependency>
     <dependency>
       <groupId>io.grpc</groupId>
       <artifactId>grpc-protobuf</artifactId>
-      <version>1.68.0</version>
+      <version>1.68.3</version>
     </dependency>
     <dependency>
       <groupId>io.grpc</groupId>
       <artifactId>grpc-stub</artifactId>
-      <version>1.68.0</version>
+      <version>1.68.3</version>
     </dependency>
     <dependency><!-- https://github.com/grpc/grpc-java/blob/master/README.md#generated-code -->
       <groupId>org.apache.tomcat</groupId>
@@ -130,7 +130,7 @@
         <configuration>
           <pluginId>grpc-java</pluginId>
           <protocArtifact>com.google.protobuf:protoc:3.25.3:exe:${os.detected.classifier}</protocArtifact>
-          <pluginArtifact>io.grpc:protoc-gen-grpc-java:1.68.0:exe:${os.detected.classifier}</pluginArtifact>
+          <pluginArtifact>io.grpc:protoc-gen-grpc-java:1.68.3:exe:${os.detected.classifier}</pluginArtifact>
         </configuration>
         <executions>
           <execution>
