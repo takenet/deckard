@@ -362,7 +362,9 @@ func (storage *MongoStorage) Find(ctx context.Context, opt *FindOptions) ([]mess
 
 	batchSize := int32(opt.Limit)
 	if batchSize <= 1 {
-		batchSize = 1000
+		batchSize = 1_000
+	} else if batchSize > 10_000{
+		batchSize = 10_000
 	}
 
 	findOptions := &options.FindOptions{
