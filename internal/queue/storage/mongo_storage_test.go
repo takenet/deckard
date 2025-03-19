@@ -17,10 +17,17 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+const DEL_MANY = "DeleteMany"
+const FIND = "Find"
+
+type MockDetails struct {
+	args  []interface{}
+	calls int
+	err   error
+}
+
 type MockCollection struct {
-	deleteManyArgs  []interface{}
-	deleteManyCalls int
-	errorDeleteMany error
+	mockDetails map[string]*MockDetails
 }
 
 func newMockCollection() *MockCollection {
@@ -28,37 +35,48 @@ func newMockCollection() *MockCollection {
 }
 func newMockCollectionErr(err error) *MockCollection {
 	return &MockCollection{
-		deleteManyArgs:  []interface{}{},
-		deleteManyCalls: 0,
-		errorDeleteMany: err,
+		mockDetails: map[string]*MockDetails{
+			DEL_MANY: {args: []interface{}{},
+				calls: 0,
+				err:   err,
+			},
+			FIND: {args: []interface{}{},
+				calls: 0,
+				err:   err,
+			},
+		},
 	}
 }
 
-func (this *MockCollection) UpdateOne(ctx context.Context, filter interface{}, update interface{}, opts ...*options.UpdateOptions) (*mongo.UpdateResult, error) {
+func (col *MockCollection) UpdateOne(ctx context.Context, filter interface{}, update interface{}, opts ...*options.UpdateOptions) (*mongo.UpdateResult, error) {
 	return nil, nil
 }
-func (this *MockCollection) BulkWrite(ctx context.Context, models []mongo.WriteModel,
+func (col *MockCollection) BulkWrite(ctx context.Context, models []mongo.WriteModel,
 	opts ...*options.BulkWriteOptions) (*mongo.BulkWriteResult, error) {
 	return nil, nil
 }
-func (this *MockCollection) Distinct(ctx context.Context, fieldName string, filter interface{},
+func (col *MockCollection) Distinct(ctx context.Context, fieldName string, filter interface{},
 	opts ...*options.DistinctOptions) ([]interface{}, error) {
 	return nil, nil
 }
-func (this *MockCollection) DeleteMany(ctx context.Context, filter interface{},
+func (col *MockCollection) DeleteMany(ctx context.Context, filter interface{},
 	opts ...*options.DeleteOptions) (*mongo.DeleteResult, error) {
-	this.deleteManyArgs = append(this.deleteManyArgs, filter)
-	this.deleteManyCalls++
+	details := col.mockDetails[DEL_MANY]
+	details.args = append(details.args, filter)
+	details.calls++
 	return &mongo.DeleteResult{
 		DeletedCount: 1,
-	}, this.errorDeleteMany
+	}, details.err
 }
-func (this *MockCollection) CountDocuments(ctx context.Context, filter interface{}, opts ...*options.CountOptions) (int64, error) {
+func (col *MockCollection) CountDocuments(ctx context.Context, filter interface{}, opts ...*options.CountOptions) (int64, error) {
 	return 0, nil
 }
-func (this *MockCollection) Find(ctx context.Context, filter interface{},
+func (col *MockCollection) Find(ctx context.Context, filter interface{},
 	opts ...*options.FindOptions) (cur *mongo.Cursor, err error) {
-	return nil, nil
+	details := col.mockDetails[FIND]
+	details.args = append(details.args, filter, opts)
+	details.calls++
+	return mongo.NewCursorFromDocuments(make([]interface{}, 0), nil, nil)
 }
 
 func TestMongoStorageIntegration(t *testing.T) {
@@ -292,11 +310,12 @@ func TestRemove(t *testing.T) {
 		messagesCollection: colMock,
 	}
 
+	details := colMock.mockDetails[DEL_MANY]
 	queue := "test_queue"
 	count, err := storage.Remove(context.Background(), queue, "1", "2")
 	require.NoError(t, err)
 	require.Equal(t, int64(2), count)
-	require.Equal(t, 2, colMock.deleteManyCalls)
+	require.Equal(t, 2, details.calls, "should call delete many twice")
 	require.Equal(t, []interface{}{bson.M{
 		"queue": queue,
 		"id": bson.M{
@@ -308,24 +327,68 @@ func TestRemove(t *testing.T) {
 			"id": bson.M{
 				"$in": []string{"2"},
 			},
-		}}, colMock.deleteManyArgs)
+		}}, details.args)
 }
 
-func TestRemoveErrors(t *testing.T) {
+func TestRemoveWithErrors(t *testing.T) {
 	colMock := newMockCollectionErr(fmt.Errorf("Mocked error"))
 	storage := &MongoStorage{
 		messagesCollection: colMock,
 	}
 
+	details := colMock.mockDetails[DEL_MANY]
 	queue := "test_queue"
 	count, err := storage.Remove(context.Background(), queue, "1", "2")
 	require.ErrorContains(t, err, "Mocked error")
 	require.Equal(t, int64(0), count)
-	require.Equal(t, 1, colMock.deleteManyCalls)
+	require.Equal(t, 1, details.calls, "should call delete many once")
 	require.Equal(t, []interface{}{bson.M{
 		"queue": queue,
 		"id": bson.M{
 			"$in": []string{"1", "2"},
 		},
-	}}, colMock.deleteManyArgs)
+	}}, details.args)
+}
+
+func TestFindWithLimitAndBatchVariations(t *testing.T) {
+	lim := int64(1)
+	batch := int32(1000)
+	testFindBatch(t, &lim, &batch)
+	lim = int64(2)
+	batch = int32(2)
+	testFindBatch(t, &lim, &batch)
+	lim = int64(10_000)
+	batch = int32(10_000)
+	testFindBatch(t, &lim, &batch)
+	lim = int64(10_001)
+	batch = int32(10_000)
+	testFindBatch(t, &lim, &batch)
+}
+
+func testFindBatch(t *testing.T, limit *int64, expectedBatch *int32) {
+	colMock := newMockCollection()
+	storage := &MongoStorage{
+		messagesCollection: colMock,
+	}
+	messages, err := storage.Find(context.Background(), &FindOptions{
+		Limit: *limit,
+	})
+
+	details := colMock.mockDetails[FIND]
+	findOpt, ok := details.args[1].([]*options.FindOptions) // Type assertion
+	if !ok {
+		fmt.Println("Type assertion failed")
+		return
+	}
+
+	require.NoError(t, err)
+	require.Equal(t, 0, len(messages), "should return no messages")
+	require.Equal(t, 1, details.calls, "should call find once")
+	require.Equal(t, 1, len(findOpt), "only one find option was used")
+	require.Equal(t, &options.FindOptions{
+		Projection: &bson.M{},
+		Sort:       &bson.D{},
+		Limit:      limit,
+		BatchSize:  expectedBatch,
+	}, findOpt[0], fmt.Sprintf("should call with batch size = %d, lim = %d and empty projection and sort", *expectedBatch, *limit))
 }
