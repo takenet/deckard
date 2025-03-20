@@ -370,13 +370,15 @@ func RemoveExceedingMessages(ctx context.Context, pool *Queue) (bool, error) {
 }
 
 func (pool *Queue) removeExceedingMessagesFromQueue(ctx context.Context, queueConfiguration *configuration.QueueConfiguration) error {
-	if queueConfiguration == nil || queueConfiguration.MaxElements <= 0 {
+	if queueConfiguration == nil || queueConfiguration.MaxElements <= 0 || queueConfiguration.Queue == "" {
 		return nil
 	}
 
 	queue := queueConfiguration.Queue
 
-	total, err := pool.storage.Count(ctx, &storage.FindOptions{InternalFilter: &storage.InternalFilter{Queue: queue}})
+	comment := "housekeeper.removeExceedingMessagesFromQueue_1"
+	total, err := pool.storage.Count(ctx, &storage.FindOptions{InternalFilter: &storage.InternalFilter{Queue: queue}, Comment: comment},
+		&storage.CountOptions{Comment: comment})
 
 	if err != nil {
 		logger.S(ctx).Errorf("Error counting queue %s: %v", queue, err)
@@ -395,6 +397,7 @@ func (pool *Queue) removeExceedingMessagesFromQueue(ctx context.Context, queueCo
 	sort := orderedmap.NewOrderedMap[string, int]()
 	sort.Set("expiry_date", 1)
 
+	comment = "housekeeper.removeExceedingMessagesFromQueue_2"
 	messages, err := pool.storage.Find(ctx, &storage.FindOptions{
 		Limit: diff,
 		InternalFilter: &storage.InternalFilter{
@@ -404,7 +407,8 @@ func (pool *Queue) removeExceedingMessagesFromQueue(ctx context.Context, queueCo
 			"id":  1,
 			"_id": 0,
 		},
-		Sort: sort,
+		Sort:    sort,
+		Comment: comment,
 	})
 
 	if err != nil {

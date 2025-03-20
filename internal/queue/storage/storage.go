@@ -32,7 +32,7 @@ type Storage interface {
 
 	ListQueueNames(ctx context.Context) (queues []string, err error)
 	ListQueuePrefixes(ctx context.Context) (queues []string, err error)
-	Count(ctx context.Context, opt *FindOptions) (int64, error)
+	Count(ctx context.Context, findOpt *FindOptions, countOpt *CountOptions) (int64, error)
 
 	GetStringInternalId(ctx context.Context, message *message.Message) string
 
@@ -65,7 +65,12 @@ type FindOptions struct {
 	*InternalFilter
 
 	// Boolean to deal with storage retries when storage reports missing elements
-	Retry bool
+	Retry   bool
+	Comment string
+}
+
+type CountOptions struct {
+	Comment string
 }
 
 func CreateStorage(ctx context.Context, storageType Type) (Storage, error) {

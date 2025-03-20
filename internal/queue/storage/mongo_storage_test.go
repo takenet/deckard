@@ -370,8 +370,10 @@ func testFindBatch(t *testing.T, limit *int64, expectedBatch *int32) {
 	storage := &MongoStorage{
 		messagesCollection: colMock,
 	}
+	expectedComment := "testFindBatch"
 	messages, err := storage.Find(context.Background(), &FindOptions{
-		Limit: *limit,
+		Limit:   *limit,
+		Comment: expectedComment,
 	})
 
 	details := colMock.mockDetails[FIND]
@@ -390,5 +392,6 @@ func testFindBatch(t *testing.T, limit *int64, expectedBatch *int32) {
 		Sort:       &bson.D{},
 		Limit:      limit,
 		BatchSize:  expectedBatch,
+		Comment:    &expectedComment,
 	}, findOpt[0], fmt.Sprintf("should call with batch size = %d, lim = %d and empty projection and sort", *expectedBatch, *limit))
 }

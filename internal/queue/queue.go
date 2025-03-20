@@ -58,12 +58,16 @@ func NewQueue(auditor audit.Auditor, storageImpl storage.Storage, queueService Q
 }
 
 func (pool *Queue) Count(ctx context.Context, opts *storage.FindOptions) (int64, error) {
+	comment := "queue.Count"
 	if opts == nil {
-		opts = &storage.FindOptions{}
+		opts = &storage.FindOptions{Comment: comment}
 	}
 
 	result, err := pool.storage.Count(ctx, &storage.FindOptions{
 		InternalFilter: opts.InternalFilter,
+		Comment:        comment,
+	}, &storage.CountOptions{
+		Comment: comment,
 	})
 
 	if err != nil {
