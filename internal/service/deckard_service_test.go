@@ -70,9 +70,9 @@ func TestMessageSizeLimitDeckardGRPCServeIntegration(t *testing.T) {
 	_, err = client.Add(ctx, &deckard.AddRequest{
 		Messages: []*deckard.AddMessage{
 			{
-				Id:       "1",
-				Queue:    "queue",
-				Timeless: true,
+				Id:            "1",
+				Queue:         "queue",
+				Timeless:      true,
 				StringPayload: "This is a message test",
 			},
 		},

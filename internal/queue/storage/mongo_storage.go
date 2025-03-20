@@ -283,13 +283,13 @@ func (storage *MongoStorage) Flush(ctx context.Context) (int64, error) {
 	return result.DeletedCount + deletedMessages, nil
 }
 
-func (storage *MongoStorage) Count(ctx context.Context, opt *FindOptions) (int64, error) {
+func (storage *MongoStorage) Count(ctx context.Context, findOpt *FindOptions, countOpt *CountOptions) (int64, error) {
 	now := dtime.Now()
 	defer func() {
 		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), metric.WithAttributes(attribute.String("op", "count")))
 	}()
 
-	mongoFilter, err := getMongoMessage(opt)
+	mongoFilter, err := getMongoMessage(findOpt)
 
 	if err != nil {
 		return 0, err
@@ -297,7 +297,9 @@ func (storage *MongoStorage) Count(ctx context.Context, opt *FindOptions) (int64
 
 	logger.S(ctx).Debugw("Storage operation: count operation.", "filter", mongoFilter)
 
-	result, err := storage.messagesCollection.CountDocuments(context.Background(), mongoFilter)
+	result, err := storage.messagesCollection.CountDocuments(context.Background(), mongoFilter, &options.CountOptions{
+		Comment: &countOpt.Comment,
+	})
 
 	if err != nil {
 		return 0, fmt.Errorf("error counting elements in storage: %w", err)
@@ -363,7 +365,7 @@ func (storage *MongoStorage) Find(ctx context.Context, opt *FindOptions) ([]mess
 	batchSize := int32(opt.Limit)
 	if batchSize <= 1 {
 		batchSize = 1_000
-	} else if batchSize > 10_000{
+	} else if batchSize > 10_000 {
 		batchSize = 10_000
 	}
 
@@ -372,6 +374,7 @@ func (storage *MongoStorage) Find(ctx context.Context, opt *FindOptions) ([]mess
 		Sort:       mongoSort,
 		Limit:      &opt.Limit,
 		BatchSize:  &batchSize,
+		Comment:    &opt.Comment,
 	}
 
 	logger.S(ctx).Debugw("Storage operation: find operation.",
