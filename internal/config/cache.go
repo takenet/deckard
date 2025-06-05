@@ -46,3 +46,15 @@ var RedisDB = Create(&ViperConfigKey{
 	Key:     "redis.db",
 	Default: 0,
 })
+
+// Redis Cluster Configurations
+
+var RedisClusterMode = Create(&ViperConfigKey{
+	Key:     "redis.cluster.mode",
+	Default: false,
+})
+
+var RedisClusterAddresses = Create(&ViperConfigKey{
+	Key:     "redis.cluster.addresses",
+	Default: nil,
+})
