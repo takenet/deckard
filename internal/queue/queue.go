@@ -462,3 +462,8 @@ func notFoundIds(ids []string, messages []message.Message) []string {
 
 	return notFound
 }
+
+// GetCache returns the cache instance used by the queue for distributed locking
+func (queue *Queue) GetCache() cache.Cache {
+	return queue.cache
+}

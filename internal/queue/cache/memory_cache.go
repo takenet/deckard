@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/takenet/deckard/internal/dtime"
 	"github.com/takenet/deckard/internal/queue/message"
@@ -464,5 +465,32 @@ func (cache *MemoryCache) Set(_ context.Context, key string, value string) error
 func (cache *MemoryCache) Close(ctx context.Context) error {
 	// do nothing
 
+	return nil
+}
+
+func (cache *MemoryCache) SetNX(ctx context.Context, key string, value string, ttl time.Duration) (bool, error) {
+	cache.lock.Lock()
+	defer cache.lock.Unlock()
+
+	// Check if key already exists
+	if _, exists := cache.keys[key]; exists {
+		return false, nil // Key already exists, SetNX failed
+	}
+
+	// Set the key (ignoring TTL for simplicity in memory cache)
+	cache.keys[key] = value
+	return true, nil
+}
+
+func (cache *MemoryCache) Del(ctx context.Context, key string) error {
+	cache.lock.Lock()
+	defer cache.lock.Unlock()
+
+	delete(cache.keys, key)
+	return nil
+}
+
+func (cache *MemoryCache) Expire(ctx context.Context, key string, ttl time.Duration) error {
+	// No-op for memory cache - TTL not implemented for simplicity
 	return nil
 }
