@@ -72,10 +72,30 @@ func (config *ViperConfigKey) Get() string {
 func (config *ViperConfigKey) GetDuration() time.Duration {
 	defaultVal := time.Duration(0)
 	if val, ok := config.GetDefault().(string); ok {
-		defaultVal, _ = time.ParseDuration(val)
+		parsed, err := time.ParseDuration(val)
+		if err == nil {
+			defaultVal = parsed
+		}
 	}
 
-	return getWithFallback(config, defaultVal, viper.GetDuration)
+	// Use a custom getter that ensures consistent parsing behavior
+	getDuration := func(key string) time.Duration {
+		if viper.IsSet(key) {
+			// Try viper's built-in parsing first
+			if duration := viper.GetDuration(key); duration != 0 {
+				return duration
+			}
+			// Fall back to manual parsing if viper returns 0 but key is set
+			if str := viper.GetString(key); str != "" {
+				if parsed, err := time.ParseDuration(str); err == nil {
+					return parsed
+				}
+			}
+		}
+		return 0
+	}
+
+	return getWithFallback(config, defaultVal, getDuration)
 }
 
 // Should never be called before config is initialized using config.Configure()
