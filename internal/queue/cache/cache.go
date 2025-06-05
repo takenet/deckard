@@ -57,6 +57,13 @@ type Cache interface {
 	// Sets the given key to its respective value. Use empty string to unset cache element.
 	Set(ctx context.Context, key string, value string) error
 
+	// SetNX sets a key only if it doesn't exist, with a TTL
+	SetNX(ctx context.Context, key string, value string, ttl time.Duration) (bool, error)
+	// Del deletes a key
+	Del(ctx context.Context, key string) error
+	// Expire sets a TTL on an existing key
+	Expire(ctx context.Context, key string, ttl time.Duration) error
+
 	// Close connection to the cache
 	Close(ctx context.Context) error
 }

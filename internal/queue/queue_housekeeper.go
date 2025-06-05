@@ -2,10 +2,12 @@ package queue
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/elliotchance/orderedmap/v2"
 	"github.com/takenet/deckard/internal/audit"
+	"github.com/takenet/deckard/internal/config"
 	"github.com/takenet/deckard/internal/dtime"
 	"github.com/takenet/deckard/internal/logger"
 	"github.com/takenet/deckard/internal/metrics"
@@ -82,7 +84,7 @@ func ProcessLockPool(ctx context.Context, queue *Queue) {
 		return
 	}
 
-	unlockMessages(ctx, queue, lockAckQueues, cache.LOCK_ACK)
+	unlockMessagesParallel(ctx, queue, lockAckQueues, cache.LOCK_ACK)
 
 	if shutdown.Ongoing() {
 		logger.S(ctx).Info("Shutdown started. Stopping unlock process.")
@@ -97,7 +99,7 @@ func ProcessLockPool(ctx context.Context, queue *Queue) {
 		return
 	}
 
-	unlockMessages(ctx, queue, lockNackQueues, cache.LOCK_NACK)
+	unlockMessagesParallel(ctx, queue, lockNackQueues, cache.LOCK_NACK)
 }
 
 func unlockMessages(ctx context.Context, pool *Queue, queues []string, lockType cache.LockType) {
@@ -127,6 +129,65 @@ func unlockMessages(ctx context.Context, pool *Queue, queues []string, lockType 
 
 		metrics.HousekeeperUnlock.Add(ctx, int64(len(ids)), metric.WithAttributes(attribute.String("queue", message.GetQueuePrefix(queues[i])), attribute.String("lock_type", string(lockType))))
 	}
+}
+
+func unlockMessagesParallel(ctx context.Context, pool *Queue, queues []string, lockType cache.LockType) {
+	if len(queues) == 0 {
+		return
+	}
+
+	parallelism := config.HousekeeperUnlockParallelism.GetInt()
+	if parallelism <= 0 {
+		parallelism = 5 // Default fallback
+	}
+
+	// Use buffered channel to limit concurrency
+	semaphore := make(chan struct{}, parallelism)
+	var wg sync.WaitGroup
+
+	for i := range queues {
+		if shutdown.Ongoing() {
+			logger.S(ctx).Info("Shutdown started. Stopping unlock process.")
+			break
+		}
+
+		wg.Add(1)
+		go func(queueName string) {
+			defer wg.Done()
+			
+			// Acquire semaphore
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
+
+			unlockSingleQueue(ctx, pool, queueName, lockType)
+		}(queues[i])
+	}
+
+	wg.Wait()
+}
+
+func unlockSingleQueue(ctx context.Context, pool *Queue, queueName string, lockType cache.LockType) {
+	if shutdown.Ongoing() {
+		return
+	}
+
+	ids, err := pool.cache.UnlockMessages(ctx, queueName, lockType)
+
+	if err != nil {
+		logger.S(ctx).Errorf("Error processing locks for queue '%s': %v", queueName, err.Error())
+		return
+	}
+
+	for index := range ids {
+		pool.auditor.Store(ctx, audit.Entry{
+			ID:     ids[index],
+			Queue:  queueName,
+			Signal: audit.UNLOCK,
+			Reason: string(lockType),
+		})
+	}
+
+	metrics.HousekeeperUnlock.Add(ctx, int64(len(ids)), metric.WithAttributes(attribute.String("queue", message.GetQueuePrefix(queueName)), attribute.String("lock_type", string(lockType))))
 }
 
 func isRecovering(ctx context.Context, pool *Queue) (bool, error) {
