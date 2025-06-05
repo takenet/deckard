@@ -32,16 +32,13 @@ func (config *ViperConfigKey) Set(value any) {
 	}
 }
 
-// Should never be called before config is initialized using config.Configure()
-func (config *ViperConfigKey) Get() string {
-	defaultVal := ""
-	if val, ok := config.GetDefault().(string); ok {
-		defaultVal = val
-	}
-
+// getWithFallback is a helper that implements the common logic for all getter methods.
+// It checks the main key and aliases for values different from the default, returning
+// the first override found, or the default if no overrides exist.
+func getWithFallback[T comparable](config *ViperConfigKey, defaultVal T, keyGetter func(string) T) T {
 	// Check main key - if it differs from default, use it (environment variable takes precedence)
 	if viper.IsSet(config.Key) {
-		keyVal := viper.GetString(config.Key)
+		keyVal := keyGetter(config.Key)
 		if keyVal != defaultVal {
 			return keyVal
 		}
@@ -50,7 +47,7 @@ func (config *ViperConfigKey) Get() string {
 	// Check aliases - if any differs from default, use it (environment variable takes precedence)
 	for _, alias := range config.GetAliases() {
 		if viper.IsSet(alias) {
-			aliasVal := viper.GetString(alias)
+			aliasVal := keyGetter(alias)
 			if aliasVal != defaultVal {
 				return aliasVal
 			}
@@ -59,6 +56,16 @@ func (config *ViperConfigKey) Get() string {
 
 	// Return default value
 	return defaultVal
+}
+
+// Should never be called before config is initialized using config.Configure()
+func (config *ViperConfigKey) Get() string {
+	defaultVal := ""
+	if val, ok := config.GetDefault().(string); ok {
+		defaultVal = val
+	}
+
+	return getWithFallback(config, defaultVal, viper.GetString)
 }
 
 // Should never be called before config is initialized using config.Configure()
@@ -68,26 +75,7 @@ func (config *ViperConfigKey) GetDuration() time.Duration {
 		defaultVal, _ = time.ParseDuration(val)
 	}
 
-	// Check main key - if it differs from default, use it (environment variable takes precedence)
-	if viper.IsSet(config.Key) {
-		keyVal := viper.GetDuration(config.Key)
-		if keyVal != defaultVal {
-			return keyVal
-		}
-	}
-
-	// Check aliases - if any differs from default, use it (environment variable takes precedence)
-	for _, alias := range config.GetAliases() {
-		if viper.IsSet(alias) {
-			aliasVal := viper.GetDuration(alias)
-			if aliasVal != defaultVal {
-				return aliasVal
-			}
-		}
-	}
-
-	// Return default value
-	return defaultVal
+	return getWithFallback(config, defaultVal, viper.GetDuration)
 }
 
 // Should never be called before config is initialized using config.Configure()
@@ -97,26 +85,7 @@ func (config *ViperConfigKey) GetBool() bool {
 		defaultVal = val
 	}
 
-	// Check main key - if it differs from default, use it (environment variable takes precedence)
-	if viper.IsSet(config.Key) {
-		keyVal := viper.GetBool(config.Key)
-		if keyVal != defaultVal {
-			return keyVal
-		}
-	}
-
-	// Check aliases - if any differs from default, use it (environment variable takes precedence)
-	for _, alias := range config.GetAliases() {
-		if viper.IsSet(alias) {
-			aliasVal := viper.GetBool(alias)
-			if aliasVal != defaultVal {
-				return aliasVal
-			}
-		}
-	}
-
-	// Return default value
-	return defaultVal
+	return getWithFallback(config, defaultVal, viper.GetBool)
 }
 
 // Should never be called before config is initialized using config.Configure()
@@ -126,24 +95,5 @@ func (config *ViperConfigKey) GetInt() int {
 		defaultVal = val
 	}
 
-	// Check main key - if it differs from default, use it (environment variable takes precedence)
-	if viper.IsSet(config.Key) {
-		keyVal := viper.GetInt(config.Key)
-		if keyVal != defaultVal {
-			return keyVal
-		}
-	}
-
-	// Check aliases - if any differs from default, use it (environment variable takes precedence)
-	for _, alias := range config.GetAliases() {
-		if viper.IsSet(alias) {
-			aliasVal := viper.GetInt(alias)
-			if aliasVal != defaultVal {
-				return aliasVal
-			}
-		}
-	}
-
-	// Return default value
-	return defaultVal
+	return getWithFallback(config, defaultVal, viper.GetInt)
 }
