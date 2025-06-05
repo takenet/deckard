@@ -34,78 +34,116 @@ func (config *ViperConfigKey) Set(value any) {
 
 // Should never be called before config is initialized using config.Configure()
 func (config *ViperConfigKey) Get() string {
-	if viper.IsSet(config.Key) {
-		return viper.GetString(config.Key)
+	defaultVal := ""
+	if val, ok := config.GetDefault().(string); ok {
+		defaultVal = val
 	}
 
-	for _, alias := range config.GetAliases() {
-		if viper.IsSet(alias) {
-			return viper.GetString(alias)
+	// Check main key - if it differs from default, use it (environment variable takes precedence)
+	if viper.IsSet(config.Key) {
+		keyVal := viper.GetString(config.Key)
+		if keyVal != defaultVal {
+			return keyVal
 		}
 	}
 
-	if val, ok := config.GetDefault().(string); ok {
-		return val
+	// Check aliases - if any differs from default, use it (environment variable takes precedence)
+	for _, alias := range config.GetAliases() {
+		if viper.IsSet(alias) {
+			aliasVal := viper.GetString(alias)
+			if aliasVal != defaultVal {
+				return aliasVal
+			}
+		}
 	}
 
-	return ""
+	// Return default value
+	return defaultVal
 }
 
 // Should never be called before config is initialized using config.Configure()
 func (config *ViperConfigKey) GetDuration() time.Duration {
-	if viper.IsSet(config.Key) {
-		return viper.GetDuration(config.Key)
+	defaultVal := time.Duration(0)
+	if val, ok := config.GetDefault().(string); ok {
+		defaultVal, _ = time.ParseDuration(val)
 	}
 
-	for _, alias := range config.GetAliases() {
-		if viper.IsSet(alias) {
-			return viper.GetDuration(alias)
+	// Check main key - if it differs from default, use it (environment variable takes precedence)
+	if viper.IsSet(config.Key) {
+		keyVal := viper.GetDuration(config.Key)
+		if keyVal != defaultVal {
+			return keyVal
 		}
 	}
 
-	if val, ok := config.GetDefault().(string); ok {
-		duration, _ := time.ParseDuration(val)
-
-		return duration
+	// Check aliases - if any differs from default, use it (environment variable takes precedence)
+	for _, alias := range config.GetAliases() {
+		if viper.IsSet(alias) {
+			aliasVal := viper.GetDuration(alias)
+			if aliasVal != defaultVal {
+				return aliasVal
+			}
+		}
 	}
 
-	return 0
+	// Return default value
+	return defaultVal
 }
 
 // Should never be called before config is initialized using config.Configure()
 func (config *ViperConfigKey) GetBool() bool {
-	if viper.IsSet(config.Key) {
-		return viper.GetBool(config.Key)
+	defaultVal := false
+	if val, ok := config.GetDefault().(bool); ok {
+		defaultVal = val
 	}
 
-	for _, alias := range config.GetAliases() {
-		if viper.IsSet(alias) {
-			return viper.GetBool(alias)
+	// Check main key - if it differs from default, use it (environment variable takes precedence)
+	if viper.IsSet(config.Key) {
+		keyVal := viper.GetBool(config.Key)
+		if keyVal != defaultVal {
+			return keyVal
 		}
 	}
 
-	if val, ok := config.GetDefault().(bool); ok {
-		return val
+	// Check aliases - if any differs from default, use it (environment variable takes precedence)
+	for _, alias := range config.GetAliases() {
+		if viper.IsSet(alias) {
+			aliasVal := viper.GetBool(alias)
+			if aliasVal != defaultVal {
+				return aliasVal
+			}
+		}
 	}
 
-	return false
+	// Return default value
+	return defaultVal
 }
 
 // Should never be called before config is initialized using config.Configure()
 func (config *ViperConfigKey) GetInt() int {
-	if viper.IsSet(config.Key) {
-		return viper.GetInt(config.Key)
+	defaultVal := 0
+	if val, ok := config.GetDefault().(int); ok {
+		defaultVal = val
 	}
 
-	for _, alias := range config.GetAliases() {
-		if viper.IsSet(alias) {
-			return viper.GetInt(alias)
+	// Check main key - if it differs from default, use it (environment variable takes precedence)
+	if viper.IsSet(config.Key) {
+		keyVal := viper.GetInt(config.Key)
+		if keyVal != defaultVal {
+			return keyVal
 		}
 	}
 
-	if val, ok := config.GetDefault().(int); ok {
-		return val
+	// Check aliases - if any differs from default, use it (environment variable takes precedence)
+	for _, alias := range config.GetAliases() {
+		if viper.IsSet(alias) {
+			aliasVal := viper.GetInt(alias)
+			if aliasVal != defaultVal {
+				return aliasVal
+			}
+		}
 	}
 
-	return 0
+	// Return default value
+	return defaultVal
 }

@@ -4,12 +4,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
 
 func TestMongoDatabaseEnvironmentVariable(t *testing.T) {
-	// Import viper for debugging
 	defer func() {
 		// Clean up
 		os.Unsetenv("DECKARD_MONGODB_DATABASE")
@@ -27,17 +25,6 @@ func TestMongoDatabaseEnvironmentVariable(t *testing.T) {
 	// Test with DECKARD_MONGODB_DATABASE environment variable
 	os.Setenv("DECKARD_MONGODB_DATABASE", "custom_db_1")
 	Configure(true)
-	
-	// Debug: let's see what viper sees
-	t.Logf("MongoDatabase key: %s", MongoDatabase.GetKey())
-	t.Logf("MongoDatabase aliases: %v", MongoDatabase.GetAliases())
-	
-	// Let's check what viper sees for each key
-	t.Logf("viper.IsSet(mongo.database): %v", viper.IsSet("mongo.database"))
-	t.Logf("viper.IsSet(mongodb.database): %v", viper.IsSet("mongodb.database"))
-	t.Logf("viper.GetString(mongo.database): %s", viper.GetString("mongo.database"))
-	t.Logf("viper.GetString(mongodb.database): %s", viper.GetString("mongodb.database"))
-	
 	require.Equal(t, "custom_db_1", MongoDatabase.Get())
 
 	// Test with DECKARD_MONGO_DATABASE environment variable
@@ -45,4 +32,85 @@ func TestMongoDatabaseEnvironmentVariable(t *testing.T) {
 	os.Setenv("DECKARD_MONGO_DATABASE", "custom_db_2")
 	Configure(true)
 	require.Equal(t, "custom_db_2", MongoDatabase.Get())
+}
+
+func TestMongoCollectionEnvironmentVariable(t *testing.T) {
+	defer func() {
+		// Clean up
+		os.Unsetenv("DECKARD_MONGODB_COLLECTION")
+		os.Unsetenv("DECKARD_MONGO_COLLECTION")
+	}()
+
+	// Clean environment
+	os.Unsetenv("DECKARD_MONGODB_COLLECTION")
+	os.Unsetenv("DECKARD_MONGO_COLLECTION")
+
+	// Test default value
+	Configure(true)
+	require.Equal(t, "queue", MongoCollection.Get())
+
+	// Test with DECKARD_MONGODB_COLLECTION environment variable
+	os.Setenv("DECKARD_MONGODB_COLLECTION", "custom_collection")
+	Configure(true)
+	require.Equal(t, "custom_collection", MongoCollection.Get())
+
+	// Test with DECKARD_MONGO_COLLECTION environment variable
+	os.Unsetenv("DECKARD_MONGODB_COLLECTION")
+	os.Setenv("DECKARD_MONGO_COLLECTION", "custom_collection_2")
+	Configure(true)
+	require.Equal(t, "custom_collection_2", MongoCollection.Get())
+}
+
+func TestMongoBooleanEnvironmentVariable(t *testing.T) {
+	defer func() {
+		// Clean up
+		os.Unsetenv("DECKARD_MONGODB_SSL")
+		os.Unsetenv("DECKARD_MONGO_SSL")
+	}()
+
+	// Clean environment
+	os.Unsetenv("DECKARD_MONGODB_SSL")
+	os.Unsetenv("DECKARD_MONGO_SSL")
+
+	// Test default value
+	Configure(true)
+	require.Equal(t, false, MongoSsl.GetBool())
+
+	// Test with DECKARD_MONGODB_SSL environment variable
+	os.Setenv("DECKARD_MONGODB_SSL", "true")
+	Configure(true)
+	require.Equal(t, true, MongoSsl.GetBool())
+
+	// Test with DECKARD_MONGO_SSL environment variable
+	os.Unsetenv("DECKARD_MONGODB_SSL")
+	os.Setenv("DECKARD_MONGO_SSL", "true")
+	Configure(true)
+	require.Equal(t, true, MongoSsl.GetBool())
+}
+
+func TestMongoIntegerEnvironmentVariable(t *testing.T) {
+	defer func() {
+		// Clean up
+		os.Unsetenv("DECKARD_MONGODB_MAX_POOL_SIZE")
+		os.Unsetenv("DECKARD_MONGO_MAX_POOL_SIZE")
+	}()
+
+	// Clean environment
+	os.Unsetenv("DECKARD_MONGODB_MAX_POOL_SIZE")
+	os.Unsetenv("DECKARD_MONGO_MAX_POOL_SIZE")
+
+	// Test default value
+	Configure(true)
+	require.Equal(t, 100, MongoMaxPoolSize.GetInt())
+
+	// Test with DECKARD_MONGODB_MAX_POOL_SIZE environment variable
+	os.Setenv("DECKARD_MONGODB_MAX_POOL_SIZE", "250")
+	Configure(true)
+	require.Equal(t, 250, MongoMaxPoolSize.GetInt())
+
+	// Test with DECKARD_MONGO_MAX_POOL_SIZE environment variable
+	os.Unsetenv("DECKARD_MONGODB_MAX_POOL_SIZE")
+	os.Setenv("DECKARD_MONGO_MAX_POOL_SIZE", "300")
+	Configure(true)
+	require.Equal(t, 300, MongoMaxPoolSize.GetInt())
 }
