@@ -674,7 +674,7 @@ func TestQueueRemoveStorageFirstPreventsOrphaning(t *testing.T) {
 
 	// This test verifies that storage is called before cache to prevent orphaning
 	// When storage fails, cache should not be called, preserving data integrity
-	
+
 	mockStorage := mocks.NewMockStorage(mockCtrl)
 	// Storage fails - should happen first
 	mockStorage.EXPECT().Remove(gomock.Any(), "queue_test", "1").Return(int64(0), errors.New("storage_error"))
