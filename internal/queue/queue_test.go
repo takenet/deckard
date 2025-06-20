@@ -635,15 +635,18 @@ func TestQueueRemoveCacheError(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
+	mockStorage := mocks.NewMockStorage(mockCtrl)
+	mockStorage.EXPECT().Remove(gomock.Any(), "queue_test", "1").Return(int64(1), nil)
+
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().Remove(gomock.Any(), "queue_test", "1").Return(int64(0), errors.New("cache_error"))
 
-	q := NewQueue(nil, nil, nil, mockCache)
+	q := NewQueue(nil, mockStorage, nil, mockCache)
 
 	cacheRemoved, storageRemoved, err := q.Remove(ctx, "queue_test", "", "1")
 	require.Error(t, err)
 	require.Equal(t, int64(0), cacheRemoved)
-	require.Equal(t, int64(0), storageRemoved)
+	require.Equal(t, int64(1), storageRemoved)
 }
 
 func TestQueueRemoveStorageError(t *testing.T) {
@@ -652,17 +655,40 @@ func TestQueueRemoveStorageError(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	mockCache := mocks.NewMockCache(mockCtrl)
-	mockCache.EXPECT().Remove(gomock.Any(), "queue_test", "1").Return(int64(1), nil)
-
 	mockStorage := mocks.NewMockStorage(mockCtrl)
 	mockStorage.EXPECT().Remove(gomock.Any(), "queue_test", "1").Return(int64(0), errors.New("storage_error"))
+
+	q := NewQueue(nil, mockStorage, nil, nil)
+
+	cacheRemoved, storageRemoved, err := q.Remove(ctx, "queue_test", "", "1")
+	require.Error(t, err)
+	require.Equal(t, int64(0), cacheRemoved)
+	require.Equal(t, int64(0), storageRemoved)
+}
+
+func TestQueueRemoveStorageFirstPreventsOrphaning(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	// This test verifies that storage is called before cache to prevent orphaning
+	// When storage fails, cache should not be called, preserving data integrity
+	
+	mockStorage := mocks.NewMockStorage(mockCtrl)
+	// Storage fails - should happen first
+	mockStorage.EXPECT().Remove(gomock.Any(), "queue_test", "1").Return(int64(0), errors.New("storage_error"))
+
+	mockCache := mocks.NewMockCache(mockCtrl)
+	// Cache should NOT be called since storage failed
+	// No expectations set for cache - if called, test will fail
 
 	q := NewQueue(nil, mockStorage, nil, mockCache)
 
 	cacheRemoved, storageRemoved, err := q.Remove(ctx, "queue_test", "", "1")
 	require.Error(t, err)
-	require.Equal(t, int64(1), cacheRemoved)
+	require.Contains(t, err.Error(), "storage_error")
+	require.Equal(t, int64(0), cacheRemoved)
 	require.Equal(t, int64(0), storageRemoved)
 }
 
@@ -989,7 +1015,7 @@ func TestRemoveExceedingMessagesRemoveErrorShouldResultError(t *testing.T) {
 	mockStorage.EXPECT().Remove(gomock.Any(), "q1", []string{"1", "2"}).Return(int64(0), fmt.Errorf("anyerror"))
 
 	mockCache := mocks.NewMockCache(mockCtrl)
-	mockCache.EXPECT().Remove(gomock.Any(), "q1", []string{"1", "2"}).Return(int64(2), nil)
+	// Cache should NOT be called since storage failed - the new order prevents cache orphaning
 
 	q := NewQueue(&audit.AuditorImpl{}, mockStorage, NewQueueConfigurationService(ctx, mockStorage), mockCache)
 
