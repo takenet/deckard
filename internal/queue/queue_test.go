@@ -672,16 +672,10 @@ func TestQueueRemoveStorageFirstPreventsOrphaning(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	// This test verifies that storage is called before cache to prevent orphaning
-	// When storage fails, cache should not be called, preserving data integrity
-
 	mockStorage := mocks.NewMockStorage(mockCtrl)
-	// Storage fails - should happen first
 	mockStorage.EXPECT().Remove(gomock.Any(), "queue_test", "1").Return(int64(0), errors.New("storage_error"))
 
 	mockCache := mocks.NewMockCache(mockCtrl)
-	// Cache should NOT be called since storage failed
-	// No expectations set for cache - if called, test will fail
 
 	q := NewQueue(nil, mockStorage, nil, mockCache)
 
@@ -1015,7 +1009,6 @@ func TestRemoveExceedingMessagesRemoveErrorShouldResultError(t *testing.T) {
 	mockStorage.EXPECT().Remove(gomock.Any(), "q1", []string{"1", "2"}).Return(int64(0), fmt.Errorf("anyerror"))
 
 	mockCache := mocks.NewMockCache(mockCtrl)
-	// Cache should NOT be called since storage failed - the new order prevents cache orphaning
 
 	q := NewQueue(&audit.AuditorImpl{}, mockStorage, NewQueueConfigurationService(ctx, mockStorage), mockCache)
 
