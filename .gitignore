@@ -14,3 +14,6 @@ junit.xml
 
 # Mock files
 internal/mocks/
+
+# Certificate files
+*.srl
