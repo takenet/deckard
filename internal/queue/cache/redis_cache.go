@@ -545,6 +545,55 @@ func (cache *RedisCache) Close(ctx context.Context) error {
 	return cache.Client.Close()
 }
 
+func (cache *RedisCache) SetNX(ctx context.Context, key string, value string, ttl time.Duration) (bool, error) {
+	execStart := dtime.Now()
+	defer func() {
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), metric.WithAttributes(attribute.String("op", "setnx")))
+	}()
+
+	prefixedKey := fmt.Sprint("deckard:", key)
+	cmd := cache.Client.SetNX(ctx, prefixedKey, value, ttl)
+	
+	result, err := cmd.Result()
+	if err != nil {
+		return false, fmt.Errorf("error setting key with SetNX: %w", err)
+	}
+	
+	return result, nil
+}
+
+func (cache *RedisCache) Del(ctx context.Context, key string) error {
+	execStart := dtime.Now()
+	defer func() {
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), metric.WithAttributes(attribute.String("op", "del")))
+	}()
+
+	prefixedKey := fmt.Sprint("deckard:", key)
+	cmd := cache.Client.Del(ctx, prefixedKey)
+	
+	if cmd.Err() != nil {
+		return fmt.Errorf("error deleting key: %w", cmd.Err())
+	}
+	
+	return nil
+}
+
+func (cache *RedisCache) Expire(ctx context.Context, key string, ttl time.Duration) error {
+	execStart := dtime.Now()
+	defer func() {
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), metric.WithAttributes(attribute.String("op", "expire")))
+	}()
+
+	prefixedKey := fmt.Sprint("deckard:", key)
+	cmd := cache.Client.Expire(ctx, prefixedKey, ttl)
+	
+	if cmd.Err() != nil {
+		return fmt.Errorf("error setting TTL on key: %w", cmd.Err())
+	}
+	
+	return nil
+}
+
 // activePool returns the name of the active pool of messages.
 func (cache *RedisCache) activePool(queue string) string {
 	return POOL_PREFIX + queue

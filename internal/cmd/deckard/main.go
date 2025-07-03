@@ -126,9 +126,19 @@ func startGrpcServer(queue *queue.Queue, queueService queue.QueueConfigurationSe
 }
 
 func startHouseKeeperJobs(pool *queue.Queue) {
-	go scheduleTask(
+	// Create distributed lock if enabled
+	var distributedLock queue.DistributedLock
+	if config.HousekeeperDistributedExecutionEnabled.GetBool() {
+		instanceID := config.GetHousekeeperInstanceID()
+		distributedLock = queue.NewRedisDistributedLock(pool.GetCache(), instanceID)
+	} else {
+		distributedLock = queue.NewNoOpDistributedLock()
+	}
+
+	go scheduleTaskWithDistributedLock(
 		UNLOCK,
-		nil,
+		nil, // No local lock needed with distributed locking
+		distributedLock,
 		shutdown.WaitGroup,
 		config.HousekeeperTaskUnlockDelay.GetDuration(),
 		func() bool {
@@ -138,9 +148,10 @@ func startHouseKeeperJobs(pool *queue.Queue) {
 		},
 	)
 
-	go scheduleTask(
+	go scheduleTaskWithDistributedLock(
 		TIMEOUT,
 		nil,
+		distributedLock,
 		shutdown.WaitGroup,
 		config.HousekeeperTaskTimeoutDelay.GetDuration(),
 		func() bool {
@@ -150,21 +161,26 @@ func startHouseKeeperJobs(pool *queue.Queue) {
 		},
 	)
 
-	go scheduleTask(
+	go scheduleTaskWithDistributedLock(
 		METRICS,
 		nil,
+		distributedLock,
 		shutdown.WaitGroup,
 		config.HousekeeperTaskMetricsDelay.GetDuration(),
 		func() bool {
-			queue.ComputeMetrics(ctx, pool)
+			// Only compute metrics if we're the metrics leader or distributed execution is disabled
+			if !config.HousekeeperDistributedExecutionEnabled.GetBool() || isMetricsLeader(distributedLock) {
+				queue.ComputeMetrics(ctx, pool)
+			}
 
 			return true
 		},
 	)
 
-	go scheduleTask(
+	go scheduleTaskWithDistributedLock(
 		RECOVERY,
-		backgroundTaskLocker,
+		backgroundTaskLocker, // Keep local lock for critical recovery task
+		distributedLock,
 		shutdown.CriticalWaitGroup,
 		config.HousekeeperTaskUpdateDelay.GetDuration(),
 		func() bool {
@@ -172,9 +188,10 @@ func startHouseKeeperJobs(pool *queue.Queue) {
 		},
 	)
 
-	go scheduleTask(
+	go scheduleTaskWithDistributedLock(
 		MAX_ELEMENTS,
-		backgroundTaskLocker,
+		backgroundTaskLocker, // Keep local lock for critical task
+		distributedLock,
 		shutdown.WaitGroup,
 		config.HousekeeperTaskMaxElementsDelay.GetDuration(),
 		func() bool {
@@ -184,9 +201,10 @@ func startHouseKeeperJobs(pool *queue.Queue) {
 		},
 	)
 
-	go scheduleTask(
+	go scheduleTaskWithDistributedLock(
 		TTL,
-		backgroundTaskLocker,
+		backgroundTaskLocker, // Keep local lock for critical task
+		distributedLock,
 		shutdown.WaitGroup,
 		config.HousekeeperTaskTTLDelay.GetDuration(),
 		func() bool {
@@ -220,6 +238,74 @@ func scheduleTask(taskName string, lock *sync.Mutex, taskWaitGroup *sync.WaitGro
 			return
 		}
 	}
+}
+
+func scheduleTaskWithDistributedLock(taskName string, localLock *sync.Mutex, distributedLock queue.DistributedLock, taskWaitGroup *sync.WaitGroup, duration time.Duration, fn func() bool) {
+	for {
+		select {
+		case <-time.After(duration):
+			taskWaitGroup.Add(1)
+			
+			// Try to acquire distributed lock
+			lockTTL := config.HousekeeperDistributedExecutionLockTTL.GetDuration()
+			acquired, err := distributedLock.TryLock(ctx, taskName, lockTTL)
+			if err != nil {
+				logger.S(ctx).Errorf("Error acquiring distributed lock for task %s: %v", taskName, err)
+				taskWaitGroup.Done()
+				continue
+			}
+			
+			if !acquired {
+				logger.S(ctx).Debugf("Skipping task %s - already running on another instance", taskName)
+				taskWaitGroup.Done()
+				continue
+			}
+			
+			// Acquire local lock if needed
+			if localLock != nil {
+				localLock.Lock()
+			}
+
+			executeTask(taskName, fn)
+
+			// Release local lock if acquired
+			if localLock != nil {
+				localLock.Unlock()
+			}
+			
+			// Release distributed lock
+			err = distributedLock.ReleaseLock(ctx, taskName)
+			if err != nil {
+				logger.S(ctx).Errorf("Error releasing distributed lock for task %s: %v", taskName, err)
+			}
+			
+			taskWaitGroup.Done()
+		case <-shutdown.Started:
+			logger.S(ctx).Debug("Stopping ", taskName, " scheduler.")
+			return
+		}
+	}
+}
+
+func isMetricsLeader(distributedLock queue.DistributedLock) bool {
+	// Try to acquire metrics leader lock
+	leaderLockTTL := config.HousekeeperDistributedExecutionLockTTL.GetDuration() * 2 // Longer TTL for leader
+	acquired, err := distributedLock.TryLock(ctx, "metrics_leader", leaderLockTTL)
+	if err != nil {
+		logger.S(ctx).Errorf("Error checking metrics leader lock: %v", err)
+		return false
+	}
+	
+	if acquired {
+		// We are the leader, extend the lock
+		err = distributedLock.RefreshLock(ctx, "metrics_leader", leaderLockTTL)
+		if err != nil {
+			logger.S(ctx).Errorf("Error refreshing metrics leader lock: %v", err)
+		}
+		return true
+	}
+	
+	return false
 }
 
 func executeTask(taskName string, fn func() bool) {
