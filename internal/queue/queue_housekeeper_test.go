@@ -63,13 +63,14 @@ func TestUpdateOldestQueueMap(t *testing.T) {
 		{LastUsage: &nowMinusTenSeconds},
 	}, nil)
 
+	comment := "queue.Count"
 	mockStorage.EXPECT().Count(ctx, &storage.FindOptions{
-		InternalFilter: &storage.InternalFilter{QueuePrefix: "a"},
-	}).Return(int64(25), nil)
+		InternalFilter: &storage.InternalFilter{QueuePrefix: "a"}, Comment: comment,
+	}, &storage.CountOptions{Comment: comment}).Return(int64(25), nil)
 
 	mockStorage.EXPECT().Count(ctx, &storage.FindOptions{
-		InternalFilter: &storage.InternalFilter{QueuePrefix: "b"},
-	}).Return(int64(11), nil)
+		InternalFilter: &storage.InternalFilter{QueuePrefix: "b"}, Comment: comment,
+	}, &storage.CountOptions{Comment: comment}).Return(int64(11), nil)
 
 	mockAuditor := mocks.NewMockAuditor(mockCtrl)
 	q := NewQueue(mockAuditor, mockStorage, nil, mockCache)

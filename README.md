@@ -6,8 +6,6 @@
 
 [![Golang](https://img.shields.io/github/go-mod/go-version/takenet/deckard?logo=go)](https://pkg.go.dev/github.com/takenet/deckard) [![Maven Central](https://img.shields.io/maven-central/v/ai.blip/deckard)](https://central.sonatype.com/artifact/ai.blip/deckard/) [![Nuget org](https://img.shields.io/nuget/v/deckard?logo=nuget)](https://www.nuget.org/packages/Deckard)
 
-[![Slack](https://img.shields.io/badge/slack-Gophers_%28Deckard%29-blue?logo=slack&link=https://gophers.slack.com/archives/C05E1TMS1FY)](https://gophers.slack.com/archives/C05E1TMS1FY)
-
 Deckard is a priority queue system inspired by projects such as Google Cloud PubSub, Nats, Kafka, and others. Its main distinction lies in its ability to associate a priority score with each message and have a queue that can be optionally cyclic. This means that messages can be delivered again after a user-managed time, allowing throughput configuration and many other features, all built using GoLang and gRPC to be as scalable as possible.
 
 ![deckard](docs/deckard_cartoon.webp)
@@ -122,6 +120,8 @@ All available environment variables are listed below:
 | `DECKARD_GRPC_SERVER_MAX_CONNECTION_IDLE` |  | The maximum duration a connection can remain idle. |
 | `DECKARD_GRPC_SERVER_MAX_CONNECTION_AGE` |  | The maximum duration a connection can exist. |
 | `DECKARD_GRPC_SERVER_MAX_CONNECTION_AGE_GRACE` |  | The additional time the gRPC server allows for a connection to complete its current operations before closing it after reaching the maximum connection age. |
+| `DECKARD_GRPC_SERVER_MAX_RECV_MSG_SIZE` | 4194304 | The maximum message size that can be received. |
+| `DECKARD_GRPC_SERVER_MAX_SEND_MSG_SIZE` | 4194304 | The maximum message size that can be sent. |
 
 > Values should be specified using time units such as `1s` for seconds, `1m` for minutes, `1h` for hours.
 

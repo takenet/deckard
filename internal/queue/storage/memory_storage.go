@@ -138,12 +138,12 @@ func getKey(message *message.Message) string {
 	return message.Queue + ":" + message.ID
 }
 
-func (storage *MemoryStorage) Count(_ context.Context, opts *FindOptions) (int64, error) {
+func (storage *MemoryStorage) Count(_ context.Context, findOpts *FindOptions, _ *CountOptions) (int64, error) {
 	count := int64(0)
 
 	storage.lock.RLock()
 	for _, value := range storage.docs {
-		matches, err := messageMatchesFilter(value, opts)
+		matches, err := messageMatchesFilter(value, findOpts)
 
 		if err != nil {
 			return 0, err

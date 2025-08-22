@@ -22,6 +22,10 @@ import (
 
 var ctx = context.Background()
 
+const queueCountComment = "queue.Count"
+const hkRemoveExceedingMessages1Comment = "housekeeper.removeExceedingMessagesFromQueue_1"
+const hkRemoveExceedingMessages2Comment = "housekeeper.removeExceedingMessagesFromQueue_2"
+
 func TestPull(t *testing.T) {
 	t.Parallel()
 
@@ -631,15 +635,18 @@ func TestQueueRemoveCacheError(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
+	mockStorage := mocks.NewMockStorage(mockCtrl)
+	mockStorage.EXPECT().Remove(gomock.Any(), "queue_test", "1").Return(int64(1), nil)
+
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().Remove(gomock.Any(), "queue_test", "1").Return(int64(0), errors.New("cache_error"))
 
-	q := NewQueue(nil, nil, nil, mockCache)
+	q := NewQueue(nil, mockStorage, nil, mockCache)
 
 	cacheRemoved, storageRemoved, err := q.Remove(ctx, "queue_test", "", "1")
 	require.Error(t, err)
 	require.Equal(t, int64(0), cacheRemoved)
-	require.Equal(t, int64(0), storageRemoved)
+	require.Equal(t, int64(1), storageRemoved)
 }
 
 func TestQueueRemoveStorageError(t *testing.T) {
@@ -648,17 +655,34 @@ func TestQueueRemoveStorageError(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	mockCache := mocks.NewMockCache(mockCtrl)
-	mockCache.EXPECT().Remove(gomock.Any(), "queue_test", "1").Return(int64(1), nil)
+	mockStorage := mocks.NewMockStorage(mockCtrl)
+	mockStorage.EXPECT().Remove(gomock.Any(), "queue_test", "1").Return(int64(0), errors.New("storage_error"))
+
+	q := NewQueue(nil, mockStorage, nil, nil)
+
+	cacheRemoved, storageRemoved, err := q.Remove(ctx, "queue_test", "", "1")
+	require.Error(t, err)
+	require.Equal(t, int64(0), cacheRemoved)
+	require.Equal(t, int64(0), storageRemoved)
+}
+
+func TestQueueRemoveStorageFirstPreventsOrphaning(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
 
 	mockStorage := mocks.NewMockStorage(mockCtrl)
 	mockStorage.EXPECT().Remove(gomock.Any(), "queue_test", "1").Return(int64(0), errors.New("storage_error"))
+
+	mockCache := mocks.NewMockCache(mockCtrl)
 
 	q := NewQueue(nil, mockStorage, nil, mockCache)
 
 	cacheRemoved, storageRemoved, err := q.Remove(ctx, "queue_test", "", "1")
 	require.Error(t, err)
-	require.Equal(t, int64(1), cacheRemoved)
+	require.Contains(t, err.Error(), "storage_error")
+	require.Equal(t, int64(0), cacheRemoved)
 	require.Equal(t, int64(0), storageRemoved)
 }
 
@@ -829,6 +853,14 @@ func TestAddMessagesError(t *testing.T) {
 }
 
 func TestRemoveExceedingMessagesQueueZeroMaxElementsShouldDoNothing(t *testing.T) {
+	testRemoveExceedingMessagesDoNothing(t, &configuration.QueueConfiguration{MaxElements: 0, Queue: "q1"})
+}
+
+func TestRemoveExceedingMessagesQueueNoNameShouldDoNothing(t *testing.T) {
+	testRemoveExceedingMessagesDoNothing(t, &configuration.QueueConfiguration{MaxElements: 150, Queue: ""})
+}
+
+func testRemoveExceedingMessagesDoNothing(t *testing.T, config *configuration.QueueConfiguration) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
@@ -839,7 +871,7 @@ func TestRemoveExceedingMessagesQueueZeroMaxElementsShouldDoNothing(t *testing.T
 
 	q := NewQueue(&audit.AuditorImpl{}, mockStorage, NewQueueConfigurationService(ctx, mockStorage), mockCache)
 
-	require.NoError(t, q.removeExceedingMessagesFromQueue(ctx, &configuration.QueueConfiguration{MaxElements: 0, Queue: "q1"}))
+	require.NoError(t, q.removeExceedingMessagesFromQueue(ctx, config))
 }
 
 func TestRemoveExceedingMessagesEmptyQueueShouldDoNothing(t *testing.T) {
@@ -851,7 +883,9 @@ func TestRemoveExceedingMessagesEmptyQueueShouldDoNothing(t *testing.T) {
 	mockStorage := mocks.NewMockStorage(mockCtrl)
 
 	queueConfiguration := &configuration.QueueConfiguration{MaxElements: 2, Queue: "q1"}
-	mockStorage.EXPECT().Count(gomock.Any(), &storage.FindOptions{InternalFilter: &storage.InternalFilter{Queue: "q1"}}).Return(int64(0), nil)
+	mockStorage.EXPECT().Count(gomock.Any(), &storage.FindOptions{InternalFilter: &storage.InternalFilter{Queue: "q1"}, Comment: hkRemoveExceedingMessages1Comment}, &storage.CountOptions{
+		Comment: hkRemoveExceedingMessages1Comment,
+	}).Return(int64(0), nil)
 
 	mockCache := mocks.NewMockCache(mockCtrl)
 
@@ -869,7 +903,10 @@ func TestRemoveExceedingMessagesErrorCountingShouldReturnError(t *testing.T) {
 	queueConfiguration := &configuration.QueueConfiguration{MaxElements: 2, Queue: "q1"}
 
 	mockStorage := mocks.NewMockStorage(mockCtrl)
-	mockStorage.EXPECT().Count(gomock.Any(), &storage.FindOptions{InternalFilter: &storage.InternalFilter{Queue: "q1"}}).Return(int64(0), fmt.Errorf("anyerr"))
+	mockStorage.EXPECT().Count(gomock.Any(), &storage.FindOptions{InternalFilter: &storage.InternalFilter{Queue: "q1"},
+		Comment: hkRemoveExceedingMessages1Comment}, &storage.CountOptions{
+		Comment: hkRemoveExceedingMessages1Comment,
+	}).Return(int64(0), fmt.Errorf("anyerr"))
 
 	mockCache := mocks.NewMockCache(mockCtrl)
 
@@ -891,7 +928,10 @@ func TestRemoveExceedingMessagesShouldRemoveExceedingElements(t *testing.T) {
 
 	queueConfiguration := &configuration.QueueConfiguration{MaxElements: maxElements, Queue: "q1"}
 
-	mockStorage.EXPECT().Count(gomock.Any(), &storage.FindOptions{InternalFilter: &storage.InternalFilter{Queue: "q1"}}).Return(count, nil)
+	mockStorage.EXPECT().Count(gomock.Any(), &storage.FindOptions{InternalFilter: &storage.InternalFilter{Queue: "q1"},
+		Comment: hkRemoveExceedingMessages1Comment}, &storage.CountOptions{
+		Comment: hkRemoveExceedingMessages1Comment,
+	}).Return(count, nil)
 
 	sort := orderedmap.NewOrderedMap[string, int]()
 	sort.Set("expiry_date", 1)
@@ -905,7 +945,8 @@ func TestRemoveExceedingMessagesShouldRemoveExceedingElements(t *testing.T) {
 			"id":  1,
 			"_id": 0,
 		},
-		Sort: sort,
+		Sort:    sort,
+		Comment: hkRemoveExceedingMessages2Comment,
 	}).Return([]message.Message{{ID: "1"}, {ID: "2"}}, nil)
 
 	mockStorage.EXPECT().Remove(gomock.Any(), "q1", []string{"1", "2"}).Return(int64(2), nil)
@@ -931,7 +972,8 @@ func TestRemoveExceedingMessagesFindErrorShouldRemoveResultError(t *testing.T) {
 
 	queueConfiguration := &configuration.QueueConfiguration{MaxElements: maxElements, Queue: "q1"}
 
-	mockStorage.EXPECT().Count(gomock.Any(), &storage.FindOptions{InternalFilter: &storage.InternalFilter{Queue: "q1"}}).Return(count, nil)
+	mockStorage.EXPECT().Count(gomock.Any(), &storage.FindOptions{InternalFilter: &storage.InternalFilter{Queue: "q1"},
+		Comment: hkRemoveExceedingMessages1Comment}, &storage.CountOptions{Comment: hkRemoveExceedingMessages1Comment}).Return(count, nil)
 
 	sort := orderedmap.NewOrderedMap[string, int]()
 	sort.Set("expiry_date", 1)
@@ -958,7 +1000,7 @@ func TestRemoveExceedingMessagesRemoveErrorShouldResultError(t *testing.T) {
 
 	queueConfiguration := &configuration.QueueConfiguration{MaxElements: maxElements, Queue: "q1"}
 
-	mockStorage.EXPECT().Count(gomock.Any(), &storage.FindOptions{InternalFilter: &storage.InternalFilter{Queue: "q1"}}).Return(count, nil)
+	mockStorage.EXPECT().Count(gomock.Any(), &storage.FindOptions{InternalFilter: &storage.InternalFilter{Queue: "q1"}, Comment: hkRemoveExceedingMessages1Comment}, &storage.CountOptions{Comment: hkRemoveExceedingMessages1Comment}).Return(count, nil)
 
 	sort := orderedmap.NewOrderedMap[string, int]()
 	sort.Set("expiry_date", 1)
@@ -967,7 +1009,6 @@ func TestRemoveExceedingMessagesRemoveErrorShouldResultError(t *testing.T) {
 	mockStorage.EXPECT().Remove(gomock.Any(), "q1", []string{"1", "2"}).Return(int64(0), fmt.Errorf("anyerror"))
 
 	mockCache := mocks.NewMockCache(mockCtrl)
-	mockCache.EXPECT().Remove(gomock.Any(), "q1", []string{"1", "2"}).Return(int64(2), nil)
 
 	q := NewQueue(&audit.AuditorImpl{}, mockStorage, NewQueueConfigurationService(ctx, mockStorage), mockCache)
 
@@ -980,10 +1021,10 @@ func TestCountShouldCallStorage(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	opts := &storage.FindOptions{}
+	opts := &storage.FindOptions{Comment: queueCountComment}
 
 	mockStorage := mocks.NewMockStorage(mockCtrl)
-	mockStorage.EXPECT().Count(ctx, opts).Return(int64(12), nil)
+	mockStorage.EXPECT().Count(ctx, opts, &storage.CountOptions{Comment: queueCountComment}).Return(int64(12), nil)
 	mockCache := mocks.NewMockCache(mockCtrl)
 
 	q := NewQueue(nil, mockStorage, nil, mockCache)
@@ -1000,10 +1041,10 @@ func TestNilOptsShouldCreateEmptyOpts(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	opts := &storage.FindOptions{}
+	opts := &storage.FindOptions{Comment: queueCountComment}
 
 	mockStorage := mocks.NewMockStorage(mockCtrl)
-	mockStorage.EXPECT().Count(ctx, opts).Return(int64(12), nil)
+	mockStorage.EXPECT().Count(ctx, opts, &storage.CountOptions{Comment: queueCountComment}).Return(int64(12), nil)
 	mockCache := mocks.NewMockCache(mockCtrl)
 
 	q := NewQueue(nil, mockStorage, nil, mockCache)
@@ -1020,10 +1061,10 @@ func TestCountStorageErrorShouldResultError(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	opts := &storage.FindOptions{}
+	opts := &storage.FindOptions{Comment: queueCountComment}
 
 	mockStorage := mocks.NewMockStorage(mockCtrl)
-	mockStorage.EXPECT().Count(ctx, opts).Return(int64(0), fmt.Errorf("error"))
+	mockStorage.EXPECT().Count(ctx, opts, &storage.CountOptions{Comment: queueCountComment}).Return(int64(0), fmt.Errorf("error"))
 	mockCache := mocks.NewMockCache(mockCtrl)
 
 	q := NewQueue(nil, mockStorage, nil, mockCache)

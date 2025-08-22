@@ -532,7 +532,7 @@ func (suite *StorageTestSuite) TestClearOk() {
 
 	suite.insertDataNoError(toInsert...)
 
-	count, err := suite.storage.Count(ctx, &FindOptions{})
+	count, err := suite.storage.Count(ctx, &FindOptions{}, &CountOptions{})
 
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), int64(100), count)
@@ -542,7 +542,7 @@ func (suite *StorageTestSuite) TestClearOk() {
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), int64(100), deleted)
 
-	posCount, err := suite.storage.Count(ctx, &FindOptions{})
+	posCount, err := suite.storage.Count(ctx, &FindOptions{}, &CountOptions{})
 
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), int64(0), posCount)

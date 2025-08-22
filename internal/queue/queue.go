@@ -58,12 +58,16 @@ func NewQueue(auditor audit.Auditor, storageImpl storage.Storage, queueService Q
 }
 
 func (pool *Queue) Count(ctx context.Context, opts *storage.FindOptions) (int64, error) {
+	comment := "queue.Count"
 	if opts == nil {
-		opts = &storage.FindOptions{}
+		opts = &storage.FindOptions{Comment: comment}
 	}
 
 	result, err := pool.storage.Count(ctx, &storage.FindOptions{
 		InternalFilter: opts.InternalFilter,
+		Comment:        comment,
+	}, &storage.CountOptions{
+		Comment: comment,
 	})
 
 	if err != nil {
@@ -400,20 +404,20 @@ func (pool *Queue) getFromStorage(ctx context.Context, ids []string, queue strin
 }
 
 func (pool *Queue) Remove(ctx context.Context, queue string, reason string, ids ...string) (cacheRemoved int64, storageRemoved int64, err error) {
-	cacheCount, err := pool.cache.Remove(ctx, queue, ids...)
-
-	if err != nil {
-		logger.S(ctx).Error("Error removing elements from cache: ", err)
-
-		return 0, 0, err
-	}
-
 	storageCount, err := pool.storage.Remove(ctx, queue, ids...)
 
 	if err != nil {
 		logger.S(ctx).Error("Error removing elements from storage: ", err)
 
-		return cacheCount, 0, err
+		return 0, 0, err
+	}
+
+	cacheCount, err := pool.cache.Remove(ctx, queue, ids...)
+
+	if err != nil {
+		logger.S(ctx).Error("Error removing elements from cache: ", err)
+
+		return 0, storageCount, err
 	}
 
 	for i := range ids {
