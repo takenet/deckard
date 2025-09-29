@@ -21,6 +21,8 @@ Briefly:
 - When the message's TTL is reached, it stops being delivered;
     - For some use cases the TTL can be set as infinite.
     - An application can also remove the message when notifying.
+ 
+For more details, check the [message flow](docs/components.md#message-flow) diagram.
 
 ## Motivation
 
