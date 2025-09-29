@@ -22,6 +22,75 @@ Deckard currently supports the following Cache engines:
 
 The memory implementation is mainly used in tests and local development and is not recommended for production use.
 
+
+## Message Flow
+
+The following diagram illustrates the complete lifecycle of a message within the Deckard system. It shows the interaction between a Publisher Application that creates messages, the Deckard service itself (backed by a cache and a storage), and a Worker Application that consumes and processes these messages.
+
+The flow demonstrates the three main stages:
+
+- Add: A publisher sends a message with its configuration (like priority score and TTL) to Deckard.
+- Pull: A worker requests a batch of the highest-priority messages available in a queue.
+- Ack/Nack: After processing, the worker notifies Deckard of the outcome. This final step is crucial as it controls whether a message is removed permanently or requeued, potentially with a new priority score or a temporary lock. This requeueing mechanism is what enables Deckard's signature cyclic behavior.
+
+```mermaid
+sequenceDiagram
+    participant PA as Publisher App
+    participant D as Deckard (gRPC)
+    participant R as Redis (Cache)
+    participant M as MongoDB (Storage)
+    participant WA as Worker App
+
+    %% 1. Publishing a Message
+    Note over PA, D: An application publishes a message to a queue.
+    PA->>D: Add(AddRequest: id, queue, payload, score, TTL, etc.)
+    D->>M: Store/Update message metadata and payload.
+    D->>R: Add/Update message in the priority queue (sorted set).
+    D-->>PA: AddResponse (e.g., created_count: 1)
+
+    %% 2. Consuming Messages
+    Note over WA, D: A worker application periodically pulls messages.
+    WA->>D: Pull(PullRequest: queue, amount, score_filter)
+    D->>R: Get messages with the highest priority (lowest score).
+    R-->>D: Return messages.
+    D-->>WA: PullResponse (list of messages)
+    
+    WA->>WA: ...Processes message...
+
+    %% 3. Notifying Deckard of the Processing Result
+    alt Processing is Successful
+        Note over WA, D: Worker Acknowledges (Ack) the message.
+        WA->>D: Ack(AckRequest: id, queue, result_options)
+        
+        opt removeMessage = true
+            D->>R: Remove message from Redis queue.
+            D->>M: Remove message from MongoDB storage.
+            Note right of D: Message is permanently deleted.
+        end
+
+        opt lock_ms is set
+            D->>R: Update score to requeue after lock duration.
+            Note right of D: Message is temporarily unavailable.
+        end
+
+        opt score is set (Cyclic Behavior)
+            D->>R: Update score to the new specified value.
+            Note right of D: Message is requeued with a new priority.
+        end
+        
+        Note right of D: If no options are set, the message is requeued with a default new score (e.g., current timestamp).
+        D-->>WA: AckResponse (success: true)
+
+    else Processing has Failed
+        Note over WA, D: Worker Not-Acknowledges (Nack) the message.
+        WA->>D: Nack(AckRequest: id, queue, result_options)
+        
+        Note right of D: The same options as Ack (remove, lock, score) apply. If no options are set, the message is typically returned to the front of the queue (score=0) for immediate reprocessing.
+        D->>R: Update message state in the queue based on options.
+        D-->>WA: AckResponse (success: true)
+    end
+```
+
 ## Housekeeper
 
 The housekeeper is responsible for several background tasks that are necessary for the correct functioning of the service.
