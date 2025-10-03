@@ -22,9 +22,18 @@ import (
 	"go.opentelemetry.io/otel/metric"
 )
 
+// RedisClient interface abstracts the differences between single-node and cluster Redis clients
+type RedisClient interface {
+	redis.Cmdable
+	Close() error
+	Ping(ctx context.Context) *redis.StatusCmd
+	FlushDB(ctx context.Context) *redis.StatusCmd
+}
+
 type RedisCache struct {
-	Client  *redis.Client
-	scripts map[string]*redis.Script
+	Client       RedisClient
+	scripts      map[string]*redis.Script
+	clusterMode  bool
 }
 
 var _ Cache = &RedisCache{}
@@ -52,6 +61,38 @@ var LOCK_ACK_POOL_REGEX = regexp.MustCompile("(.+)" + LOCK_ACK_SUFFIX + "$")
 var LOCK_NACK_POOL_REGEX = regexp.MustCompile("(.+)" + LOCK_NACK_SUFFIX + "$")
 
 func NewRedisCache(ctx context.Context) (*RedisCache, error) {
+	clusterMode := config.RedisClusterMode.GetBool()
+	
+	var client RedisClient
+	var err error
+	
+	if clusterMode {
+		client, err = createClusterClient(ctx)
+	} else {
+		client, err = createSingleNodeClient(ctx)
+	}
+	
+	if err != nil {
+		return nil, err
+	}
+
+	return &RedisCache{
+		Client:      client,
+		clusterMode: clusterMode,
+		scripts: map[string]*redis.Script{
+			removeElement:        redis.NewScript(removeElementScript),
+			pullElement:          redis.NewScript(pullElementsScript),
+			moveElement:          redis.NewScript(moveElementScript),
+			lockElement:          redis.NewScript(lockElementScript),
+			moveFilteredElements: redis.NewScript(moveFilteredElementsScript),
+			unlockElements:       redis.NewScript(unlockElementsScript),
+			addElements:          redis.NewScript(addElementsScript),
+			containsElement:      redis.NewScript(containsElementScript),
+		},
+	}, nil
+}
+
+func createSingleNodeClient(ctx context.Context) (RedisClient, error) {
 	uri := config.CacheUri.Get()
 
 	var options *redis.Options
@@ -72,33 +113,52 @@ func NewRedisCache(ctx context.Context) (*RedisCache, error) {
 		}
 	}
 
-	logger.S(ctx).Info("Connecting to ", options.Addr, " Redis instance(s)")
+	logger.S(ctx).Info("Connecting to ", options.Addr, " Redis instance")
 
 	start := dtime.Now()
 
-	redisClient, err := waitForClient(options)
+	redisClient, err := waitForSingleNodeClient(options)
 	if err != nil {
 		return nil, err
 	}
 
 	logger.S(ctx).Debug("Connected to Redis cache in ", time.Since(start))
 
-	return &RedisCache{
-		Client: redisClient,
-		scripts: map[string]*redis.Script{
-			removeElement:        redis.NewScript(removeElementScript),
-			pullElement:          redis.NewScript(pullElementsScript),
-			moveElement:          redis.NewScript(moveElementScript),
-			lockElement:          redis.NewScript(lockElementScript),
-			moveFilteredElements: redis.NewScript(moveFilteredElementsScript),
-			unlockElements:       redis.NewScript(unlockElementsScript),
-			addElements:          redis.NewScript(addElementsScript),
-			containsElement:      redis.NewScript(containsElementScript),
-		},
-	}, nil
+	return redisClient, nil
 }
 
-func waitForClient(options *redis.Options) (*redis.Client, error) {
+func createClusterClient(ctx context.Context) (RedisClient, error) {
+	clusterAddresses := config.RedisClusterAddresses.Get()
+	if clusterAddresses == "" {
+		return nil, errors.New("redis.cluster.addresses must be specified when cluster mode is enabled")
+	}
+
+	// Parse cluster addresses - could be comma-separated or array in config
+	addresses := strings.Split(clusterAddresses, ",")
+	for i, addr := range addresses {
+		addresses[i] = strings.TrimSpace(addr)
+	}
+
+	options := &redis.ClusterOptions{
+		Addrs:    addresses,
+		Password: config.RedisPassword.Get(),
+	}
+
+	logger.S(ctx).Info("Connecting to Redis cluster with addresses: ", addresses)
+
+	start := dtime.Now()
+
+	clusterClient, err := waitForClusterClient(options)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.S(ctx).Debug("Connected to Redis cluster in ", time.Since(start))
+
+	return clusterClient, nil
+}
+
+func waitForSingleNodeClient(options *redis.Options) (*redis.Client, error) {
 	var err error
 
 	redisClient := redis.NewClient(options)
@@ -120,6 +180,30 @@ func waitForClient(options *redis.Options) (*redis.Client, error) {
 	}
 
 	return redisClient, err
+}
+
+func waitForClusterClient(options *redis.ClusterOptions) (*redis.ClusterClient, error) {
+	var err error
+
+	clusterClient := redis.NewClusterClient(options)
+
+	// OpenTelemetry APM
+	clusterClient.AddHook(redisotel.NewTracingHook())
+
+	for i := 1; i <= config.CacheConnectionRetryAttempts.GetInt(); i++ {
+		var pingResult string
+		pingResult, err = clusterClient.Ping(context.Background()).Result()
+
+		if (err == nil && pingResult == "PONG") || !config.CacheConnectionRetryEnabled.GetBool() {
+			break
+		}
+
+		logger.S(context.Background()).Warnf("Failed to connect to Redis cluster (%d times). Trying again in %s.", i, config.CacheConnectionRetryDelay.GetDuration())
+
+		<-time.After(config.CacheConnectionRetryDelay.GetDuration())
+	}
+
+	return clusterClient, err
 }
 
 func (cache *RedisCache) Flush(ctx context.Context) {
@@ -512,7 +596,14 @@ func (cache *RedisCache) Get(ctx context.Context, key string) (string, error) {
 		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), metric.WithAttributes(attribute.String("op", "get")))
 	}()
 
-	cmd := cache.Client.Get(context.Background(), fmt.Sprint("deckard:", key))
+	var redisKey string
+	if cache.clusterMode {
+		redisKey = fmt.Sprint("deckard:{", key, "}")
+	} else {
+		redisKey = fmt.Sprint("deckard:", key)
+	}
+
+	cmd := cache.Client.Get(context.Background(), redisKey)
 	value, err := cmd.Result()
 
 	if err == redis.Nil {
@@ -532,7 +623,14 @@ func (cache *RedisCache) Set(ctx context.Context, key string, value string) erro
 		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), metric.WithAttributes(attribute.String("op", "set")))
 	}()
 
-	cmd := cache.Client.Set(context.Background(), fmt.Sprint("deckard:", key), value, 0)
+	var redisKey string
+	if cache.clusterMode {
+		redisKey = fmt.Sprint("deckard:{", key, "}")
+	} else {
+		redisKey = fmt.Sprint("deckard:", key)
+	}
+
+	cmd := cache.Client.Set(context.Background(), redisKey, value, 0)
 
 	if cmd.Err() != nil {
 		return fmt.Errorf("error setting cache element: %w", cmd.Err())
@@ -547,22 +645,34 @@ func (cache *RedisCache) Close(ctx context.Context) error {
 
 // activePool returns the name of the active pool of messages.
 func (cache *RedisCache) activePool(queue string) string {
+	if cache.clusterMode {
+		return POOL_PREFIX + "{" + queue + "}"
+	}
 	return POOL_PREFIX + queue
 }
 
 // processingPool returns the name of the processing pool of messages.
 func (cache *RedisCache) processingPool(queue string) string {
+	if cache.clusterMode {
+		return POOL_PREFIX + "{" + queue + "}" + PROCESSING_POOL_SUFFIX
+	}
 	return POOL_PREFIX + queue + PROCESSING_POOL_SUFFIX
 }
 
 // lockPool returns the name of the lock pool of messages.
 func (cache *RedisCache) lockPool(queue string, lockType LockType) string {
+	if cache.clusterMode {
+		return POOL_PREFIX + "{" + queue + "}" + ":" + string(lockType)
+	}
 	return POOL_PREFIX + queue + ":" + string(lockType)
 }
 
-// lockPool returns the name of the lock pool scores of messages.
+// lockPoolScore returns the name of the lock pool scores of messages.
 //
 // used to unlock messages with a predefined score.
 func (cache *RedisCache) lockPoolScore(queue string, lockType LockType) string {
+	if cache.clusterMode {
+		return POOL_PREFIX + "{" + queue + "}" + ":" + string(lockType) + ":score"
+	}
 	return POOL_PREFIX + queue + ":" + string(lockType) + ":score"
 }
