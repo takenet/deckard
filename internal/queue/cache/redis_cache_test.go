@@ -145,7 +145,8 @@ func TestGetProcessingPoolName(t *testing.T) {
 }
 
 // TestListQueuesWithManyCachedQueuesIntegration tests that ListQueues properly uses SCAN
-// to iterate through all keys without blocking Redis, especially with many queues
+// to iterate through all keys without blocking Redis, especially with many queues.
+// Creates 1500 queues to ensure SCAN pagination is triggered (batch size is 1000).
 func TestListQueuesWithManyCachedQueuesIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
@@ -160,8 +161,9 @@ func TestListQueuesWithManyCachedQueuesIntegration(t *testing.T) {
 	cache.Flush(ctx)
 	defer cache.Flush(ctx)
 
-	// Insert messages into 50 different queues to test SCAN pagination
-	numQueues := 50
+	// Insert messages into 1500 different queues to test SCAN pagination
+	// This ensures multiple SCAN iterations (batch size is 1000)
+	numQueues := 1500
 	for i := 0; i < numQueues; i++ {
 		queueName := fmt.Sprintf("test_queue_%d", i)
 		_, opErr := cache.Insert(ctx, queueName, &message.Message{
