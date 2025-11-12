@@ -173,7 +173,6 @@ func (cache *RedisCache) Remove(ctx context.Context, queue string, ids ...string
 	return total, nil
 }
 
-// TODO: This should be optimized.
 // TODO: We should list queues using storage with iterator, and not redis. Rethink this usage
 func (cache *RedisCache) ListQueues(ctx context.Context, pattern string, poolType pool.PoolType) (queues []string, err error) {
 	execStart := dtime.Now()
@@ -197,13 +196,24 @@ func (cache *RedisCache) ListQueues(ctx context.Context, pattern string, poolTyp
 		searchPattern = cache.lockPool(pattern, LOCK_NACK)
 	}
 
-	result := cache.Client.Keys(context.Background(), searchPattern)
+	// Use SCAN instead of KEYS to avoid blocking Redis
+	data := make([]string, 0)
+	cursor := uint64(0)
+	for {
+		var keys []string
+		var err error
+		keys, cursor, err = cache.Client.Scan(context.Background(), cursor, searchPattern, 1000).Result()
 
-	if result.Err() != nil {
-		return nil, fmt.Errorf("error listing cache queues: %w", result.Err())
+		if err != nil {
+			return nil, fmt.Errorf("error listing cache queues: %w", err)
+		}
+
+		data = append(data, keys...)
+
+		if cursor == 0 {
+			break
+		}
 	}
-
-	data := result.Val()
 
 	var regex *regexp.Regexp
 	switch poolType {
