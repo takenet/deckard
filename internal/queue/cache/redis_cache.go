@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/meirf/gopart"
 	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
-	"github.com/meirf/gopart"
 	"github.com/takenet/deckard/internal/config"
 	"github.com/takenet/deckard/internal/dtime"
 	"github.com/takenet/deckard/internal/logger"

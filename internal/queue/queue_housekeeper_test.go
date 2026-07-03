@@ -20,7 +20,7 @@ import (
 	"github.com/takenet/deckard/internal/queue/pool"
 	"github.com/takenet/deckard/internal/queue/score"
 	"github.com/takenet/deckard/internal/queue/storage"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 func TestUpdateOldestQueueMap(t *testing.T) {
@@ -409,8 +409,8 @@ func TestRecoveryMessagesPoolInitNonEmptyStorageShouldStartRecovery(t *testing.T
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	storageNotLast := primitive.NewObjectID()
-	storageLast := primitive.NewObjectID()
+	storageNotLast := bson.NewObjectID()
+	storageLast := bson.NewObjectID()
 
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().Get(ctx, cache.RECOVERY_RUNNING).Return("false", nil)
@@ -445,7 +445,7 @@ func TestRecoveryMessagesPoolInitNonEmptyStorageShouldStartRecovery(t *testing.T
 		storageMessages[i] = message.Message{
 			Queue:      "queue",
 			ID:         strconv.Itoa(i),
-			InternalId: primitive.NewObjectID(),
+			InternalId: bson.NewObjectID(),
 		}
 
 		cacheMessages[i] = &storageMessages[i]

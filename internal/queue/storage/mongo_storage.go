@@ -17,27 +17,26 @@ import (
 	"github.com/takenet/deckard/internal/project"
 	"github.com/takenet/deckard/internal/queue/configuration"
 	"github.com/takenet/deckard/internal/queue/message"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
-	"go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
+	"go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/v2/mongo/otelmongo"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
 
 type MongoCollectionInterface interface {
-	UpdateOne(ctx context.Context, filter interface{}, update interface{}, opts ...*options.UpdateOptions) (*mongo.UpdateResult, error)
+	UpdateOne(ctx context.Context, filter interface{}, update interface{}, opts ...options.Lister[options.UpdateOneOptions]) (*mongo.UpdateResult, error)
 	BulkWrite(ctx context.Context, models []mongo.WriteModel,
-		opts ...*options.BulkWriteOptions) (*mongo.BulkWriteResult, error)
+		opts ...options.Lister[options.BulkWriteOptions]) (*mongo.BulkWriteResult, error)
 	Distinct(ctx context.Context, fieldName string, filter interface{},
-		opts ...*options.DistinctOptions) ([]interface{}, error)
+		opts ...options.Lister[options.DistinctOptions]) *mongo.DistinctResult
 	DeleteMany(ctx context.Context, filter interface{},
-		opts ...*options.DeleteOptions) (*mongo.DeleteResult, error)
-	CountDocuments(ctx context.Context, filter interface{}, opts ...*options.CountOptions) (int64, error)
+		opts ...options.Lister[options.DeleteManyOptions]) (*mongo.DeleteResult, error)
+	CountDocuments(ctx context.Context, filter interface{}, opts ...options.Lister[options.CountOptions]) (int64, error)
 	Find(ctx context.Context, filter interface{},
-		opts ...*options.FindOptions) (cur *mongo.Cursor, err error)
+		opts ...options.Lister[options.FindOptions]) (cur *mongo.Cursor, err error)
 }
 
 // MongoStorage is an implementation of the Storage Interface using MongoDB.
@@ -106,10 +105,9 @@ func createOptions() *options.ClientOptions {
 	user := config.MongoUser.Get()
 	if user != "" {
 		mongoOpts.SetAuth(options.Credential{
-			AuthSource:  config.MongoAuthDb.Get(),
-			Username:    user,
-			Password:    config.MongoPassword.Get(),
-			PasswordSet: true,
+			AuthSource: config.MongoAuthDb.Get(),
+			Username:   user,
+			Password:   config.MongoPassword.Get(),
 		})
 	}
 
@@ -155,12 +153,7 @@ func waitForClient(ctx context.Context, opts *options.ClientOptions) (*mongo.Cli
 }
 
 func createClient(ctx context.Context, opts *options.ClientOptions) (*mongo.Client, error) {
-	client, err := mongo.NewClient(opts)
-	if err != nil {
-		return nil, fmt.Errorf("error creating client: %w", err)
-	}
-
-	err = client.Connect(ctx)
+	client, err := mongo.Connect(opts)
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to client: %w", err)
 	}
@@ -194,7 +187,6 @@ func (storage *MongoStorage) EditQueueConfiguration(ctx context.Context, configu
 		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), metric.WithAttributes(attribute.String("op", "edit_configuration")))
 	}()
 
-	upsert := true
 	_, updateErr := storage.queueConfigurationCollection.UpdateOne(
 		context.Background(),
 		bson.M{
@@ -203,9 +195,7 @@ func (storage *MongoStorage) EditQueueConfiguration(ctx context.Context, configu
 		bson.M{
 			"$set": set,
 		},
-		&options.UpdateOptions{
-			Upsert: &upsert,
-		},
+		options.UpdateOne().SetUpsert(true),
 	)
 
 	return updateErr
@@ -297,9 +287,7 @@ func (storage *MongoStorage) Count(ctx context.Context, findOpt *FindOptions, co
 
 	logger.S(ctx).Debugw("Storage operation: count operation.", "filter", mongoFilter)
 
-	result, err := storage.messagesCollection.CountDocuments(context.Background(), mongoFilter, &options.CountOptions{
-		Comment: &countOpt.Comment,
-	})
+	result, err := storage.messagesCollection.CountDocuments(context.Background(), mongoFilter, options.Count().SetComment(countOpt.Comment))
 
 	if err != nil {
 		return 0, fmt.Errorf("error counting elements in storage: %w", err)
@@ -331,16 +319,10 @@ func (storage *MongoStorage) distinct(ctx context.Context, field string) (data [
 
 	logger.S(ctx).Debugw(fmt.Sprintf("Storage operation: distinct for field '%s'.", field), "filter", filter)
 
-	result, err := storage.messagesCollection.Distinct(context.Background(), field, filter)
+	distinctResult := storage.messagesCollection.Distinct(context.Background(), field, filter)
 
-	if err != nil {
+	if err := distinctResult.Decode(&data); err != nil {
 		return nil, fmt.Errorf("error to fetch distinct elements from storage: %w", err)
-	}
-
-	data = make([]string, len(result))
-
-	for i, queue := range result {
-		data[i] = fmt.Sprint(queue)
 	}
 
 	return data, nil
@@ -369,18 +351,17 @@ func (storage *MongoStorage) Find(ctx context.Context, opt *FindOptions) ([]mess
 		batchSize = 10_000
 	}
 
-	findOptions := &options.FindOptions{
-		Projection: mongoProjection,
-		Sort:       mongoSort,
-		Limit:      &opt.Limit,
-		BatchSize:  &batchSize,
-		Comment:    &opt.Comment,
-	}
+	findOptions := options.Find().
+		SetProjection(mongoProjection).
+		SetSort(mongoSort).
+		SetLimit(opt.Limit).
+		SetBatchSize(batchSize).
+		SetComment(opt.Comment)
 
 	logger.S(ctx).Debugw("Storage operation: find operation.",
 		"filter", mongoFilter,
-		"sort", findOptions.Sort,
-		"projection", findOptions.Projection)
+		"sort", mongoSort,
+		"projection", mongoProjection)
 
 	now := dtime.Now()
 	defer func() {
@@ -653,7 +634,7 @@ func getMongoMessage(opt *FindOptions) (bson.M, error) {
 	idFilter := bson.M{}
 
 	if opt.InternalFilter.InternalIdBreakpointGt != "" {
-		internalIdGt, err := primitive.ObjectIDFromHex(opt.InternalFilter.InternalIdBreakpointGt)
+		internalIdGt, err := bson.ObjectIDFromHex(opt.InternalFilter.InternalIdBreakpointGt)
 		if err != nil {
 			return nil, fmt.Errorf("invalid breakpoint to filter: %w", err)
 		}
@@ -661,7 +642,7 @@ func getMongoMessage(opt *FindOptions) (bson.M, error) {
 	}
 
 	if opt.InternalFilter.InternalIdBreakpointLte != "" {
-		internalIdLte, err := primitive.ObjectIDFromHex(opt.InternalFilter.InternalIdBreakpointLte)
+		internalIdLte, err := bson.ObjectIDFromHex(opt.InternalFilter.InternalIdBreakpointLte)
 		if err != nil {
 			return nil, fmt.Errorf("invalid breakpoint to filter: %w", err)
 		}
@@ -686,7 +667,7 @@ func (storage *MongoStorage) GetStringInternalId(_ context.Context, message *mes
 		return ""
 	}
 
-	return message.InternalId.(primitive.ObjectID).Hex()
+	return message.InternalId.(bson.ObjectID).Hex()
 }
 
 func (storage *MongoStorage) Close(ctx context.Context) error {
