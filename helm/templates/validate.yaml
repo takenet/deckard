@@ -11,10 +11,10 @@
 {{- fail "connectionSecret.cache.existingSecret is required when cache.type=REDIS and redis.enabled=false" }}
 {{- end }}
 
-{{- if and $hasStorageSecret $usesMongo (eq .Values.connectionSecret.storage.key "") }}
-{{- fail "connectionSecret.storage.key must be set when connectionSecret.storage.existingSecret is used with storage.type=MONGODB" }}
+{{- if and $usesMongo (or $hasStorageSecret .Values.mongodb.enabled) (eq .Values.connectionSecret.storage.key "") }}
+{{- fail "connectionSecret.storage.key must be set when storage.type=MONGODB and a storage connection secret is used or generated" }}
 {{- end }}
 
-{{- if and $hasCacheSecret $usesRedis (eq .Values.connectionSecret.cache.key "") }}
-{{- fail "connectionSecret.cache.key must be set when connectionSecret.cache.existingSecret is used with cache.type=REDIS" }}
+{{- if and $usesRedis (or $hasCacheSecret .Values.redis.enabled) (eq .Values.connectionSecret.cache.key "") }}
+{{- fail "connectionSecret.cache.key must be set when cache.type=REDIS and a cache connection secret is used or generated" }}
 {{- end }}

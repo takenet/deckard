@@ -418,10 +418,7 @@ func testFindBatch(t *testing.T, limit *int64, expectedBatch *int32) {
 
 	details := colMock.mockDetails[FIND]
 	listerOpts, ok := details.args[1].([]options.Lister[options.FindOptions])
-	if !ok {
-		fmt.Println("Type assertion failed")
-		return
-	}
+	require.Truef(t, ok, "find options should be []options.Lister[options.FindOptions], got %T", details.args[1])
 
 	require.NoError(t, err)
 	require.Equal(t, 0, len(messages), "should return no messages")

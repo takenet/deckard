@@ -10,7 +10,7 @@ cert_valid() {
     fi
 
     # Returns success only if certificate is currently valid (not expired).
-    openssl x509 -checkend 0 -noout -in "$cert_file" >/dev/null 2>&1
+    openssl x509 -checkend 0 -noout -in "$cert_file" >/dev/null 2>&1 || return 1
 }
 
 if test -f ca-cert.pem && test -f ca-key.pem && test -f client-cert.pem && test -f client-key.pem && test -f client-req.pem && test -f server-cert.pem && test -f server-key.pem && test -f server-req.pem; then
