@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Install mockgen
-        run: go install github.com/golang/mock/mockgen@latest
+        run: go install go.uber.org/mock/mockgen@latest
 
       - name: Make gen-mocks
         run: make gen-mocks

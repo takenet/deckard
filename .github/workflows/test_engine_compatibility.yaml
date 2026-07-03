@@ -49,7 +49,7 @@ jobs:
             ${{ runner.os }}-golang-
 
       - name: Install mockgen
-        run: go install github.com/golang/mock/mockgen@latest
+        run: go install go.uber.org/mock/mockgen@latest
 
       - name: Install gotestsum
         run: go install gotest.tools/gotestsum@latest
