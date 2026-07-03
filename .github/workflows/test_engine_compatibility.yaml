@@ -21,12 +21,12 @@ jobs:
 
     services:
       mongodb-compatibility:
-        image: mongo:5.0.18
+        image: mongo:7.0
         ports:
           - "27017:27017"
 
       redis-compatibility:
-        image: redis:5.0.14
+        image: redis:7.0
         ports:
           - 6379:6379
 
