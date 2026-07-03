@@ -9,7 +9,7 @@ on:
       - main
 
 env:
-  GO_VERSION: 1.25
+  GO_VERSION: 1.26.4
 
 permissions:
   checks: write
@@ -21,12 +21,12 @@ jobs:
 
     services:
       mongodb-compatibility:
-        image: mongo:7.0
+        image: mongo:5.0.18
         ports:
           - "27017:27017"
 
       redis-compatibility:
-        image: redis:7.0
+        image: redis:5.0.14
         ports:
           - 6379:6379
 

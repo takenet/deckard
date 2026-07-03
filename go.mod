@@ -1,12 +1,11 @@
 module github.com/takenet/deckard
 
-go 1.25.0
+go 1.26.4
 
 require (
 	github.com/elastic/go-elasticsearch/v7 v7.4.0
 	github.com/elliotchance/orderedmap/v2 v2.4.0
 	github.com/gobwas/glob v0.2.3
-	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.4
 	github.com/meirf/gopart v0.0.0-20180520194036-37e9492a85a8
 	github.com/patrickmn/go-cache v2.1.0+incompatible
@@ -27,6 +26,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.44.1-0.20260625150014-c84013202f01
 	go.opentelemetry.io/otel/sdk/metric v1.44.1-0.20260625150014-c84013202f01
 	go.opentelemetry.io/otel/trace v1.44.1-0.20260625150014-c84013202f01
+	go.uber.org/mock v0.6.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/net v0.55.0
 	google.golang.org/grpc v1.67.1

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/elliotchance/orderedmap/v2"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"github.com/takenet/deckard/internal/audit"
 	"github.com/takenet/deckard/internal/dtime"
@@ -18,6 +17,7 @@ import (
 	"github.com/takenet/deckard/internal/queue/message"
 	"github.com/takenet/deckard/internal/queue/score"
 	"github.com/takenet/deckard/internal/queue/storage"
+	"go.uber.org/mock/gomock"
 )
 
 var ctx = context.Background()

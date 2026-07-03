@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/elliotchance/orderedmap/v2"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"github.com/takenet/deckard/internal/audit"
 	"github.com/takenet/deckard/internal/metrics"
@@ -21,6 +20,7 @@ import (
 	"github.com/takenet/deckard/internal/queue/score"
 	"github.com/takenet/deckard/internal/queue/storage"
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.uber.org/mock/gomock"
 )
 
 func TestUpdateOldestQueueMap(t *testing.T) {
@@ -292,6 +292,7 @@ func TestRecoveryMessagesPoolShouldAddMessagesAfterBreakpoint(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	now := time.Now()
+	baseScore := score.GetScoreByDefaultAlgorithm()
 
 	cacheMessages := []*message.Message{{
 		ID:                "id",
@@ -299,14 +300,14 @@ func TestRecoveryMessagesPoolShouldAddMessagesAfterBreakpoint(t *testing.T) {
 		InternalId:        45456,
 		ExpiryDate:        time.Time{},
 		LastUsage:         &now,
-		Score:             score.GetScoreByDefaultAlgorithm() - 54321,
+		Score:             baseScore - 54321,
 		LastScoreSubtract: 54321,
 	}, {
 		ID:                "id2",
 		InternalId:        65456,
 		Queue:             "queue",
 		ExpiryDate:        time.Time{},
-		Score:             score.GetScoreByDefaultAlgorithm() - 23457,
+		Score:             baseScore - 23457,
 		LastUsage:         &now,
 		LastScoreSubtract: 23457,
 	}}
@@ -325,7 +326,7 @@ func TestRecoveryMessagesPoolShouldAddMessagesAfterBreakpoint(t *testing.T) {
 		InternalId:        45456,
 		Queue:             "queue",
 		ExpiryDate:        time.Time{},
-		Score:             score.GetScoreByDefaultAlgorithm() - 54321,
+		Score:             baseScore - 54321,
 		LastUsage:         &now,
 		LastScoreSubtract: 54321,
 	}, {
@@ -333,7 +334,7 @@ func TestRecoveryMessagesPoolShouldAddMessagesAfterBreakpoint(t *testing.T) {
 		InternalId:        65456,
 		Queue:             "queue",
 		ExpiryDate:        time.Time{},
-		Score:             score.GetScoreByDefaultAlgorithm() - 23457,
+		Score:             baseScore - 23457,
 		LastUsage:         &now,
 		LastScoreSubtract: 23457,
 	}}
@@ -363,7 +364,7 @@ func TestRecoveryMessagesPoolShouldAddMessagesAfterBreakpoint(t *testing.T) {
 		InternalId:        65456,
 		Queue:             "queue",
 		ExpiryDate:        time.Time{},
-		Score:             score.GetScoreByDefaultAlgorithm() - 23457,
+		Score:             baseScore - 23457,
 		LastUsage:         &now,
 		LastScoreSubtract: 23457,
 	}).Return("65456")

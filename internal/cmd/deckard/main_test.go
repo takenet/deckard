@@ -13,6 +13,7 @@ import (
 	"github.com/takenet/deckard/internal/shutdown"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
@@ -169,7 +170,24 @@ func TestStopDeckardShouldStopReceivingRequestIntegration(t *testing.T) {
 }
 
 func dial() (*grpc.ClientConn, error) {
-	ctx, _ := context.WithTimeout(context.Background(), time.Millisecond*200)
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
 
-	return grpc.DialContext(ctx, fmt.Sprint("localhost:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	conn, err := grpc.NewClient(fmt.Sprint("localhost:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
+
+	conn.Connect()
+	for {
+		state := conn.GetState()
+		if state == connectivity.Ready {
+			return conn, nil
+		}
+
+		if !conn.WaitForStateChange(ctx, state) {
+			conn.Close()
+			return nil, ctx.Err()
+		}
+	}
 }
