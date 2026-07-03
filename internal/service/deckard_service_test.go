@@ -47,7 +47,7 @@ func newBlockingClientConn(ctx context.Context, target string, opts ...grpc.Dial
 		}
 
 		if !conn.WaitForStateChange(ctx, state) {
-			conn.Close()
+			_ = conn.Close()
 			return nil, ctx.Err()
 		}
 	}

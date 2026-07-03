@@ -186,7 +186,7 @@ func dial() (*grpc.ClientConn, error) {
 		}
 
 		if !conn.WaitForStateChange(ctx, state) {
-			conn.Close()
+			_ = conn.Close()
 			return nil, ctx.Err()
 		}
 	}
