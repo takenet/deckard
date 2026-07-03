@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"testing"
 	"time"
 
@@ -746,7 +745,7 @@ func loadClientCredentials(loadClientCert bool) (credentials.TransportCredential
 
 	config := &tls.Config{
 		RootCAs:    certPool,
-		ServerName: "0.0.0.0",
+		ServerName: "localhost",
 	}
 
 	if loadClientCert {
@@ -796,9 +795,7 @@ func TestDeckardServerKeepalive(t *testing.T) {
 		ctx, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
 		defer cancel()
 		conn, err := newBlockingClientConn(ctx, fmt.Sprint("localhost:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(insecure.NewCredentials()))
-		if err != nil {
-			log.Fatalf("did not connect: %v", err)
-		}
+		require.NoError(t, err)
 		defer conn.Close()
 
 		client := deckard.NewDeckardClient(conn)
@@ -844,10 +841,10 @@ func TestDeckardServerKeepalive(t *testing.T) {
 		defer server.Stop()
 
 		// Set up a connection to the server.
-		conn, err := newBlockingClientConn(context.Background(), fmt.Sprint("localhost:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(insecure.NewCredentials()))
-		if err != nil {
-			log.Fatalf("did not connect: %v", err)
-		}
+		dialCtx, dialCancel := context.WithTimeout(ctx, 3*time.Second)
+		defer dialCancel()
+		conn, err := newBlockingClientConn(dialCtx, fmt.Sprint("localhost:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(insecure.NewCredentials()))
+		require.NoError(t, err)
 		defer conn.Close()
 
 		waitCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -885,14 +882,14 @@ func TestDeckardServerKeepalive(t *testing.T) {
 		defer server.Stop()
 
 		// Set up a connection to the server.
+		dialCtx, dialCancel := context.WithTimeout(ctx, 3*time.Second)
+		defer dialCancel()
 		conn, err := newBlockingClientConn(
-			context.Background(),
+			dialCtx,
 			fmt.Sprint("localhost:", config.GrpcPort.GetInt()),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		)
-		if err != nil {
-			log.Fatalf("did not connect: %v", err)
-		}
+		require.NoError(t, err)
 		defer conn.Close()
 
 		timeoutDuration := 5 * time.Second
