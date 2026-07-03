@@ -38,6 +38,8 @@ The command removes all the Kubernetes components associated with the chart and 
 
 The Deckard chart deploys MongoDB for storage and Redis for the cache by default. By setting `storage.type` to `MONGODB` and `cache.type` to `REDIS` (the default values), the chart will use the deployed MongoDB and Redis instances for storage and caching. If you want to use an existing MongoDB or Redis, you may set either `mongodb.enabled` or `redis.enabled` to `false`. Then you should configure the storage and cache URIs manually to connect to your instances.
 
+When `mongodb.enabled` and/or `redis.enabled` are `true`, the chart computes internal service hostnames automatically from the subchart names. If you customize `mongodb.fullnameOverride` or `redis.fullnameOverride`, the generated URIs will follow those names.
+
 For more information about Deckard's configuration, refer to the [Deckard's configuration documentation](https://github.com/takenet/deckard#configuration).
 
 ## Housekeeper
