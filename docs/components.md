@@ -18,7 +18,7 @@ The cache is currently the main component of Deckard. It is used to manage messa
 Deckard currently supports the following Cache engines:
 - Memory (default)
 - Redis
-  - Supported versions: `7.0` to `8.0` (we always run our integration tests against the `7.0` and the latest version)
+    - Supported versions: `5.0` to `8.2` (CI runs compatibility tests on `5.0.14` and tests on `8.2`)
 
 The memory implementation is mainly used in tests and local development and is not recommended for production use.
 

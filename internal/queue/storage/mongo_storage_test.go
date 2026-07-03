@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/elliotchance/orderedmap/v2"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -15,6 +16,16 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
+
+type failingFindOptionsLister struct{}
+
+func (failingFindOptionsLister) List() []func(*options.FindOptions) error {
+	return []func(*options.FindOptions) error{
+		func(*options.FindOptions) error {
+			return fmt.Errorf("forced options application error")
+		},
+	}
+}
 
 const DEL_MANY = "DeleteMany"
 const FIND = "Find"
@@ -75,7 +86,21 @@ func (col *MockCollection) Find(ctx context.Context, filter interface{},
 	details := col.mockDetails[FIND]
 	details.args = append(details.args, filter, opts)
 	details.calls++
+	if details.err != nil {
+		return nil, details.err
+	}
 	return mongo.NewCursorFromDocuments(make([]interface{}, 0), nil, nil)
+}
+
+func resolveFindOptions(lister options.Lister[options.FindOptions]) (*options.FindOptions, error) {
+	fo := &options.FindOptions{}
+	for _, fn := range lister.List() {
+		if err := fn(fo); err != nil {
+			return nil, err
+		}
+	}
+
+	return fo, nil
 }
 
 func TestMongoStorageIntegration(t *testing.T) {
@@ -364,15 +389,31 @@ func TestFindWithLimitAndBatchVariations(t *testing.T) {
 	testFindBatch(t, &lim, &batch)
 }
 
+func TestResolveFindOptionsShouldReturnErrorWhenApplyFails(t *testing.T) {
+	t.Parallel()
+
+	_, err := resolveFindOptions(failingFindOptionsLister{})
+
+	require.ErrorContains(t, err, "forced options application error")
+}
+
 func testFindBatch(t *testing.T, limit *int64, expectedBatch *int32) {
 	colMock := newMockCollection()
 	storage := &MongoStorage{
 		messagesCollection: colMock,
 	}
+	expectedQueue := "queue-test"
+	expectedSort := orderedmap.NewOrderedMap[string, int]()
+	expectedSort.Set("created_at", 1)
+	expectedSort.Set("priority", -1)
+	expectedProjection := map[string]int{"id": 1, "queue": 1, "_id": 0}
 	expectedComment := "testFindBatch"
 	messages, err := storage.Find(context.Background(), &FindOptions{
-		Limit:   *limit,
-		Comment: expectedComment,
+		Limit:        *limit,
+		Comment:      expectedComment,
+		Sort:         expectedSort,
+		Projection:   &expectedProjection,
+		InternalFilter: &InternalFilter{Queue: expectedQueue},
 	})
 
 	details := colMock.mockDetails[FIND]
@@ -388,10 +429,39 @@ func testFindBatch(t *testing.T, limit *int64, expectedBatch *int32) {
 	require.Equal(t, 1, len(listerOpts), "only one find option was used")
 
 	// Resolve the builder to get concrete FindOptions for assertion
-	fo := &options.FindOptions{}
-	for _, fn := range listerOpts[0].List() {
-		_ = fn(fo)
-	}
+	fo, optionsErr := resolveFindOptions(listerOpts[0])
+	require.NoError(t, optionsErr)
+	require.Equal(t, bson.M{"queue": expectedQueue}, details.args[0], "find filter should match internal filter")
 	require.Equal(t, limit, fo.Limit, fmt.Sprintf("expected limit = %d", *limit))
 	require.Equal(t, expectedBatch, fo.BatchSize, fmt.Sprintf("expected batch size = %d", *expectedBatch))
+	require.NotNil(t, fo.Projection, "projection should be set")
+	switch projection := fo.Projection.(type) {
+	case bson.M:
+		require.Equal(t, bson.M{"id": 1, "queue": 1, "_id": 0}, projection, "projection passthrough should be preserved")
+	case *bson.M:
+		require.Equal(t, bson.M{"id": 1, "queue": 1, "_id": 0}, *projection, "projection passthrough should be preserved")
+	default:
+		require.Failf(t, "unexpected projection type", "got %T", fo.Projection)
+	}
+	require.NotNil(t, fo.Sort, "sort should be set")
+	switch sort := fo.Sort.(type) {
+	case bson.D:
+		require.Equal(t, bson.D{{Key: "created_at", Value: 1}, {Key: "priority", Value: -1}}, sort, "sort passthrough should be preserved")
+	case *bson.D:
+		require.Equal(t, bson.D{{Key: "created_at", Value: 1}, {Key: "priority", Value: -1}}, *sort, "sort passthrough should be preserved")
+	default:
+		require.Failf(t, "unexpected sort type", "got %T", fo.Sort)
+	}
+	require.NotNil(t, fo.Comment, "comment should be set")
+	switch comment := fo.Comment.(type) {
+	case string:
+		require.Equal(t, expectedComment, comment, "comment passthrough should be preserved")
+	case *interface{}:
+		require.NotNil(t, comment, "comment interface pointer should not be nil")
+		value, ok := (*comment).(string)
+		require.True(t, ok, "comment should contain string value")
+		require.Equal(t, expectedComment, value, "comment passthrough should be preserved")
+	default:
+		require.Failf(t, "unexpected comment type", "got %T", fo.Comment)
+	}
 }

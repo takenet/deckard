@@ -105,6 +105,10 @@ func waitForClient(options *redis.Options) (*redis.Client, error) {
 
 	// OpenTelemetry APM
 	if err := redisotel.InstrumentTracing(redisClient); err != nil {
+		if closeErr := redisClient.Close(); closeErr != nil {
+			return nil, fmt.Errorf("error setting up redis tracing and closing redis client: %w", errors.Join(err, closeErr))
+		}
+
 		return nil, fmt.Errorf("error setting up redis tracing: %w", err)
 	}
 

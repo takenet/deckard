@@ -188,7 +188,7 @@ func (storage *MongoStorage) EditQueueConfiguration(ctx context.Context, configu
 	}()
 
 	_, updateErr := storage.queueConfigurationCollection.UpdateOne(
-		context.Background(),
+		ctx,
 		bson.M{
 			"_id": configuration.Queue,
 		},
@@ -207,7 +207,7 @@ func (storage *MongoStorage) ListQueueConfigurations(ctx context.Context) ([]*co
 		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), metric.WithAttributes(attribute.String("op", "list_configuration")))
 	}()
 
-	cursor, err := storage.queueConfigurationCollection.Find(context.Background(), bson.M{})
+	cursor, err := storage.queueConfigurationCollection.Find(ctx, bson.M{})
 
 	if err != nil {
 		return nil, fmt.Errorf("error finding queue configurations: %w", err)
@@ -215,7 +215,7 @@ func (storage *MongoStorage) ListQueueConfigurations(ctx context.Context) ([]*co
 
 	configurations := make([]*configuration.QueueConfiguration, 0)
 
-	cursorErr := cursor.All(context.Background(), &configurations)
+	cursorErr := cursor.All(ctx, &configurations)
 
 	if cursorErr != nil {
 		return nil, fmt.Errorf("error to fetch cursor: %w", cursorErr)
@@ -233,7 +233,7 @@ func (storage *MongoStorage) GetQueueConfiguration(ctx context.Context, queue st
 	var configuration configuration.QueueConfiguration
 
 	err := storage.queueConfigurationCollection.FindOne(
-		context.Background(),
+		ctx,
 		bson.M{
 			"_id": queue,
 		},
@@ -256,7 +256,7 @@ func (storage *MongoStorage) Flush(ctx context.Context) (int64, error) {
 		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), metric.WithAttributes(attribute.String("op", "flush")))
 	}()
 
-	result, err := storage.messagesCollection.DeleteMany(context.Background(), bson.M{})
+	result, err := storage.messagesCollection.DeleteMany(ctx, bson.M{})
 
 	if err != nil || result == nil {
 		return 0, fmt.Errorf("error deleting storage elements: %w", err)
@@ -264,7 +264,7 @@ func (storage *MongoStorage) Flush(ctx context.Context) (int64, error) {
 
 	deletedMessages := result.DeletedCount
 
-	result, err = storage.queueConfigurationCollection.DeleteMany(context.Background(), bson.M{})
+	result, err = storage.queueConfigurationCollection.DeleteMany(ctx, bson.M{})
 
 	if err != nil || result == nil {
 		return 0, fmt.Errorf("error deleting queue configurations on storage: %w", err)
@@ -287,7 +287,7 @@ func (storage *MongoStorage) Count(ctx context.Context, findOpt *FindOptions, co
 
 	logger.S(ctx).Debugw("Storage operation: count operation.", "filter", mongoFilter)
 
-	result, err := storage.messagesCollection.CountDocuments(context.Background(), mongoFilter, options.Count().SetComment(countOpt.Comment))
+	result, err := storage.messagesCollection.CountDocuments(ctx, mongoFilter, options.Count().SetComment(countOpt.Comment))
 
 	if err != nil {
 		return 0, fmt.Errorf("error counting elements in storage: %w", err)
@@ -319,7 +319,7 @@ func (storage *MongoStorage) distinct(ctx context.Context, field string) (data [
 
 	logger.S(ctx).Debugw(fmt.Sprintf("Storage operation: distinct for field '%s'.", field), "filter", filter)
 
-	distinctResult := storage.messagesCollection.Distinct(context.Background(), field, filter)
+	distinctResult := storage.messagesCollection.Distinct(ctx, field, filter)
 
 	if err := distinctResult.Decode(&data); err != nil {
 		return nil, fmt.Errorf("error to fetch distinct elements from storage: %w", err)
@@ -373,14 +373,14 @@ func (storage *MongoStorage) Find(ctx context.Context, opt *FindOptions) ([]mess
 		collection = storage.messagesCollectionPrimaryRead
 	}
 
-	cursor, err := collection.Find(context.Background(), mongoFilter, findOptions)
+	cursor, err := collection.Find(ctx, mongoFilter, findOptions)
 	if err != nil {
 		return nil, fmt.Errorf("error finding storage elements: %w", err)
 	}
 
 	messages := make([]message.Message, 0, opt.Limit)
 
-	cursorErr := cursor.All(context.Background(), &messages)
+	cursorErr := cursor.All(ctx, &messages)
 
 	if cursorErr != nil {
 		return nil, fmt.Errorf("error to fetch cursor: %w", cursorErr)
@@ -427,7 +427,7 @@ func attemptChunkDeletion(ctx context.Context, i int, ids []string, queue string
 
 	logger.S(ctx).Debugw("Storage operation: delete many operation.", "filter", filter)
 
-	res, err := storage.messagesCollection.DeleteMany(context.Background(), filter)
+	res, err := storage.messagesCollection.DeleteMany(ctx, filter)
 	return res, err
 }
 
@@ -493,7 +493,7 @@ func (storage *MongoStorage) Insert(ctx context.Context, messages ...*message.Me
 		metrics.StorageLatency.Record(ctx, dtime.ElapsedTime(now), metric.WithAttributes(attribute.String("op", "insert")))
 	}()
 
-	res, err := storage.messagesCollection.BulkWrite(context.Background(), updates, options.BulkWrite().SetOrdered(false))
+	res, err := storage.messagesCollection.BulkWrite(ctx, updates, options.BulkWrite().SetOrdered(false))
 	if err != nil {
 		return 0, 0, fmt.Errorf("error writing to mongodb storage: %w", err)
 	}
@@ -532,7 +532,7 @@ func (storage *MongoStorage) Ack(ctx context.Context, message *message.Message) 
 
 	logger.S(ctx).Debugw("Storage operation: update one operation.", "filter", filter, "update", update)
 
-	res, err := storage.messagesCollection.UpdateOne(context.Background(), filter, update)
+	res, err := storage.messagesCollection.UpdateOne(ctx, filter, update)
 
 	if err != nil {
 		return 0, fmt.Errorf("error updating storage element: %w", err)
@@ -567,7 +567,7 @@ func (storage *MongoStorage) Nack(ctx context.Context, message *message.Message)
 
 	logger.S(ctx).Debugw("Storage operation: update one operation.", "filter", filter, "update", update)
 
-	res, err := storage.messagesCollection.UpdateOne(context.Background(), filter, update)
+	res, err := storage.messagesCollection.UpdateOne(ctx, filter, update)
 
 	if err != nil {
 		return 0, fmt.Errorf("error updating storage element: %w", err)
