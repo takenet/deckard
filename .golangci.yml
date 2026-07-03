@@ -4,8 +4,7 @@ version: '2'
 linters:
   disable:
     - staticcheck
-
-linters-settings:
-  govet:
-    disable:
-      - inline
+  settings:
+    govet:
+      disable:
+        - inline
