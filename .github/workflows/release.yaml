@@ -6,7 +6,7 @@ on:
 
 env:
   KO_DOCKER_REPO: index.docker.io/blipai
-  GO_VERSION: 1.23
+  GO_VERSION: 1.26.4
   DOTNET_VERSION: 6.0.x
 
 jobs:
@@ -16,14 +16,14 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
 
       - name: Cache Go modules
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cache/go-build
@@ -57,7 +57,7 @@ jobs:
           tar -czvf deckard-linux-amd64.tar.gz -C exec deckard-linux-amd64
 
       - name: Publish
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             deckard-windows-amd64.exe.zip
@@ -67,14 +67,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Cache Go modules
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cache/go-build
@@ -84,7 +84,7 @@ jobs:
             ${{ runner.os }}-golang-
 
       - name: Setup Ko
-        uses: ko-build/setup-ko@v0.7
+        uses: ko-build/setup-ko@v0.10
 
       - name: Publish image
         env:
@@ -99,9 +99,9 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           java-version: '11'
           distribution: 'temurin'
@@ -133,10 +133,10 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup .NET Core SDK ${{ env.DOTNET_VERSION }}
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
