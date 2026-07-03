@@ -91,7 +91,11 @@ Redis subchart fullname
 {{- .Values.redis.fullnameOverride | trunc 50 | trimSuffix "-" }}
 {{- else }}
 {{- $name := default "redis" .Values.redis.nameOverride }}
+{{- if contains $name .Release.Name }}
+{{- .Release.Name | trunc 50 | trimSuffix "-" }}
+{{- else }}
 {{- printf "%s-%s" .Release.Name $name | trunc 50 | trimSuffix "-" }}
+{{- end }}
 {{- end }}
 {{- end }}
 
@@ -103,7 +107,11 @@ MongoDB subchart fullname
 {{- .Values.mongodb.fullnameOverride | trunc 50 | trimSuffix "-" }}
 {{- else }}
 {{- $name := default "mongodb" .Values.mongodb.nameOverride }}
+{{- if contains $name .Release.Name }}
+{{- .Release.Name | trunc 50 | trimSuffix "-" }}
+{{- else }}
 {{- printf "%s-%s" .Release.Name $name | trunc 50 | trimSuffix "-" }}
+{{- end }}
 {{- end }}
 {{- end }}
 
