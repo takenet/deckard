@@ -745,7 +745,7 @@ func loadClientCredentials(loadClientCert bool) (credentials.TransportCredential
 
 	config := &tls.Config{
 		RootCAs:    certPool,
-		ServerName: "localhost",
+		ServerName: "api.deckard.test",
 	}
 
 	if loadClientCert {
