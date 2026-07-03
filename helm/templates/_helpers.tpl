@@ -84,15 +84,39 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/*
+Redis subchart fullname
+*/}}
+{{- define "deckard.redis.fullname" -}}
+{{- if .Values.redis.fullnameOverride }}
+{{- .Values.redis.fullnameOverride | trunc 50 | trimSuffix "-" }}
+{{- else }}
+{{- $name := default "redis" .Values.redis.nameOverride }}
+{{- printf "%s-%s" .Release.Name $name | trunc 50 | trimSuffix "-" }}
+{{- end }}
+{{- end }}
+
+{{/*
+MongoDB subchart fullname
+*/}}
+{{- define "deckard.mongodb.fullname" -}}
+{{- if .Values.mongodb.fullnameOverride }}
+{{- .Values.mongodb.fullnameOverride | trunc 50 | trimSuffix "-" }}
+{{- else }}
+{{- $name := default "mongodb" .Values.mongodb.nameOverride }}
+{{- printf "%s-%s" .Release.Name $name | trunc 50 | trimSuffix "-" }}
+{{- end }}
+{{- end }}
+
+{{/*
 Define Cache URI
 */}}
 {{- define "deckard.cache.uri" -}}
 {{- if eq .Values.cache.type "REDIS" }}
 {{- if .Values.redis.enabled }}
 {{- if eq .Values.redis.architecture "standalone" }}
-{{- printf "redis://:%s@%s-redis-master.%s.svc:%s/%s" .Values.redis.auth.password (include "deckard.fullname" .) .Release.Namespace (toString .Values.redis.service.ports.redis) (toString .Values.cache.redis.database) }}
+{{- printf "redis://:%s@%s-master.%s.svc:%s/%s" .Values.redis.auth.password (include "deckard.redis.fullname" .) .Release.Namespace (toString .Values.redis.service.ports.redis) (toString .Values.cache.redis.database) }}
 {{- else }}
-{{- printf "redis://:%s@%s-redis-headless.%s.svc:%s/%s" .Values.redis.auth.password (include "deckard.fullname" .) .Release.Namespace (toString .Values.redis.service.ports.redis) (toString .Values.cache.redis.database) }}
+{{- printf "redis://:%s@%s-headless.%s.svc:%s/%s" .Values.redis.auth.password (include "deckard.redis.fullname" .) .Release.Namespace (toString .Values.redis.service.ports.redis) (toString .Values.cache.redis.database) }}
 {{- end }}
 {{- else }}
 {{- .Values.cache.uri }}
@@ -107,9 +131,9 @@ Define Storage URI
 {{- if eq .Values.storage.type "MONGODB" }}
 {{- if .Values.mongodb.enabled }}
 {{- if eq .Values.mongodb.architecture "standalone" }}
-{{- printf "mongodb://%s:%s@%s-mongodb.%s.svc:%s/admin?ssl=false" .Values.mongodb.auth.rootUser .Values.mongodb.auth.rootPassword (include "deckard.fullname" .) .Release.Namespace (toString .Values.mongodb.service.ports.mongodb) }}
+{{- printf "mongodb://%s:%s@%s.%s.svc:%s/admin?ssl=false" .Values.mongodb.auth.rootUser .Values.mongodb.auth.rootPassword (include "deckard.mongodb.fullname" .) .Release.Namespace (toString .Values.mongodb.service.ports.mongodb) }}
 {{- else }}
-{{- printf "mongodb://%s:%s@%s-mongodb-headless.%s.svc:%s/admin?ssl=false" .Values.mongodb.auth.rootUser .Values.mongodb.auth.rootPassword (include "deckard.fullname" .) .Release.Namespace (toString .Values.mongodb.service.ports.mongodb) }}
+{{- printf "mongodb://%s:%s@%s-headless.%s.svc:%s/admin?ssl=false" .Values.mongodb.auth.rootUser .Values.mongodb.auth.rootPassword (include "deckard.mongodb.fullname" .) .Release.Namespace (toString .Values.mongodb.service.ports.mongodb) }}
 {{- end }}
 {{- else }}
 {{- .Values.storage.uri }}
