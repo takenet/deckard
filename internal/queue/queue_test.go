@@ -724,29 +724,29 @@ func TestAddMessagesToCacheSameIdInSameRequestShouldSetLastElementScore(t *testi
 
 	now := time.Now()
 
-	mockCache := mocks.NewMockCache(mockCtrl)
-	mockCache.EXPECT().Insert(gomock.Any(), "queue", []*message.Message{
-		{
-			ID:        "id",
-			Queue:     "queue",
-			LastUsage: &now,
-			Score:     score.GetScoreByDefaultAlgorithm(),
-		}, {
-			// No last usage
-			ID:    "id",
-			Queue: "queue",
-			Score: score.Min,
-		},
-	}).Return([]string{"id", "id"}, nil)
+	queueMsg1 := &message.Message{
+		ID:        "id",
+		Queue:     "queue",
+		LastUsage: &now,
+		Score:     score.GetScoreByDefaultAlgorithm(),
+	}
+	queueMsg2 := &message.Message{
+		// No last usage
+		ID:    "id",
+		Queue: "queue",
+		Score: score.Min,
+	}
+	queue2Msg := &message.Message{
+		// Different queue with score
+		ID:        "id",
+		Queue:     "queue2",
+		LastUsage: &now,
+		Score:     score.GetScoreByDefaultAlgorithm(),
+	}
 
-	mockCache.EXPECT().Insert(gomock.Any(), "queue2", []*message.Message{
-		{
-			ID:        "id",
-			Queue:     "queue2",
-			LastUsage: &now,
-			Score:     score.GetScoreByDefaultAlgorithm(),
-		},
-	}).Return([]string{"id"}, nil)
+	mockCache := mocks.NewMockCache(mockCtrl)
+	mockCache.EXPECT().Insert(gomock.Any(), "queue", queueMsg1, queueMsg2).Return([]string{"id", "id"}, nil)
+	mockCache.EXPECT().Insert(gomock.Any(), "queue2", queue2Msg).Return([]string{"id"}, nil)
 
 	mockAuditor := mocks.NewMockAuditor(mockCtrl)
 	mockAuditor.EXPECT().Store(gomock.Any(), audit.Entry{
@@ -762,23 +762,7 @@ func TestAddMessagesToCacheSameIdInSameRequestShouldSetLastElementScore(t *testi
 
 	q := NewQueue(mockAuditor, nil, nil, mockCache)
 
-	messages := []*message.Message{{
-		ID:        "id",
-		Queue:     "queue",
-		LastUsage: &now,
-		Score:     score.GetScoreByDefaultAlgorithm(),
-	}, {
-		// No last usage
-		ID:    "id",
-		Queue: "queue",
-		Score: score.Min,
-	}, {
-		// Different queue with score
-		ID:        "id",
-		Queue:     "queue2",
-		LastUsage: &now,
-		Score:     score.GetScoreByDefaultAlgorithm(),
-	}}
+	messages := []*message.Message{queueMsg1, queueMsg2, queue2Msg}
 	count, err := q.AddMessagesToCache(ctx, messages...)
 
 	require.NoError(t, err)
@@ -829,24 +813,19 @@ func TestAddMessagesError(t *testing.T) {
 
 	now := time.Now()
 
-	mockCache := mocks.NewMockCache(mockCtrl)
-	mockCache.EXPECT().Insert(gomock.Any(), "queue", []*message.Message{
-		{
-			ID:        "id",
-			Queue:     "queue",
-			LastUsage: &now,
-			Score:     score.GetScoreByDefaultAlgorithm(),
-		},
-	}).Return(nil, errors.New("insert error"))
-
-	q := NewQueue(nil, nil, nil, mockCache)
-
-	messages := []*message.Message{{
+	errMsg := &message.Message{
 		ID:        "id",
 		Queue:     "queue",
 		LastUsage: &now,
 		Score:     score.GetScoreByDefaultAlgorithm(),
-	}}
+	}
+
+	mockCache := mocks.NewMockCache(mockCtrl)
+	mockCache.EXPECT().Insert(gomock.Any(), "queue", errMsg).Return(nil, errors.New("insert error"))
+
+	q := NewQueue(nil, nil, nil, mockCache)
+
+	messages := []*message.Message{errMsg}
 	_, err := q.AddMessagesToCache(ctx, messages...)
 
 	require.Error(t, err)
