@@ -1,4 +1,5 @@
-# TODO: configure linter correctly
+version: '2'
+
 # Disabling staticcheck since we deprecated proto field
 linters:
   disable:
