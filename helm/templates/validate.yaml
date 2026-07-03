@@ -1,0 +1,20 @@
+{{- $usesMongo := eq .Values.storage.type "MONGODB" -}}
+{{- $usesRedis := eq .Values.cache.type "REDIS" -}}
+{{- $hasStorageSecret := ne .Values.connectionSecret.storage.existingSecret "" -}}
+{{- $hasCacheSecret := ne .Values.connectionSecret.cache.existingSecret "" -}}
+
+{{- if and $usesMongo (not .Values.mongodb.enabled) (not $hasStorageSecret) }}
+{{- fail "connectionSecret.storage.existingSecret is required when storage.type=MONGODB and mongodb.enabled=false" }}
+{{- end }}
+
+{{- if and $usesRedis (not .Values.redis.enabled) (not $hasCacheSecret) }}
+{{- fail "connectionSecret.cache.existingSecret is required when cache.type=REDIS and redis.enabled=false" }}
+{{- end }}
+
+{{- if and $hasStorageSecret $usesMongo (eq .Values.connectionSecret.storage.key "") }}
+{{- fail "connectionSecret.storage.key must be set when connectionSecret.storage.existingSecret is used with storage.type=MONGODB" }}
+{{- end }}
+
+{{- if and $hasCacheSecret $usesRedis (eq .Values.connectionSecret.cache.key "") }}
+{{- fail "connectionSecret.cache.key must be set when connectionSecret.cache.existingSecret is used with cache.type=REDIS" }}
+{{- end }}

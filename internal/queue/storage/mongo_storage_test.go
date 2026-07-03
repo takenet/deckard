@@ -409,10 +409,10 @@ func testFindBatch(t *testing.T, limit *int64, expectedBatch *int32) {
 	expectedProjection := map[string]int{"id": 1, "queue": 1, "_id": 0}
 	expectedComment := "testFindBatch"
 	messages, err := storage.Find(context.Background(), &FindOptions{
-		Limit:        *limit,
-		Comment:      expectedComment,
-		Sort:         expectedSort,
-		Projection:   &expectedProjection,
+		Limit:          *limit,
+		Comment:        expectedComment,
+		Sort:           expectedSort,
+		Projection:     &expectedProjection,
 		InternalFilter: &InternalFilter{Queue: expectedQueue},
 	})
 

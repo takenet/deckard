@@ -53,13 +53,19 @@ spec:
               value: {{ quote .Values.audit.enabled }}
             - name: DECKARD_HOUSEKEEPER_ENABLED
               value: {{ quote .Values.housekeeper.self.enabled }}
-            {{- if (include "deckard.storage.uri" .) }}
+            {{- if eq (include "deckard.shouldSetStorageURI" .) "true" }}
             - name: DECKARD_STORAGE_URI
-              value: {{ include "deckard.storage.uri" . | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "deckard.storageConnectionSecretName" . }}
+                  key: {{ .Values.connectionSecret.storage.key }}
             {{- end }}
-            {{- if (include "deckard.cache.uri" .) }}
+            {{- if eq (include "deckard.shouldSetCacheURI" .) "true" }}
             - name: DECKARD_CACHE_URI
-              value: {{ include "deckard.cache.uri" . | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "deckard.cacheConnectionSecretName" . }}
+                  key: {{ .Values.connectionSecret.cache.key }}
             {{- end }}
             - name: DECKARD_REDIS_DB
               value: {{ quote .Values.cache.redis.database }}

@@ -122,14 +122,90 @@ Define Cache URI
 {{- if eq .Values.cache.type "REDIS" }}
 {{- if .Values.redis.enabled }}
 {{- if eq .Values.redis.architecture "standalone" }}
-{{- printf "redis://:%s@%s.%s.svc:%s/%s" .Values.redis.auth.password (include "deckard.redis.fullname" .) .Release.Namespace (toString .Values.redis.service.ports.redis) (toString .Values.cache.redis.database) }}
+{{- printf "redis://:%s@%s-master.%s.svc:%s/%s" .Values.redis.auth.password (include "deckard.redis.fullname" .) .Release.Namespace (toString .Values.redis.service.ports.redis) (toString .Values.cache.redis.database) }}
 {{- else }}
 {{- printf "redis://:%s@%s-headless.%s.svc:%s/%s" .Values.redis.auth.password (include "deckard.redis.fullname" .) .Release.Namespace (toString .Values.redis.service.ports.redis) (toString .Values.cache.redis.database) }}
 {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+Storage connection secret name
+*/}}
+{{- define "deckard.storageConnectionSecretName" -}}
+{{- if .Values.connectionSecret.storage.existingSecret }}
+{{- .Values.connectionSecret.storage.existingSecret -}}
 {{- else }}
-{{- .Values.cache.uri }}
+{{- printf "%s-storage" (include "deckard.fullname" .) }}
 {{- end }}
 {{- end }}
+
+{{/*
+Cache connection secret name
+*/}}
+{{- define "deckard.cacheConnectionSecretName" -}}
+{{- if .Values.connectionSecret.cache.existingSecret }}
+{{- .Values.connectionSecret.cache.existingSecret -}}
+{{- else }}
+{{- printf "%s-cache" (include "deckard.fullname" .) }}
+{{- end }}
+{{- end }}
+
+{{/*
+Whether the chart should create the storage connection secret
+*/}}
+{{- define "deckard.shouldCreateStorageConnectionSecret" -}}
+{{- if .Values.connectionSecret.storage.existingSecret -}}
+false
+{{- else if ne (include "deckard.storage.uri" .) "" -}}
+true
+{{- else -}}
+false
+{{- end }}
+{{- end }}
+
+{{/*
+Whether the chart should create the cache connection secret
+*/}}
+{{- define "deckard.shouldCreateCacheConnectionSecret" -}}
+{{- if .Values.connectionSecret.cache.existingSecret -}}
+false
+{{- else if ne (include "deckard.cache.uri" .) "" -}}
+true
+{{- else -}}
+false
+{{- end }}
+{{- end }}
+
+{{/*
+Whether storage URI env should be configured
+*/}}
+{{- define "deckard.shouldSetStorageURI" -}}
+{{- if eq .Values.storage.type "MONGODB" -}}
+{{- if or (ne .Values.connectionSecret.storage.existingSecret "") (and .Values.mongodb.enabled (ne (include "deckard.storage.uri" .) "")) -}}
+true
+{{- else -}}
+false
+{{- end -}}
+{{- else -}}
+false
+{{- end -}}
+{{- end }}
+
+{{/*
+Whether cache URI env should be configured
+*/}}
+{{- define "deckard.shouldSetCacheURI" -}}
+{{- if eq .Values.cache.type "REDIS" -}}
+{{- if or (ne .Values.connectionSecret.cache.existingSecret "") (and .Values.redis.enabled (ne (include "deckard.cache.uri" .) "")) -}}
+true
+{{- else -}}
+false
+{{- end -}}
+{{- else -}}
+false
+{{- end -}}
 {{- end }}
 
 {{/*
@@ -143,8 +219,6 @@ Define Storage URI
 {{- else }}
 {{- printf "mongodb://%s:%s@%s-headless.%s.svc:%s/admin?ssl=false" .Values.mongodb.auth.rootUser .Values.mongodb.auth.rootPassword (include "deckard.mongodb.fullname" .) .Release.Namespace (toString .Values.mongodb.service.ports.mongodb) }}
 {{- end }}
-{{- else }}
-{{- .Values.storage.uri }}
 {{- end }}
 {{- end }}
 {{- end }}
