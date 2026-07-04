@@ -121,12 +121,13 @@ jobs:
         run: |
           cat <(echo -e "${{ secrets.JRELEASER_GPG_SECRET_KEY }}") | gpg --batch --import
           KEY_ID="$(gpg --list-secret-keys --keyid-format LONG --with-colons | awk -F: '/^sec:/ { print $5; exit }')"
-          if [[ -z "${KEY_ID}" ]]; then
+          FINGERPRINT="$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr:/ { print $10; exit }')"
+          if [[ -z "${KEY_ID}" || -z "${FINGERPRINT}" ]]; then
             echo "No GPG secret key found after import" >&2
             exit 1
           fi
-          # Set ultimate trust so GPG does not consider the key unusable in non-interactive mode
-          echo "${KEY_ID}:6:" | gpg --batch --import-ownertrust
+          # Set ultimate trust using full fingerprint (import-ownertrust requires fingerprint, not key ID)
+          echo "${FINGERPRINT}:6:" | gpg --batch --import-ownertrust
           gpg --list-secret-keys --keyid-format LONG
           echo "key_id=${KEY_ID}" >> "$GITHUB_OUTPUT"
 
