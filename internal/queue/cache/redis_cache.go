@@ -38,6 +38,8 @@ const (
 	containsElement      = "contains"
 	moveFilteredElements = "move_primary_pool"
 	unlockElements       = "unlock_elements"
+	compareAndDelete     = "compare_and_delete"
+	compareAndExpire     = "compare_and_expire"
 
 	POOL_PREFIX            = "deckard:queue:"
 	PROCESSING_POOL_SUFFIX = ":tmp"
@@ -94,6 +96,8 @@ func NewRedisCache(ctx context.Context) (*RedisCache, error) {
 			unlockElements:       redis.NewScript(unlockElementsScript),
 			addElements:          redis.NewScript(addElementsScript),
 			containsElement:      redis.NewScript(containsElementScript),
+			compareAndDelete:     redis.NewScript(compareAndDeleteScript),
+			compareAndExpire:     redis.NewScript(compareAndExpireScript),
 		},
 	}, nil
 }
@@ -569,12 +573,12 @@ func (cache *RedisCache) SetNX(ctx context.Context, key string, value string, tt
 
 	prefixedKey := fmt.Sprint("deckard:", key)
 	cmd := cache.Client.SetNX(ctx, prefixedKey, value, ttl)
-	
+
 	result, err := cmd.Result()
 	if err != nil {
 		return false, fmt.Errorf("error setting key with SetNX: %w", err)
 	}
-	
+
 	return result, nil
 }
 
@@ -586,11 +590,11 @@ func (cache *RedisCache) Del(ctx context.Context, key string) error {
 
 	prefixedKey := fmt.Sprint("deckard:", key)
 	cmd := cache.Client.Del(ctx, prefixedKey)
-	
+
 	if cmd.Err() != nil {
 		return fmt.Errorf("error deleting key: %w", cmd.Err())
 	}
-	
+
 	return nil
 }
 
@@ -602,12 +606,44 @@ func (cache *RedisCache) Expire(ctx context.Context, key string, ttl time.Durati
 
 	prefixedKey := fmt.Sprint("deckard:", key)
 	cmd := cache.Client.Expire(ctx, prefixedKey, ttl)
-	
+
 	if cmd.Err() != nil {
 		return fmt.Errorf("error setting TTL on key: %w", cmd.Err())
 	}
-	
+
 	return nil
+}
+
+func (cache *RedisCache) CompareAndDelete(ctx context.Context, key string, value string) (bool, error) {
+	execStart := dtime.Now()
+	defer func() {
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), metric.WithAttributes(attribute.String("op", "compare_and_delete")))
+	}()
+
+	prefixedKey := fmt.Sprint("deckard:", key)
+	cmd := cache.scripts[compareAndDelete].Run(ctx, cache.Client, []string{prefixedKey}, value)
+
+	if cmd.Err() != nil {
+		return false, fmt.Errorf("error comparing and deleting key: %w", cmd.Err())
+	}
+
+	return cmd.Val().(int64) == 1, nil
+}
+
+func (cache *RedisCache) CompareAndExpire(ctx context.Context, key string, value string, ttl time.Duration) (bool, error) {
+	execStart := dtime.Now()
+	defer func() {
+		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), metric.WithAttributes(attribute.String("op", "compare_and_expire")))
+	}()
+
+	prefixedKey := fmt.Sprint("deckard:", key)
+	cmd := cache.scripts[compareAndExpire].Run(ctx, cache.Client, []string{prefixedKey}, value, ttl.Milliseconds())
+
+	if cmd.Err() != nil {
+		return false, fmt.Errorf("error comparing and expiring key: %w", cmd.Err())
+	}
+
+	return cmd.Val().(int64) == 1, nil
 }
 
 // activePool returns the name of the active pool of messages.

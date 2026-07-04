@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
@@ -229,4 +230,79 @@ func TestListQueuesWithSpecificPatternIntegration(t *testing.T) {
 	require.Contains(t, result, "prod_queue_2")
 	require.NotContains(t, result, "dev_queue_1")
 	require.NotContains(t, result, "test_queue_1")
+}
+
+// TestCompareAndDeleteIntegration tests that CompareAndDelete only deletes a key
+// when the current value matches the expected one, and is a no-op otherwise.
+func TestCompareAndDeleteIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
+	config.Configure(true)
+	config.RedisAddress.Set("localhost")
+
+	cache, err := NewRedisCache(ctx)
+	require.NoError(t, err)
+
+	key := "compare_and_delete_test_key"
+	defer func() { _ = cache.Del(ctx, key) }()
+
+	require.NoError(t, cache.Set(ctx, key, "owner-1"))
+
+	// Should not delete when value does not match
+	deleted, err := cache.CompareAndDelete(ctx, key, "owner-2")
+	require.NoError(t, err)
+	require.False(t, deleted)
+
+	value, err := cache.Get(ctx, key)
+	require.NoError(t, err)
+	require.Equal(t, "owner-1", value)
+
+	// Should delete when value matches
+	deleted, err = cache.CompareAndDelete(ctx, key, "owner-1")
+	require.NoError(t, err)
+	require.True(t, deleted)
+
+	value, err = cache.Get(ctx, key)
+	require.NoError(t, err)
+	require.Empty(t, value)
+
+	// Should be a no-op when key no longer exists
+	deleted, err = cache.CompareAndDelete(ctx, key, "owner-1")
+	require.NoError(t, err)
+	require.False(t, deleted)
+}
+
+// TestCompareAndExpireIntegration tests that CompareAndExpire only refreshes the TTL
+// of a key when the current value matches the expected one.
+func TestCompareAndExpireIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
+	config.Configure(true)
+	config.RedisAddress.Set("localhost")
+
+	cache, err := NewRedisCache(ctx)
+	require.NoError(t, err)
+
+	key := "compare_and_expire_test_key"
+	defer func() { _ = cache.Del(ctx, key) }()
+
+	require.NoError(t, cache.Set(ctx, key, "owner-1"))
+
+	// Should not refresh TTL when value does not match
+	refreshed, err := cache.CompareAndExpire(ctx, key, "owner-2", time.Minute)
+	require.NoError(t, err)
+	require.False(t, refreshed)
+
+	// Should refresh TTL when value matches
+	refreshed, err = cache.CompareAndExpire(ctx, key, "owner-1", time.Minute)
+	require.NoError(t, err)
+	require.True(t, refreshed)
+
+	ttl := cache.Client.TTL(ctx, fmt.Sprint("deckard:", key))
+	require.NoError(t, ttl.Err())
+	require.Greater(t, ttl.Val(), time.Duration(0))
 }

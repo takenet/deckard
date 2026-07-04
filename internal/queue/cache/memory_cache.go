@@ -494,3 +494,24 @@ func (cache *MemoryCache) Expire(ctx context.Context, key string, ttl time.Durat
 	// No-op for memory cache - TTL not implemented for simplicity
 	return nil
 }
+
+func (cache *MemoryCache) CompareAndDelete(ctx context.Context, key string, value string) (bool, error) {
+	cache.lock.Lock()
+	defer cache.lock.Unlock()
+
+	if cache.keys[key] != value {
+		return false, nil
+	}
+
+	delete(cache.keys, key)
+
+	return true, nil
+}
+
+func (cache *MemoryCache) CompareAndExpire(ctx context.Context, key string, value string, ttl time.Duration) (bool, error) {
+	cache.lock.Lock()
+	defer cache.lock.Unlock()
+
+	// TTL not implemented for simplicity in memory cache, only the value ownership check is enforced
+	return cache.keys[key] == value, nil
+}
