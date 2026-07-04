@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/patrickmn/go-cache"
 	"github.com/stretchr/testify/require"
 	"github.com/takenet/deckard/internal/mocks"
 	"github.com/takenet/deckard/internal/queue/configuration"
+	"go.uber.org/mock/gomock"
 )
 
 var configurationCtx = context.Background()

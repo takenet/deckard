@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-redis/redis/extra/redisotel/v8"
-	"github.com/go-redis/redis/v8"
 	"github.com/meirf/gopart"
+	"github.com/redis/go-redis/extra/redisotel/v9"
+	"github.com/redis/go-redis/v9"
 	"github.com/takenet/deckard/internal/config"
 	"github.com/takenet/deckard/internal/dtime"
 	"github.com/takenet/deckard/internal/logger"
@@ -104,7 +104,13 @@ func waitForClient(options *redis.Options) (*redis.Client, error) {
 	redisClient := redis.NewClient(options)
 
 	// OpenTelemetry APM
-	redisClient.AddHook(redisotel.NewTracingHook())
+	if err := redisotel.InstrumentTracing(redisClient); err != nil {
+		if closeErr := redisClient.Close(); closeErr != nil {
+			return nil, fmt.Errorf("error setting up redis tracing and closing redis client: %w", errors.Join(err, closeErr))
+		}
+
+		return nil, fmt.Errorf("error setting up redis tracing: %w", err)
+	}
 
 	for i := 1; i <= config.CacheConnectionRetryAttempts.GetInt(); i++ {
 		var pingResult string
@@ -173,7 +179,6 @@ func (cache *RedisCache) Remove(ctx context.Context, queue string, ids ...string
 	return total, nil
 }
 
-// TODO: This should be optimized.
 // TODO: We should list queues using storage with iterator, and not redis. Rethink this usage
 func (cache *RedisCache) ListQueues(ctx context.Context, pattern string, poolType pool.PoolType) (queues []string, err error) {
 	execStart := dtime.Now()
@@ -197,13 +202,24 @@ func (cache *RedisCache) ListQueues(ctx context.Context, pattern string, poolTyp
 		searchPattern = cache.lockPool(pattern, LOCK_NACK)
 	}
 
-	result := cache.Client.Keys(context.Background(), searchPattern)
+	// Use SCAN instead of KEYS to avoid blocking Redis
+	data := make([]string, 0)
+	cursor := uint64(0)
+	for {
+		var keys []string
+		var err error
+		keys, cursor, err = cache.Client.Scan(context.Background(), cursor, searchPattern, 1000).Result()
 
-	if result.Err() != nil {
-		return nil, fmt.Errorf("error listing cache queues: %w", result.Err())
+		if err != nil {
+			return nil, fmt.Errorf("error listing cache queues: %w", err)
+		}
+
+		data = append(data, keys...)
+
+		if cursor == 0 {
+			break
+		}
 	}
-
-	data := result.Val()
 
 	var regex *regexp.Regexp
 	switch poolType {

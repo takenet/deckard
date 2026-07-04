@@ -1,0 +1,23 @@
+{{- $usesMongo := eq .Values.storage.type "MONGODB" -}}
+{{- $usesRedis := eq .Values.cache.type "REDIS" -}}
+{{- $hasStorageSecret := ne (include "deckard.storageConnectionSecretExistingSecret" .) "" -}}
+{{- $hasCacheSecret := ne (include "deckard.cacheConnectionSecretExistingSecret" .) "" -}}
+
+{{- $storageSecretKey := include "deckard.storageConnectionSecretKey" . -}}
+{{- $cacheSecretKey := include "deckard.cacheConnectionSecretKey" . -}}
+
+{{- if and $usesMongo (not .Values.mongodb.enabled) (not $hasStorageSecret) }}
+{{- fail "storage.connectionSecret.existingSecret is required when storage.type=MONGODB and mongodb.enabled=false (connectionSecret.storage.existingSecret is deprecated but still supported)" }}
+{{- end }}
+
+{{- if and $usesRedis (not .Values.redis.enabled) (not $hasCacheSecret) }}
+{{- fail "cache.connectionSecret.existingSecret is required when cache.type=REDIS and redis.enabled=false (connectionSecret.cache.existingSecret is deprecated but still supported)" }}
+{{- end }}
+
+{{- if and $usesMongo (or $hasStorageSecret .Values.mongodb.enabled) (eq $storageSecretKey "") }}
+{{- fail "storage.connectionSecret.key must be set when storage.type=MONGODB and a storage connection secret is used or generated (connectionSecret.storage.key is deprecated but still supported)" }}
+{{- end }}
+
+{{- if and $usesRedis (or $hasCacheSecret .Values.redis.enabled) (eq $cacheSecretKey "") }}
+{{- fail "cache.connectionSecret.key must be set when cache.type=REDIS and a cache connection secret is used or generated (connectionSecret.cache.key is deprecated but still supported)" }}
+{{- end }}

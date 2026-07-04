@@ -41,15 +41,26 @@ securityContext: {}
 
 containerPorts: []
 
+connectionSecret:
+  storage:
+    # Deprecated: use storage.connectionSecret instead.
+    existingSecret: ""
+    key: storage-uri
+  cache:
+    # Deprecated: use cache.connectionSecret instead.
+    existingSecret: ""
+    key: cache-uri
+
 storage:
   # Deckard's DECKARD_STORAGE_TYPE environment variable
   # Available options: MONGODB, MEMORY
   # Remember to set the mongodb.enabled to false if you want to use a existing MongoDB or a Memory storage
   type: MONGODB
-  # Deckard's DECKARD_STORAGE_URI environment variable.
-  # By default this chart will use the deployed MongoDB's URI
-  # Recommendation: Set the DECKARD_STORAGE_URI environment variable using the 'env' field using secret values
-  uri: ""
+  connectionSecret:
+    # Use an existing Secret for the storage connection instead of having the chart generate one.
+    # Direct storage URI overrides are not exposed through values.yaml; disable mongodb.enabled and provide the URI with this Secret.
+    existingSecret: ""
+    key: storage-uri
   mongodb:
     # Deckard's DECKARD_MONGODB_DATABASE environment variable
     database: "deckard"
@@ -87,10 +98,11 @@ cache:
   # Available options: REDIS, MEMORY
   # Remember to set the redis.enabled to false if you want to use a self-deployed Redis or a Memory storage
   type: REDIS
-  # Deckard's DECKARD_CACHE_URI environment variable.
-  # By default this chart will use the deployed Redis's URI
-  # Recommendation: Set the DECKARD_CACHE_URI environment variable using the 'env' field using secret values
-  uri: ""
+  connectionSecret:
+    # Use an existing Secret for the cache connection instead of having the chart generate one.
+    # Direct cache URI overrides are not exposed through values.yaml; disable redis.enabled and provide the URI with this Secret.
+    existingSecret: ""
+    key: cache-uri
   redis:
     # Deckard's DECKARD_REDIS_DB environment variable
     database: 0
@@ -193,13 +205,3 @@ housekeeper:
     enabled: true
     type: ClusterIP
     port: 8081
-
-  storage:
-    # By default the housekeeper will use same uri as the Deckard gRPC instance.
-    # You can use this field to modify the housekeeper storage uri
-    uri: ""
-
-  cache:
-    # By default the housekeeper will use same uri as the Deckard gRPC instance.
-    # You can use this field to modify the housekeeper cache uri
-    uri: ""
