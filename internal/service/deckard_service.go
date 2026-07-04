@@ -77,8 +77,7 @@ func (d *Deckard) ServeGRPCServer(ctx context.Context) (*grpc.Server, error) {
 	}
 
 	options := []grpc.ServerOption{
-		grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
-		grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor()),
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
 		getGrpcKeepaliveParams(),
 		grpc.MaxRecvMsgSize(maxMsgRecvSize),
 		grpc.MaxSendMsgSize(maxMsgSendSize),
