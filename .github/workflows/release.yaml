@@ -116,21 +116,18 @@ jobs:
       - name: Copy .proto
         run: mkdir -p java/src/main/proto && cp -r proto java/src/main/proto
 
-      - name: Install gpg secret key
-        run: |
-          # Install gpg secret key
-          cat <(echo -e "${{ secrets.JRELEASER_GPG_SECRET_KEY }}") | gpg --batch --import
-          # Verify gpg secret key
-          gpg --list-secret-keys --keyid-format LONG
-
       - id: gpg_key
-        name: Resolve GPG key id
+        name: Install gpg secret key
         run: |
+          cat <(echo -e "${{ secrets.JRELEASER_GPG_SECRET_KEY }}") | gpg --batch --import
           KEY_ID="$(gpg --list-secret-keys --keyid-format LONG --with-colons | awk -F: '/^sec:/ { print $5; exit }')"
           if [[ -z "${KEY_ID}" ]]; then
             echo "No GPG secret key found after import" >&2
             exit 1
           fi
+          # Set ultimate trust so GPG does not consider the key unusable in non-interactive mode
+          echo "${KEY_ID}:6:" | gpg --batch --import-ownertrust
+          gpg --list-secret-keys --keyid-format LONG
           echo "key_id=${KEY_ID}" >> "$GITHUB_OUTPUT"
 
       - name: Create maven settings.xml
