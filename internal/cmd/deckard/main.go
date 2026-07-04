@@ -217,35 +217,12 @@ func startHouseKeeperJobs(pool *queue.Queue) {
 	)
 }
 
-func scheduleTask(taskName string, lock *sync.Mutex, taskWaitGroup *sync.WaitGroup, duration time.Duration, fn func() bool) {
-	for {
-		select {
-		case <-time.After(duration):
-			taskWaitGroup.Add(1)
-			if lock != nil {
-				lock.Lock()
-			}
-
-			executeTask(taskName, fn)
-
-			if lock != nil {
-				lock.Unlock()
-			}
-			taskWaitGroup.Done()
-		case <-shutdown.Started:
-			logger.S(ctx).Debug("Stopping ", taskName, " scheduler.")
-
-			return
-		}
-	}
-}
-
 func scheduleTaskWithDistributedLock(taskName string, localLock *sync.Mutex, distributedLock queue.DistributedLock, taskWaitGroup *sync.WaitGroup, duration time.Duration, fn func() bool) {
 	for {
 		select {
 		case <-time.After(duration):
 			taskWaitGroup.Add(1)
-			
+
 			// Try to acquire distributed lock
 			lockTTL := config.HousekeeperDistributedExecutionLockTTL.GetDuration()
 			acquired, err := distributedLock.TryLock(ctx, taskName, lockTTL)
@@ -254,13 +231,13 @@ func scheduleTaskWithDistributedLock(taskName string, localLock *sync.Mutex, dis
 				taskWaitGroup.Done()
 				continue
 			}
-			
+
 			if !acquired {
 				logger.S(ctx).Debugf("Skipping task %s - already running on another instance", taskName)
 				taskWaitGroup.Done()
 				continue
 			}
-			
+
 			// Acquire local lock if needed
 			if localLock != nil {
 				localLock.Lock()
@@ -272,13 +249,13 @@ func scheduleTaskWithDistributedLock(taskName string, localLock *sync.Mutex, dis
 			if localLock != nil {
 				localLock.Unlock()
 			}
-			
+
 			// Release distributed lock
 			err = distributedLock.ReleaseLock(ctx, taskName)
 			if err != nil {
 				logger.S(ctx).Errorf("Error releasing distributed lock for task %s: %v", taskName, err)
 			}
-			
+
 			taskWaitGroup.Done()
 		case <-shutdown.Started:
 			logger.S(ctx).Debug("Stopping ", taskName, " scheduler.")
@@ -295,7 +272,7 @@ func isMetricsLeader(distributedLock queue.DistributedLock) bool {
 		logger.S(ctx).Errorf("Error checking metrics leader lock: %v", err)
 		return false
 	}
-	
+
 	if acquired {
 		// We are the leader, extend the lock
 		err = distributedLock.RefreshLock(ctx, "metrics_leader", leaderLockTTL)
@@ -304,7 +281,7 @@ func isMetricsLeader(distributedLock queue.DistributedLock) bool {
 		}
 		return true
 	}
-	
+
 	return false
 }
 

@@ -102,35 +102,6 @@ func ProcessLockPool(ctx context.Context, queue *Queue) {
 	unlockMessagesParallel(ctx, queue, lockNackQueues, cache.LOCK_NACK)
 }
 
-func unlockMessages(ctx context.Context, pool *Queue, queues []string, lockType cache.LockType) {
-	for i := range queues {
-		if shutdown.Ongoing() {
-			logger.S(ctx).Info("Shutdown started. Stopping unlock process.")
-
-			break
-		}
-
-		ids, err := pool.cache.UnlockMessages(ctx, queues[i], lockType)
-
-		if err != nil {
-			logger.S(ctx).Errorf("Error processing locks for queue '%s': %v", queues[i], err.Error())
-
-			continue
-		}
-
-		for index := range ids {
-			pool.auditor.Store(ctx, audit.Entry{
-				ID:     ids[index],
-				Queue:  queues[i],
-				Signal: audit.UNLOCK,
-				Reason: string(lockType),
-			})
-		}
-
-		metrics.HousekeeperUnlock.Add(ctx, int64(len(ids)), metric.WithAttributes(attribute.String("queue", message.GetQueuePrefix(queues[i])), attribute.String("lock_type", string(lockType))))
-	}
-}
-
 func unlockMessagesParallel(ctx context.Context, pool *Queue, queues []string, lockType cache.LockType) {
 	if len(queues) == 0 {
 		return
@@ -154,7 +125,7 @@ func unlockMessagesParallel(ctx context.Context, pool *Queue, queues []string, l
 		wg.Add(1)
 		go func(queueName string) {
 			defer wg.Done()
-			
+
 			// Acquire semaphore
 			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
