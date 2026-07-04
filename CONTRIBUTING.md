@@ -166,7 +166,7 @@ To run project tests you must first generate all mock files with the following c
 make gen-mocks
 ```
 
-> You also need to have [mockgen](https://github.com/golang/mock) installed.
+> You also need to have [mockgen](https://github.com/uber-go/mock) installed.
 >
 > Considerations:
 > - Any modification in any interface must be followed by the generation of the mock files.

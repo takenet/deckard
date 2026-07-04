@@ -7,11 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/takenet/deckard"
@@ -24,6 +22,7 @@ import (
 	"github.com/takenet/deckard/internal/queue/message"
 	"github.com/takenet/deckard/internal/queue/score"
 	"github.com/takenet/deckard/internal/queue/storage"
+	"go.uber.org/mock/gomock"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
@@ -31,6 +30,27 @@ import (
 )
 
 var ctx = context.Background()
+
+func newBlockingClientConn(ctx context.Context, target string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+	conn, err := grpc.NewClient(target, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	conn.Connect()
+
+	for {
+		state := conn.GetState()
+		if state == connectivity.Ready {
+			return conn, nil
+		}
+
+		if !conn.WaitForStateChange(ctx, state) {
+			_ = conn.Close()
+			return nil, ctx.Err()
+		}
+	}
+}
 
 func TestMessageSizeLimitDeckardGRPCServeIntegration(t *testing.T) {
 	if testing.Short() {
@@ -57,12 +77,10 @@ func TestMessageSizeLimitDeckardGRPCServeIntegration(t *testing.T) {
 	defer server.Stop()
 
 	// Set up a connection to the server.
-	ctx, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	conn, err := grpc.DialContext(ctx, fmt.Sprint("localhost:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
-	if err != nil {
-		log.Fatalf("did not connect: %v", err)
-	}
+	conn, err := newBlockingClientConn(ctx, fmt.Sprint("localhost:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
 	defer conn.Close()
 
 	client := deckard.NewDeckardClient(conn)
@@ -105,12 +123,10 @@ func TestMemoryDeckardGRPCServeIntegration(t *testing.T) {
 	defer server.Stop()
 
 	// Set up a connection to the server.
-	ctx, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	conn, err := grpc.DialContext(ctx, fmt.Sprint("localhost:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
-	if err != nil {
-		log.Fatalf("did not connect: %v", err)
-	}
+	conn, err := newBlockingClientConn(ctx, fmt.Sprint("localhost:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
 	defer conn.Close()
 
 	client := deckard.NewDeckardClient(conn)
@@ -163,12 +179,10 @@ func TestDeckardServerTLS(t *testing.T) {
 	require.NoError(t, err)
 
 	// Set up a connection to the server.
-	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	conn, err := grpc.DialContext(ctx, fmt.Sprint("0.0.0.0:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(cert), grpc.WithBlock())
-	if err != nil {
-		log.Fatalf("did not connect: %v", err)
-	}
+	conn, err := newBlockingClientConn(ctx, fmt.Sprint("localhost:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(cert))
+	require.NoError(t, err)
 	defer conn.Close()
 
 	client := deckard.NewDeckardClient(conn)
@@ -218,12 +232,10 @@ func TestDeckardMutualTLS(t *testing.T) {
 	require.NoError(t, err)
 
 	// Set up a connection to the server.
-	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	conn, err := grpc.DialContext(ctx, fmt.Sprint("0.0.0.0:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(cert), grpc.WithBlock())
-	if err != nil {
-		log.Fatalf("did not connect: %v", err)
-	}
+	conn, err := newBlockingClientConn(ctx, fmt.Sprint("localhost:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(cert))
+	require.NoError(t, err)
 	defer conn.Close()
 
 	client := deckard.NewDeckardClient(conn)
@@ -732,7 +744,8 @@ func loadClientCredentials(loadClientCert bool) (credentials.TransportCredential
 	}
 
 	config := &tls.Config{
-		RootCAs: certPool,
+		RootCAs:    certPool,
+		ServerName: "api.deckard.test",
 	}
 
 	if loadClientCert {
@@ -781,10 +794,8 @@ func TestDeckardServerKeepalive(t *testing.T) {
 		// Set up a connection to the server.
 		ctx, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
 		defer cancel()
-		conn, err := grpc.DialContext(ctx, fmt.Sprint("localhost:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
-		if err != nil {
-			log.Fatalf("did not connect: %v", err)
-		}
+		conn, err := newBlockingClientConn(ctx, fmt.Sprint("localhost:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(insecure.NewCredentials()))
+		require.NoError(t, err)
 		defer conn.Close()
 
 		client := deckard.NewDeckardClient(conn)
@@ -830,10 +841,10 @@ func TestDeckardServerKeepalive(t *testing.T) {
 		defer server.Stop()
 
 		// Set up a connection to the server.
-		conn, err := grpc.DialContext(context.Background(), fmt.Sprint("localhost:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
-		if err != nil {
-			log.Fatalf("did not connect: %v", err)
-		}
+		dialCtx, dialCancel := context.WithTimeout(ctx, 3*time.Second)
+		defer dialCancel()
+		conn, err := newBlockingClientConn(dialCtx, fmt.Sprint("localhost:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(insecure.NewCredentials()))
+		require.NoError(t, err)
 		defer conn.Close()
 
 		waitCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -871,15 +882,14 @@ func TestDeckardServerKeepalive(t *testing.T) {
 		defer server.Stop()
 
 		// Set up a connection to the server.
-		conn, err := grpc.DialContext(
-			context.Background(),
+		dialCtx, dialCancel := context.WithTimeout(ctx, 3*time.Second)
+		defer dialCancel()
+		conn, err := newBlockingClientConn(
+			dialCtx,
 			fmt.Sprint("localhost:", config.GrpcPort.GetInt()),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
-			grpc.WithBlock(),
 		)
-		if err != nil {
-			log.Fatalf("did not connect: %v", err)
-		}
+		require.NoError(t, err)
 		defer conn.Close()
 
 		timeoutDuration := 5 * time.Second

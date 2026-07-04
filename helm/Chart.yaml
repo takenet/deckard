@@ -53,12 +53,12 @@ maintainers:
 
 dependencies:
   - name: mongodb
-    version: 13.15.3
-    repository: https://charts.bitnami.com/bitnami
+    version: 19.1.16
+    repository: oci://registry-1.docker.io/bitnamicharts
     condition: mongodb.enabled
   - name: redis
-    version: 17.11.6
-    repository: https://charts.bitnami.com/bitnami
+    version: 27.0.13
+    repository: oci://registry-1.docker.io/bitnamicharts
     condition: redis.enabled
 
 sources:

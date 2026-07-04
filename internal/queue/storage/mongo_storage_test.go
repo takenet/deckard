@@ -6,16 +6,26 @@ import (
 	"os"
 	"testing"
 
+	"github.com/elliotchance/orderedmap/v2"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/takenet/deckard/internal/config"
 	"github.com/takenet/deckard/internal/queue/message"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
+
+type failingFindOptionsLister struct{}
+
+func (failingFindOptionsLister) List() []func(*options.FindOptions) error {
+	return []func(*options.FindOptions) error{
+		func(*options.FindOptions) error {
+			return fmt.Errorf("forced options application error")
+		},
+	}
+}
 
 const DEL_MANY = "DeleteMany"
 const FIND = "Find"
@@ -48,19 +58,19 @@ func newMockCollectionErr(err error) *MockCollection {
 	}
 }
 
-func (col *MockCollection) UpdateOne(ctx context.Context, filter interface{}, update interface{}, opts ...*options.UpdateOptions) (*mongo.UpdateResult, error) {
+func (col *MockCollection) UpdateOne(ctx context.Context, filter interface{}, update interface{}, opts ...options.Lister[options.UpdateOneOptions]) (*mongo.UpdateResult, error) {
 	return nil, nil
 }
 func (col *MockCollection) BulkWrite(ctx context.Context, models []mongo.WriteModel,
-	opts ...*options.BulkWriteOptions) (*mongo.BulkWriteResult, error) {
+	opts ...options.Lister[options.BulkWriteOptions]) (*mongo.BulkWriteResult, error) {
 	return nil, nil
 }
 func (col *MockCollection) Distinct(ctx context.Context, fieldName string, filter interface{},
-	opts ...*options.DistinctOptions) ([]interface{}, error) {
-	return nil, nil
+	opts ...options.Lister[options.DistinctOptions]) *mongo.DistinctResult {
+	return nil
 }
 func (col *MockCollection) DeleteMany(ctx context.Context, filter interface{},
-	opts ...*options.DeleteOptions) (*mongo.DeleteResult, error) {
+	opts ...options.Lister[options.DeleteManyOptions]) (*mongo.DeleteResult, error) {
 	details := col.mockDetails[DEL_MANY]
 	details.args = append(details.args, filter)
 	details.calls++
@@ -68,15 +78,29 @@ func (col *MockCollection) DeleteMany(ctx context.Context, filter interface{},
 		DeletedCount: 1,
 	}, details.err
 }
-func (col *MockCollection) CountDocuments(ctx context.Context, filter interface{}, opts ...*options.CountOptions) (int64, error) {
+func (col *MockCollection) CountDocuments(ctx context.Context, filter interface{}, opts ...options.Lister[options.CountOptions]) (int64, error) {
 	return 0, nil
 }
 func (col *MockCollection) Find(ctx context.Context, filter interface{},
-	opts ...*options.FindOptions) (cur *mongo.Cursor, err error) {
+	opts ...options.Lister[options.FindOptions]) (cur *mongo.Cursor, err error) {
 	details := col.mockDetails[FIND]
 	details.args = append(details.args, filter, opts)
 	details.calls++
+	if details.err != nil {
+		return nil, details.err
+	}
 	return mongo.NewCursorFromDocuments(make([]interface{}, 0), nil, nil)
+}
+
+func resolveFindOptions(lister options.Lister[options.FindOptions]) (*options.FindOptions, error) {
+	fo := &options.FindOptions{}
+	for _, fn := range lister.List() {
+		if err := fn(fo); err != nil {
+			return nil, err
+		}
+	}
+
+	return fo, nil
 }
 
 func TestMongoStorageIntegration(t *testing.T) {
@@ -190,7 +214,7 @@ func TestGetMongoMessageWithQueue(t *testing.T) {
 func TestGetMongoMessageWithBreakpointGt(t *testing.T) {
 	t.Parallel()
 
-	objectId := primitive.NewObjectID()
+	objectId := bson.NewObjectID()
 
 	message, err := getMongoMessage(&FindOptions{
 		InternalFilter: &InternalFilter{
@@ -213,7 +237,7 @@ func TestGetMongoMessageWithBreakpointGt(t *testing.T) {
 func TestGetMongoMessageWithBreakpointLte(t *testing.T) {
 	t.Parallel()
 
-	objectId := primitive.NewObjectID()
+	objectId := bson.NewObjectID()
 
 	message, err := getMongoMessage(&FindOptions{
 		InternalFilter: &InternalFilter{
@@ -236,8 +260,8 @@ func TestGetMongoMessageWithBreakpointLte(t *testing.T) {
 func TestGetMongoMessageWithBreakpointGtAndLte(t *testing.T) {
 	t.Parallel()
 
-	objectId := primitive.NewObjectID()
-	objectId2 := primitive.NewObjectID()
+	objectId := bson.NewObjectID()
+	objectId2 := bson.NewObjectID()
 
 	message, err := getMongoMessage(&FindOptions{
 		InternalFilter: &InternalFilter{
@@ -365,33 +389,76 @@ func TestFindWithLimitAndBatchVariations(t *testing.T) {
 	testFindBatch(t, &lim, &batch)
 }
 
+func TestResolveFindOptionsShouldReturnErrorWhenApplyFails(t *testing.T) {
+	t.Parallel()
+
+	_, err := resolveFindOptions(failingFindOptionsLister{})
+
+	require.ErrorContains(t, err, "forced options application error")
+}
+
 func testFindBatch(t *testing.T, limit *int64, expectedBatch *int32) {
 	colMock := newMockCollection()
 	storage := &MongoStorage{
 		messagesCollection: colMock,
 	}
+	expectedQueue := "queue-test"
+	expectedSort := orderedmap.NewOrderedMap[string, int]()
+	expectedSort.Set("created_at", 1)
+	expectedSort.Set("priority", -1)
+	expectedProjection := map[string]int{"id": 1, "queue": 1, "_id": 0}
 	expectedComment := "testFindBatch"
 	messages, err := storage.Find(context.Background(), &FindOptions{
-		Limit:   *limit,
-		Comment: expectedComment,
+		Limit:          *limit,
+		Comment:        expectedComment,
+		Sort:           expectedSort,
+		Projection:     &expectedProjection,
+		InternalFilter: &InternalFilter{Queue: expectedQueue},
 	})
 
 	details := colMock.mockDetails[FIND]
-	findOpt, ok := details.args[1].([]*options.FindOptions) // Type assertion
-	if !ok {
-		fmt.Println("Type assertion failed")
-		return
-	}
+	listerOpts, ok := details.args[1].([]options.Lister[options.FindOptions])
+	require.Truef(t, ok, "find options should be []options.Lister[options.FindOptions], got %T", details.args[1])
 
 	require.NoError(t, err)
 	require.Equal(t, 0, len(messages), "should return no messages")
 	require.Equal(t, 1, details.calls, "should call find once")
-	require.Equal(t, 1, len(findOpt), "only one find option was used")
-	require.Equal(t, &options.FindOptions{
-		Projection: &bson.M{},
-		Sort:       &bson.D{},
-		Limit:      limit,
-		BatchSize:  expectedBatch,
-		Comment:    &expectedComment,
-	}, findOpt[0], fmt.Sprintf("should call with batch size = %d, lim = %d and empty projection and sort", *expectedBatch, *limit))
+	require.Equal(t, 1, len(listerOpts), "only one find option was used")
+
+	// Resolve the builder to get concrete FindOptions for assertion
+	fo, optionsErr := resolveFindOptions(listerOpts[0])
+	require.NoError(t, optionsErr)
+	require.Equal(t, bson.M{"queue": expectedQueue}, details.args[0], "find filter should match internal filter")
+	require.Equal(t, limit, fo.Limit, fmt.Sprintf("expected limit = %d", *limit))
+	require.Equal(t, expectedBatch, fo.BatchSize, fmt.Sprintf("expected batch size = %d", *expectedBatch))
+	require.NotNil(t, fo.Projection, "projection should be set")
+	switch projection := fo.Projection.(type) {
+	case bson.M:
+		require.Equal(t, bson.M{"id": 1, "queue": 1, "_id": 0}, projection, "projection passthrough should be preserved")
+	case *bson.M:
+		require.Equal(t, bson.M{"id": 1, "queue": 1, "_id": 0}, *projection, "projection passthrough should be preserved")
+	default:
+		require.Failf(t, "unexpected projection type", "got %T", fo.Projection)
+	}
+	require.NotNil(t, fo.Sort, "sort should be set")
+	switch sort := fo.Sort.(type) {
+	case bson.D:
+		require.Equal(t, bson.D{{Key: "created_at", Value: 1}, {Key: "priority", Value: -1}}, sort, "sort passthrough should be preserved")
+	case *bson.D:
+		require.Equal(t, bson.D{{Key: "created_at", Value: 1}, {Key: "priority", Value: -1}}, *sort, "sort passthrough should be preserved")
+	default:
+		require.Failf(t, "unexpected sort type", "got %T", fo.Sort)
+	}
+	require.NotNil(t, fo.Comment, "comment should be set")
+	switch comment := fo.Comment.(type) {
+	case string:
+		require.Equal(t, expectedComment, comment, "comment passthrough should be preserved")
+	case *interface{}:
+		require.NotNil(t, comment, "comment interface pointer should not be nil")
+		value, ok := (*comment).(string)
+		require.True(t, ok, "comment should contain string value")
+		require.Equal(t, expectedComment, value, "comment passthrough should be preserved")
+	default:
+		require.Failf(t, "unexpected comment type", "got %T", fo.Comment)
+	}
 }

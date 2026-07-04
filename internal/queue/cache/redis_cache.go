@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-redis/redis/extra/redisotel/v8"
-	"github.com/go-redis/redis/v8"
 	"github.com/meirf/gopart"
+	"github.com/redis/go-redis/extra/redisotel/v9"
+	"github.com/redis/go-redis/v9"
 	"github.com/takenet/deckard/internal/config"
 	"github.com/takenet/deckard/internal/dtime"
 	"github.com/takenet/deckard/internal/logger"
@@ -104,7 +104,13 @@ func waitForClient(options *redis.Options) (*redis.Client, error) {
 	redisClient := redis.NewClient(options)
 
 	// OpenTelemetry APM
-	redisClient.AddHook(redisotel.NewTracingHook())
+	if err := redisotel.InstrumentTracing(redisClient); err != nil {
+		if closeErr := redisClient.Close(); closeErr != nil {
+			return nil, fmt.Errorf("error setting up redis tracing and closing redis client: %w", errors.Join(err, closeErr))
+		}
+
+		return nil, fmt.Errorf("error setting up redis tracing: %w", err)
+	}
 
 	for i := 1; i <= config.CacheConnectionRetryAttempts.GetInt(); i++ {
 		var pingResult string
