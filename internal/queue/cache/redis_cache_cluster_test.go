@@ -4,6 +4,8 @@ import (
 	"os"
 	"testing"
 
+	"fmt"
+
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/takenet/deckard/internal/config"
@@ -116,6 +118,54 @@ func TestRedisCacheClusterListQueuesIntegration(t *testing.T) {
 		require.NotContains(t, q, "{")
 		require.NotContains(t, q, "}")
 	}
+
+	cache.Flush(ctx)
+}
+
+// TestRedisCacheClusterListQueuesFansOutAcrossShards verifies that ListQueues finds queues
+// regardless of which cluster shard they hash to. A naive single ClusterClient.Scan call is a
+// "keyless" command that go-redis routes to only one (round-robin-picked) master node per call,
+// so it would silently miss queues living on other shards. Inserting enough distinctly-named
+// queues all but guarantees they spread across all 3 masters of the local test cluster, so this
+// test fails if ListQueues stops fanning out via ForEachMaster.
+func TestRedisCacheClusterListQueuesFansOutAcrossShards(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
+	// Check if cluster test environment is available
+	if os.Getenv("REDIS_CLUSTER_TEST") == "" {
+		t.Skip("REDIS_CLUSTER_TEST environment variable not set, skipping cluster tests")
+	}
+
+	config.Configure(true)
+	config.RedisClusterMode.Set(true)
+	config.RedisClusterAddresses.Set("localhost:7000,localhost:7001,localhost:7002")
+
+	cache, err := NewRedisCache(ctx)
+	require.NoError(t, err)
+
+	cache.Flush(ctx)
+
+	const queueCount = 30
+	expectedQueues := make([]string, 0, queueCount)
+
+	for i := 0; i < queueCount; i++ {
+		queueName := fmt.Sprintf("fanout-test-queue-%d", i)
+		expectedQueues = append(expectedQueues, queueName)
+
+		_, err = cache.Insert(ctx, queueName, &message.Message{
+			ID:          fmt.Sprintf("msg-%d", i),
+			Description: "test message",
+			Queue:       queueName,
+			Score:       1,
+		})
+		require.NoError(t, err)
+	}
+
+	activeQueues, err := cache.ListQueues(ctx, "*", pool.PRIMARY_POOL)
+	require.NoError(t, err)
+	require.ElementsMatch(t, expectedQueues, activeQueues, "ListQueues must find every queue regardless of which shard it hashes to")
 
 	cache.Flush(ctx)
 }

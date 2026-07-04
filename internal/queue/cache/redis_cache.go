@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/meirf/gopart"
@@ -292,22 +293,44 @@ func (cache *RedisCache) ListQueues(ctx context.Context, pattern string, poolTyp
 		searchPattern = cache.lockPool(pattern, LOCK_NACK)
 	}
 
-	// Use SCAN instead of KEYS to avoid blocking Redis
-	data := make([]string, 0)
-	cursor := uint64(0)
-	for {
-		var keys []string
-		var err error
-		keys, cursor, err = cache.Client.Scan(context.Background(), cursor, searchPattern, 1000).Result()
+	// Use SCAN instead of KEYS to avoid blocking Redis.
+	//
+	// SCAN is a "keyless" command, so in cluster mode go-redis cannot route it by hash slot: it
+	// picks one shard per call (round-robin by default) and each shard only knows about its own
+	// keyspace/cursor. Scanning through a single ClusterClient.Scan call would therefore silently
+	// miss queues living on other shards (and could even hand a shard's cursor to a different
+	// shard). We fan out with ForEachMaster and scan every master node's keyspace independently.
+	var data []string
+	if cache.clusterMode {
+		clusterClient, ok := cache.Client.(*redis.ClusterClient)
+		if !ok {
+			return nil, errors.New("cluster mode enabled but redis client is not a *redis.ClusterClient")
+		}
+
+		var mu sync.Mutex
+		data = make([]string, 0)
+
+		err = clusterClient.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+			keys, scanErr := scanKeys(ctx, master, searchPattern)
+			if scanErr != nil {
+				return scanErr
+			}
+
+			mu.Lock()
+			data = append(data, keys...)
+			mu.Unlock()
+
+			return nil
+		})
+
+		if err != nil {
+			return nil, fmt.Errorf("error listing cache queues across cluster shards: %w", err)
+		}
+	} else {
+		data, err = scanKeys(ctx, cache.Client, searchPattern)
 
 		if err != nil {
 			return nil, fmt.Errorf("error listing cache queues: %w", err)
-		}
-
-		data = append(data, keys...)
-
-		if cursor == 0 {
-			break
 		}
 	}
 
@@ -332,6 +355,33 @@ func (cache *RedisCache) ListQueues(ctx context.Context, pattern string, poolTyp
 	}
 
 	return data, nil
+}
+
+// scanKeys iterates the full SCAN cursor sequence against a single node/client and returns all
+// matching keys. Must be called once per shard in cluster mode (see ListQueues) since SCAN cursors
+// are only valid against the node that issued them.
+func scanKeys(ctx context.Context, client redis.Cmdable, pattern string) ([]string, error) {
+	keys := make([]string, 0)
+	cursor := uint64(0)
+
+	for {
+		var batch []string
+		var err error
+
+		batch, cursor, err = client.Scan(ctx, cursor, pattern, 1000).Result()
+
+		if err != nil {
+			return nil, err
+		}
+
+		keys = append(keys, batch...)
+
+		if cursor == 0 {
+			break
+		}
+	}
+
+	return keys, nil
 }
 
 // parseQueueKey converts a raw Redis key (as returned by SCAN) back into a plain
