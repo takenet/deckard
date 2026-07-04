@@ -6,6 +6,7 @@ import (
 
 	"github.com/takenet/deckard"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
@@ -15,6 +16,13 @@ func main() {
 
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	conn.Connect()
+	for state := conn.GetState(); state != connectivity.Ready; state = conn.GetState() {
+		if !conn.WaitForStateChange(context.Background(), state) {
+			log.Fatal("gRPC connection closed before becoming ready")
+		}
 	}
 
 	client := deckard.NewDeckardClient(conn)

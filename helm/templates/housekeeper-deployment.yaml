@@ -57,14 +57,14 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "deckard.storageConnectionSecretName" . }}
-                  key: {{ .Values.connectionSecret.storage.key }}
+                  key: {{ .Values.connectionSecret.storage.key | quote }}
             {{- end }}
             {{- if eq (include "deckard.shouldSetCacheURI" .) "true" }}
             - name: DECKARD_CACHE_URI
               valueFrom:
                 secretKeyRef:
                   name: {{ include "deckard.cacheConnectionSecretName" . }}
-                  key: {{ .Values.connectionSecret.cache.key }}
+                  key: {{ .Values.connectionSecret.cache.key | quote }}
             {{- end }}
             - name: DECKARD_REDIS_DB
               value: {{ quote .Values.cache.redis.database }}
