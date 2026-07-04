@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project
+  xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"
+>
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>ai.blip</groupId>
   <artifactId>deckard</artifactId>
-  <version>0.0.44-SNAPSHOT</version>
+  <version>0.1.0-SNAPSHOT</version>
 
   <name>${project.groupId}:${project.artifactId}</name>
   <description>Client for Deckard - A Highly Scalable Cyclic Priority Queue</description>
@@ -60,7 +64,8 @@
       <artifactId>grpc-stub</artifactId>
       <version>1.68.3</version>
     </dependency>
-    <dependency><!-- https://github.com/grpc/grpc-java/blob/master/README.md#generated-code -->
+    <dependency>
+      <!-- https://github.com/grpc/grpc-java/blob/master/README.md#generated-code -->
       <groupId>org.apache.tomcat</groupId>
       <artifactId>annotations-api</artifactId>
       <version>6.0.53</version>
@@ -156,8 +161,8 @@
         </executions>
         <configuration>
           <gpgArguments>
-              <arg>--pinentry-mode</arg>
-              <arg>loopback</arg>
+            <arg>--pinentry-mode</arg>
+            <arg>loopback</arg>
           </gpgArguments>
         </configuration>
       </plugin>
