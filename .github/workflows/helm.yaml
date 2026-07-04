@@ -2,7 +2,8 @@ name: Deploy Deckard Helm chart to Github Pages
 
 on:
   release:
-    types: [created]
+    types:
+      - released
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
