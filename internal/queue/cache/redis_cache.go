@@ -31,9 +31,9 @@ type RedisClient interface {
 }
 
 type RedisCache struct {
-	Client       RedisClient
-	scripts      map[string]*redis.Script
-	clusterMode  bool
+	Client      RedisClient
+	scripts     map[string]*redis.Script
+	clusterMode bool
 }
 
 var _ Cache = &RedisCache{}
@@ -62,16 +62,16 @@ var LOCK_NACK_POOL_REGEX = regexp.MustCompile("(.+)" + LOCK_NACK_SUFFIX + "$")
 
 func NewRedisCache(ctx context.Context) (*RedisCache, error) {
 	clusterMode := config.RedisClusterMode.GetBool()
-	
+
 	var client RedisClient
 	var err error
-	
+
 	if clusterMode {
 		client, err = createClusterClient(ctx)
 	} else {
 		client, err = createSingleNodeClient(ctx)
 	}
-	
+
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +194,13 @@ func waitForClusterClient(options *redis.ClusterOptions) (*redis.ClusterClient, 
 	clusterClient := redis.NewClusterClient(options)
 
 	// OpenTelemetry APM
-	clusterClient.AddHook(redisotel.NewTracingHook())
+	if err := redisotel.InstrumentTracing(clusterClient); err != nil {
+		if closeErr := clusterClient.Close(); closeErr != nil {
+			return nil, fmt.Errorf("error setting up redis cluster tracing and closing redis cluster client: %w", errors.Join(err, closeErr))
+		}
+
+		return nil, fmt.Errorf("error setting up redis cluster tracing: %w", err)
+	}
 
 	for i := 1; i <= config.CacheConnectionRetryAttempts.GetInt(); i++ {
 		var pingResult string
@@ -318,13 +324,7 @@ func (cache *RedisCache) ListQueues(ctx context.Context, pattern string, poolTyp
 	}
 
 	for i, queue := range data {
-		queue = strings.Replace(queue, POOL_PREFIX, "", 1)
-
-		if regex != nil {
-			queue = regex.ReplaceAllString(queue, "$1")
-		}
-
-		data[i] = queue
+		data[i] = cache.parseQueueKey(queue, regex)
 	}
 
 	if pool.PRIMARY_POOL == poolType {
@@ -332,6 +332,27 @@ func (cache *RedisCache) ListQueues(ctx context.Context, pattern string, poolTyp
 	}
 
 	return data, nil
+}
+
+// parseQueueKey converts a raw Redis key (as returned by SCAN) back into a plain
+// queue name by removing the pool prefix, any pool-type suffix matched by regex,
+// and, in cluster mode, the hash tag braces ("{" and "}") added by
+// activePool/processingPool/lockPool/lockPoolScore to keep a queue's keys in the
+// same hash slot. Those braces are an internal key-naming detail and must not
+// leak to callers.
+func (cache *RedisCache) parseQueueKey(key string, suffixRegex *regexp.Regexp) string {
+	queue := strings.Replace(key, POOL_PREFIX, "", 1)
+
+	if suffixRegex != nil {
+		queue = suffixRegex.ReplaceAllString(queue, "$1")
+	}
+
+	if cache.clusterMode {
+		queue = strings.Replace(queue, "{", "", 1)
+		queue = strings.Replace(queue, "}", "", 1)
+	}
+
+	return queue
 }
 
 func filterQueueSuffix(data []string) []string {
