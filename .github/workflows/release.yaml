@@ -2,11 +2,12 @@ name: Release
 
 on:
   release:
-    types: [created]
+    types:
+      - released
 
 env:
   KO_DOCKER_REPO: index.docker.io/blipai
-  GO_VERSION: 1.23
+  GO_VERSION: 1.26.4
   DOTNET_VERSION: 6.0.x
 
 jobs:
@@ -16,14 +17,14 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
 
       - name: Cache Go modules
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cache/go-build
@@ -57,7 +58,7 @@ jobs:
           tar -czvf deckard-linux-amd64.tar.gz -C exec deckard-linux-amd64
 
       - name: Publish
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             deckard-windows-amd64.exe.zip
@@ -67,14 +68,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Cache Go modules
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cache/go-build
@@ -84,7 +85,7 @@ jobs:
             ${{ runner.os }}-golang-
 
       - name: Setup Ko
-        uses: ko-build/setup-ko@v0.7
+        uses: ko-build/setup-ko@v0.10
 
       - name: Publish image
         env:
@@ -99,9 +100,15 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - id: release_version
+        name: Set release version
+        run: |
+          RELEASE_VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=${RELEASE_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@v5
         with:
           java-version: '11'
           distribution: 'temurin'
@@ -109,22 +116,35 @@ jobs:
       - name: Copy .proto
         run: mkdir -p java/src/main/proto && cp -r proto java/src/main/proto
 
-      - name: Install gpg secret key
+      - id: gpg_key
+        name: Install gpg secret key
         run: |
-          # Install gpg secret key
           cat <(echo -e "${{ secrets.JRELEASER_GPG_SECRET_KEY }}") | gpg --batch --import
-          # Verify gpg secret key
+          KEY_ID="$(gpg --list-secret-keys --keyid-format LONG --with-colons | awk -F: '/^sec:/ { print $5; exit }')"
+          FINGERPRINT="$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr:/ { print $10; exit }')"
+          if [[ -z "${KEY_ID}" || -z "${FINGERPRINT}" ]]; then
+            echo "No GPG secret key found after import" >&2
+            exit 1
+          fi
+          # Set ultimate trust using full fingerprint (import-ownertrust requires fingerprint, not key ID)
+          echo "${FINGERPRINT}:6:" | gpg --batch --import-ownertrust
           gpg --list-secret-keys --keyid-format LONG
+          echo "key_id=${KEY_ID}" >> "$GITHUB_OUTPUT"
 
       - name: Create maven settings.xml
         run: echo "${{secrets.MAVEN_CENTRAL_SETTINGS_XML}}" > ~/.m2/settings.xml
 
+      - name: Set Java package version
+        working-directory: java
+        run: mvn --no-transfer-progress --batch-mode versions:set -DnewVersion=${{ steps.release_version.outputs.version }} -DgenerateBackupPoms=false
+
       - name: Publish package
         working-directory: java
-        run: mvn --no-transfer-progress --batch-mode -Dgpg.passphrase=${{ secrets.JRELEASER_GPG_PASSPHRASE }} clean deploy -Ppublication
+        run: mvn --no-transfer-progress --batch-mode -Dgpg.keyname=${{ steps.gpg_key.outputs.key_id }} clean deploy -Ppublication
         env:
           MAVEN_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.JRELEASER_GPG_PASSPHRASE }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   release-csharp-package:
@@ -132,11 +152,18 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+
+      - id: release_version
+        name: Set release version
+        run: |
+          RELEASE_VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=${RELEASE_VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Setup .NET Core SDK ${{ env.DOTNET_VERSION }}
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -153,11 +180,16 @@ jobs:
 
       - name: Pack NuGet package
         working-directory: csharp
-        run: dotnet pack --no-build --configuration Release
+        run: dotnet pack --no-build --configuration Release -p:PackageVersion=${{ steps.release_version.outputs.version }}
+
+      - name: NuGet login (OIDC -> temp API key)
+        uses: NuGet/login@v1
+        id: nuget_login
+        with:
+          user: ${{ secrets.NUGET_USER }}
 
       - name: Publish package
         working-directory: csharp
-        run: find bin/Release/ -name '*.nupkg' | xargs -i dotnet nuget push {} --api-key ${{ secrets.NUGET_ORG_API_KEY }} --source https://api.nuget.org/v3/index.json
+        run: find bin/Release/ -name '*.nupkg' | xargs -i dotnet nuget push {} --api-key ${{ steps.nuget_login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NUGET_ORG_API_KEY: ${{ secrets.NUGET_ORG_API_KEY }}

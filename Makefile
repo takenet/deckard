@@ -65,7 +65,7 @@ gen-csharp:
 	cd csharp; dotnet build --configuration Release
 
 gen-mocks:
-	@if ! command -v mockgen > /dev/null; then echo "Installing mockgen" && go install -a -v github.com/golang/mock/mockgen@latest; fi;
+	@if ! command -v mockgen > /dev/null; then echo "Installing mockgen" && go install -a -v go.uber.org/mock/mockgen@latest; fi;
 
 	go generate ./...
 

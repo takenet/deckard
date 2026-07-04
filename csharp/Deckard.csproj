@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -7,7 +6,7 @@
     <RootNamespace>Takenet.Deckard</RootNamespace>
     <Company>Takenet</Company>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageVersion>0.0.43-SNAPSHOT</PackageVersion>
+    <PackageVersion>0.1.8-SNAPSHOT</PackageVersion>
     <Title>Client for Deckard - A Cyclic Priority Queue (CPQ)</Title>
     <Description>Deckard is a messaging system inspired by projects like: Google Cloud PubSub, Nats, Kafka and others.</Description>
     <PackageProjectUrl>https://github.com/takenet/deckard</PackageProjectUrl>
@@ -29,8 +28,7 @@
 
     <Protobuf Include="proto\deckard_service.proto" GrpcServices="Client" />
 
-    <None Include="..\README.md" Pack="true" PackagePath="\"/>
-    <None Include="..\LICENSE" Pack="true" PackagePath="\"/>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\LICENSE" Pack="true" PackagePath="\" />
   </ItemGroup>
-
 </Project>

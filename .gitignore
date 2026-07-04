@@ -11,6 +11,11 @@ coverage.out
 coverage.txt
 .coverage.txt
 junit.xml
+coverageprof.txt
+report.json
 
 # Mock files
 internal/mocks/
+
+# Certificate files
+*.srl

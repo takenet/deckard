@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/elliotchance/orderedmap/v2"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"github.com/takenet/deckard/internal/audit"
 	"github.com/takenet/deckard/internal/dtime"
@@ -18,6 +17,7 @@ import (
 	"github.com/takenet/deckard/internal/queue/message"
 	"github.com/takenet/deckard/internal/queue/score"
 	"github.com/takenet/deckard/internal/queue/storage"
+	"go.uber.org/mock/gomock"
 )
 
 var ctx = context.Background()
@@ -635,15 +635,18 @@ func TestQueueRemoveCacheError(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
+	mockStorage := mocks.NewMockStorage(mockCtrl)
+	mockStorage.EXPECT().Remove(gomock.Any(), "queue_test", "1").Return(int64(1), nil)
+
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockCache.EXPECT().Remove(gomock.Any(), "queue_test", "1").Return(int64(0), errors.New("cache_error"))
 
-	q := NewQueue(nil, nil, nil, mockCache)
+	q := NewQueue(nil, mockStorage, nil, mockCache)
 
 	cacheRemoved, storageRemoved, err := q.Remove(ctx, "queue_test", "", "1")
 	require.Error(t, err)
 	require.Equal(t, int64(0), cacheRemoved)
-	require.Equal(t, int64(0), storageRemoved)
+	require.Equal(t, int64(1), storageRemoved)
 }
 
 func TestQueueRemoveStorageError(t *testing.T) {
@@ -652,17 +655,34 @@ func TestQueueRemoveStorageError(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	mockCache := mocks.NewMockCache(mockCtrl)
-	mockCache.EXPECT().Remove(gomock.Any(), "queue_test", "1").Return(int64(1), nil)
+	mockStorage := mocks.NewMockStorage(mockCtrl)
+	mockStorage.EXPECT().Remove(gomock.Any(), "queue_test", "1").Return(int64(0), errors.New("storage_error"))
+
+	q := NewQueue(nil, mockStorage, nil, nil)
+
+	cacheRemoved, storageRemoved, err := q.Remove(ctx, "queue_test", "", "1")
+	require.Error(t, err)
+	require.Equal(t, int64(0), cacheRemoved)
+	require.Equal(t, int64(0), storageRemoved)
+}
+
+func TestQueueRemoveStorageFirstPreventsOrphaning(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
 
 	mockStorage := mocks.NewMockStorage(mockCtrl)
 	mockStorage.EXPECT().Remove(gomock.Any(), "queue_test", "1").Return(int64(0), errors.New("storage_error"))
+
+	mockCache := mocks.NewMockCache(mockCtrl)
 
 	q := NewQueue(nil, mockStorage, nil, mockCache)
 
 	cacheRemoved, storageRemoved, err := q.Remove(ctx, "queue_test", "", "1")
 	require.Error(t, err)
-	require.Equal(t, int64(1), cacheRemoved)
+	require.Contains(t, err.Error(), "storage_error")
+	require.Equal(t, int64(0), cacheRemoved)
 	require.Equal(t, int64(0), storageRemoved)
 }
 
@@ -704,29 +724,29 @@ func TestAddMessagesToCacheSameIdInSameRequestShouldSetLastElementScore(t *testi
 
 	now := time.Now()
 
-	mockCache := mocks.NewMockCache(mockCtrl)
-	mockCache.EXPECT().Insert(gomock.Any(), "queue", []*message.Message{
-		{
-			ID:        "id",
-			Queue:     "queue",
-			LastUsage: &now,
-			Score:     score.GetScoreByDefaultAlgorithm(),
-		}, {
-			// No last usage
-			ID:    "id",
-			Queue: "queue",
-			Score: score.Min,
-		},
-	}).Return([]string{"id", "id"}, nil)
+	queueMsg1 := &message.Message{
+		ID:        "id",
+		Queue:     "queue",
+		LastUsage: &now,
+		Score:     score.GetScoreByDefaultAlgorithm(),
+	}
+	queueMsg2 := &message.Message{
+		// No last usage
+		ID:    "id",
+		Queue: "queue",
+		Score: score.Min,
+	}
+	queue2Msg := &message.Message{
+		// Different queue with score
+		ID:        "id",
+		Queue:     "queue2",
+		LastUsage: &now,
+		Score:     score.GetScoreByDefaultAlgorithm(),
+	}
 
-	mockCache.EXPECT().Insert(gomock.Any(), "queue2", []*message.Message{
-		{
-			ID:        "id",
-			Queue:     "queue2",
-			LastUsage: &now,
-			Score:     score.GetScoreByDefaultAlgorithm(),
-		},
-	}).Return([]string{"id"}, nil)
+	mockCache := mocks.NewMockCache(mockCtrl)
+	mockCache.EXPECT().Insert(gomock.Any(), "queue", queueMsg1, queueMsg2).Return([]string{"id", "id"}, nil)
+	mockCache.EXPECT().Insert(gomock.Any(), "queue2", queue2Msg).Return([]string{"id"}, nil)
 
 	mockAuditor := mocks.NewMockAuditor(mockCtrl)
 	mockAuditor.EXPECT().Store(gomock.Any(), audit.Entry{
@@ -742,23 +762,7 @@ func TestAddMessagesToCacheSameIdInSameRequestShouldSetLastElementScore(t *testi
 
 	q := NewQueue(mockAuditor, nil, nil, mockCache)
 
-	messages := []*message.Message{{
-		ID:        "id",
-		Queue:     "queue",
-		LastUsage: &now,
-		Score:     score.GetScoreByDefaultAlgorithm(),
-	}, {
-		// No last usage
-		ID:    "id",
-		Queue: "queue",
-		Score: score.Min,
-	}, {
-		// Different queue with score
-		ID:        "id",
-		Queue:     "queue2",
-		LastUsage: &now,
-		Score:     score.GetScoreByDefaultAlgorithm(),
-	}}
+	messages := []*message.Message{queueMsg1, queueMsg2, queue2Msg}
 	count, err := q.AddMessagesToCache(ctx, messages...)
 
 	require.NoError(t, err)
@@ -809,24 +813,19 @@ func TestAddMessagesError(t *testing.T) {
 
 	now := time.Now()
 
-	mockCache := mocks.NewMockCache(mockCtrl)
-	mockCache.EXPECT().Insert(gomock.Any(), "queue", []*message.Message{
-		{
-			ID:        "id",
-			Queue:     "queue",
-			LastUsage: &now,
-			Score:     score.GetScoreByDefaultAlgorithm(),
-		},
-	}).Return(nil, errors.New("insert error"))
-
-	q := NewQueue(nil, nil, nil, mockCache)
-
-	messages := []*message.Message{{
+	errMsg := &message.Message{
 		ID:        "id",
 		Queue:     "queue",
 		LastUsage: &now,
 		Score:     score.GetScoreByDefaultAlgorithm(),
-	}}
+	}
+
+	mockCache := mocks.NewMockCache(mockCtrl)
+	mockCache.EXPECT().Insert(gomock.Any(), "queue", errMsg).Return(nil, errors.New("insert error"))
+
+	q := NewQueue(nil, nil, nil, mockCache)
+
+	messages := []*message.Message{errMsg}
 	_, err := q.AddMessagesToCache(ctx, messages...)
 
 	require.Error(t, err)
@@ -989,7 +988,6 @@ func TestRemoveExceedingMessagesRemoveErrorShouldResultError(t *testing.T) {
 	mockStorage.EXPECT().Remove(gomock.Any(), "q1", []string{"1", "2"}).Return(int64(0), fmt.Errorf("anyerror"))
 
 	mockCache := mocks.NewMockCache(mockCtrl)
-	mockCache.EXPECT().Remove(gomock.Any(), "q1", []string{"1", "2"}).Return(int64(2), nil)
 
 	q := NewQueue(&audit.AuditorImpl{}, mockStorage, NewQueueConfigurationService(ctx, mockStorage), mockCache)
 

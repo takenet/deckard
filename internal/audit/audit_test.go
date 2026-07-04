@@ -39,6 +39,10 @@ func TestNewAuditorWithServerShouldPingOkIntegration(t *testing.T) {
 	config.AuditEnabled.Set(true)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Elasticsearch 7.14+ servers (and the go-elasticsearch v7.17+ client) require this
+		// product header to be present on every response, otherwise the client refuses to
+		// talk to what it considers an unknown/incompatible product.
+		w.Header().Set("X-Elastic-Product", "Elasticsearch")
 	}))
 	defer server.Close()
 
@@ -104,6 +108,11 @@ func TestSenderShouldSendMaxEntriesIntegration(t *testing.T) {
 
 	var body string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Elasticsearch 7.14+ servers (and the go-elasticsearch v7.17+ client) require this
+		// product header to be present on every response, otherwise the client refuses to
+		// talk to what it considers an unknown/incompatible product.
+		w.Header().Set("X-Elastic-Product", "Elasticsearch")
+
 		if r.Method == "HEAD" {
 			return
 		}
@@ -192,6 +201,11 @@ func TestSenderShouldSendMaxTimeEntriesIntegration(t *testing.T) {
 
 	var body string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Elasticsearch 7.14+ servers (and the go-elasticsearch v7.17+ client) require this
+		// product header to be present on every response, otherwise the client refuses to
+		// talk to what it considers an unknown/incompatible product.
+		w.Header().Set("X-Elastic-Product", "Elasticsearch")
+
 		if r.Method == "HEAD" {
 			return
 		}

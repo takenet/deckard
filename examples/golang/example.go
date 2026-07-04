@@ -7,23 +7,33 @@ import (
 
 	"github.com/takenet/deckard"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
-	// Dial the connection
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
 	// Example using Insecure credentials
-	conn, err := grpc.DialContext(ctx, "localhost:8081", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	conn, err := grpc.NewClient("localhost:8081", grpc.WithTransportCredentials(insecure.NewCredentials()))
 
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer func() {
+		if err := conn.Close(); err != nil {
+			log.Printf("failed to close gRPC connection: %v", err)
+		}
+	}()
+
+	conn.Connect()
+	readyCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	for state := conn.GetState(); state != connectivity.Ready; state = conn.GetState() {
+		if !conn.WaitForStateChange(readyCtx, state) {
+			log.Fatal("gRPC connection closed before becoming ready")
+		}
+	}
 
 	client := deckard.NewDeckardClient(conn)
-	defer conn.Close()
 
 	// Create a new message
 	response, err := client.Add(context.Background(), &deckard.AddRequest{

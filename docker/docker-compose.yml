@@ -2,12 +2,12 @@ version: "3.8"
 
 services:
   redis:
-    image: "redis:5.0.14"
+    image: "redis:8.0"
     ports:
       - "$REDIS_PORT:$REDIS_PORT"
 
   mongodb:
-    image: mongo:6.0.4
+    image: mongo:8.0
     ports:
       - "$MONGODB_PORT:$MONGODB_PORT"
 

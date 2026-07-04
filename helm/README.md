@@ -36,7 +36,9 @@ The command removes all the Kubernetes components associated with the chart and 
 
 ## Persistence
 
-The Deckard chart deploys MongoDB for storage and Redis for the cache by default. By setting `storage.type` to `MONGODB` and `cache.type` to `REDIS` (the default values), the chart will use the deployed MongoDB and Redis instances for storage and caching. If you want to use an existing MongoDB or Redis, you may set either `mongodb.enabled` or `redis.enabled` to `false`. Then you should configure the storage and cache URIs manually to connect to your instances.
+The Deckard chart deploys MongoDB for storage and Redis for the cache by default. By setting `storage.type` to `MONGODB` and `cache.type` to `REDIS` (the default values), the chart will use the deployed MongoDB and Redis instances for storage and caching. If you want to use an existing MongoDB or Redis, you may set either `mongodb.enabled` or `redis.enabled` to `false`. In this case you must provide existing Kubernetes Secrets for the storage and/or cache connection strings. The chart does not expose direct `storage.uri` or `cache.uri` value overrides.
+
+When `mongodb.enabled` and/or `redis.enabled` are `true`, the chart computes internal service hostnames automatically from the subchart names. If you customize `mongodb.fullnameOverride` or `redis.fullnameOverride`, the generated URIs will follow those names.
 
 For more information about Deckard's configuration, refer to the [Deckard's configuration documentation](https://github.com/takenet/deckard#configuration).
 
@@ -109,15 +111,11 @@ Check the [values.yaml](https://github.com/takenet/deckard/blob/main/helm/values
 | `housekeeper.service.enabled` | Enable Kubernetes service for the housekeeper deployment | `true` |
 | `housekeeper.service.type` | Kubernetes service type for the housekeeper deployment | `ClusterIP` |
 | `housekeeper.service.port` | Kubernetes service port for the housekeeper deployment | `8081` |
-| `housekeeper.storage.uri` | Housekeeper storage URI | `""` |
-| `housekeeper.cache.uri` | Housekeeper cache URI | `""` |
-
 ### Deckard's storage configuration
 
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
 | `storage.type` | Deckard storage type (MONGODB, MEMORY) | `MONGODB` |
-| `storage.uri` | Deckard storage URI | `""` |
 | `storage.mongodb.database` | MongoDB database name for Deckard to use | `deckard` |
 | `storage.mongodb.collection` | MongoDB collection name for Deckard to use | `queue` |
 | `storage.mongodb.queue_configuration_collection` | MongoDB queue configuration collection name for Deckard to use | `queue_configuration` |
@@ -127,8 +125,20 @@ Check the [values.yaml](https://github.com/takenet/deckard/blob/main/helm/values
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
 | `cache.type` | Deckard cache type (REDIS, MEMORY) | `REDIS` |
-| `cache.uri` | Deckard cache URI | `""` |
 | `cache.redis.database` | Redis database for Deckard to use | `0` |
+
+### Connection secret configuration
+
+| Parameter | Description | Default |
+| --------- | ----------- | ------- |
+| `storage.connectionSecret.existingSecret` | Existing Secret containing the storage connection string | `""` |
+| `storage.connectionSecret.key` | Secret key for the storage connection string | `storage-uri` |
+| `cache.connectionSecret.existingSecret` | Existing Secret containing the cache connection string | `""` |
+| `cache.connectionSecret.key` | Secret key for the cache connection string | `cache-uri` |
+
+When `mongodb.enabled=false` or `redis.enabled=false`, use the corresponding `storage.connectionSecret.*` or `cache.connectionSecret.*` settings to provide external connection URIs.
+
+The legacy top-level `connectionSecret.storage.*` and `connectionSecret.cache.*` values are still supported for backward compatibility, but are deprecated. When both legacy and scoped values are set, the scoped `storage.connectionSecret.*` and `cache.connectionSecret.*` values take precedence.
 
 ### Redis' Chart configuration
 
