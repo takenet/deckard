@@ -36,7 +36,7 @@ The command removes all the Kubernetes components associated with the chart and 
 
 ## Persistence
 
-The Deckard chart deploys MongoDB for storage and Redis for the cache by default. By setting `storage.type` to `MONGODB` and `cache.type` to `REDIS` (the default values), the chart will use the deployed MongoDB and Redis instances for storage and caching. If you want to use an existing MongoDB or Redis, you may set either `mongodb.enabled` or `redis.enabled` to `false`. In this case you must provide existing Kubernetes Secrets for the storage and/or cache connection strings.
+The Deckard chart deploys MongoDB for storage and Redis for the cache by default. By setting `storage.type` to `MONGODB` and `cache.type` to `REDIS` (the default values), the chart will use the deployed MongoDB and Redis instances for storage and caching. If you want to use an existing MongoDB or Redis, you may set either `mongodb.enabled` or `redis.enabled` to `false`. In this case you must provide existing Kubernetes Secrets for the storage and/or cache connection strings. The chart does not expose direct `storage.uri` or `cache.uri` value overrides.
 
 When `mongodb.enabled` and/or `redis.enabled` are `true`, the chart computes internal service hostnames automatically from the subchart names. If you customize `mongodb.fullnameOverride` or `redis.fullnameOverride`, the generated URIs will follow those names.
 
@@ -135,6 +135,8 @@ Check the [values.yaml](https://github.com/takenet/deckard/blob/main/helm/values
 | `connectionSecret.storage.key` | Secret key for the storage connection string | `storage-uri` |
 | `connectionSecret.cache.existingSecret` | Existing Secret containing the cache connection string | `""` |
 | `connectionSecret.cache.key` | Secret key for the cache connection string | `cache-uri` |
+
+When `mongodb.enabled=false` or `redis.enabled=false`, use the corresponding `connectionSecret.*` settings to provide external connection URIs.
 
 ### Redis' Chart configuration
 

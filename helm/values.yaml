@@ -44,10 +44,12 @@ containerPorts: []
 connectionSecret:
   storage:
     # Use an existing Secret for the storage connection instead of having the chart generate one.
+    # Direct storage URI overrides are not exposed through values.yaml; disable mongodb.enabled and provide the URI with this Secret.
     existingSecret: ""
     key: storage-uri
   cache:
     # Use an existing Secret for the cache connection instead of having the chart generate one.
+    # Direct cache URI overrides are not exposed through values.yaml; disable redis.enabled and provide the URI with this Secret.
     existingSecret: ""
     key: cache-uri
 
