@@ -8,7 +8,7 @@
 
   <groupId>ai.blip</groupId>
   <artifactId>deckard</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
+  <version>0.1.5-SNAPSHOT</version>
 
   <name>${project.groupId}:${project.artifactId}</name>
   <description>Client for Deckard - A Highly Scalable Cyclic Priority Queue</description>
@@ -52,17 +52,17 @@
     <dependency>
       <groupId>io.grpc</groupId>
       <artifactId>grpc-netty-shaded</artifactId>
-      <version>1.68.3</version>
+      <version>1.82.1</version>
     </dependency>
     <dependency>
       <groupId>io.grpc</groupId>
       <artifactId>grpc-protobuf</artifactId>
-      <version>1.68.3</version>
+      <version>1.82.1</version>
     </dependency>
     <dependency>
       <groupId>io.grpc</groupId>
       <artifactId>grpc-stub</artifactId>
-      <version>1.68.3</version>
+      <version>1.82.1</version>
     </dependency>
     <dependency>
       <!-- https://github.com/grpc/grpc-java/blob/master/README.md#generated-code -->
@@ -79,22 +79,22 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-javadoc-plugin</artifactId>
-          <version>3.10.1</version>
+          <version>3.12.0</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-source-plugin</artifactId>
-          <version>3.3.1</version>
+          <version>3.4.0</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-jar-plugin</artifactId>
-          <version>3.4.2</version>
+          <version>3.5.0</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-deploy-plugin</artifactId>
-          <version>3.1.3</version>
+          <version>3.1.4</version>
         </plugin>
         <plugin>
           <groupId>org.xolstice.maven.plugins</groupId>
@@ -104,12 +104,12 @@
         <plugin>
           <groupId>org.jreleaser</groupId>
           <artifactId>jreleaser-maven-plugin</artifactId>
-          <version>1.14.0</version>
+          <version>1.25.0</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-surefire-plugin</artifactId>
-          <version>3.5.1</version>
+          <version>3.5.6</version>
           <configuration>
             <argLine>
               @{argLine}
@@ -119,7 +119,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-compiler-plugin</artifactId>
-          <version>3.13.0</version>
+          <version>3.15.0</version>
           <configuration>
             <parameters>true</parameters>
             <source>${maven.compiler.source}</source>
@@ -134,8 +134,8 @@
         <artifactId>protobuf-maven-plugin</artifactId>
         <configuration>
           <pluginId>grpc-java</pluginId>
-          <protocArtifact>com.google.protobuf:protoc:3.25.3:exe:${os.detected.classifier}</protocArtifact>
-          <pluginArtifact>io.grpc:protoc-gen-grpc-java:1.68.3:exe:${os.detected.classifier}</pluginArtifact>
+          <protocArtifact>com.google.protobuf:protoc:3.25.8:exe:${os.detected.classifier}</protocArtifact>
+          <pluginArtifact>io.grpc:protoc-gen-grpc-java:1.82.1:exe:${os.detected.classifier}</pluginArtifact>
         </configuration>
         <executions>
           <execution>
@@ -149,7 +149,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-gpg-plugin</artifactId>
-        <version>3.2.7</version>
+        <version>3.2.8</version>
         <executions>
           <execution>
             <id>sign-artifacts</id>
@@ -169,7 +169,7 @@
       <plugin>
         <groupId>org.sonatype.central</groupId>
         <artifactId>central-publishing-maven-plugin</artifactId>
-        <version>0.6.0</version>
+        <version>0.11.0</version>
         <extensions>true</extensions>
         <configuration>
           <publishingServerId>central</publishingServerId>
