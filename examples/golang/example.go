@@ -18,7 +18,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			log.Printf("failed to close gRPC connection: %v", err)
+		}
+	}()
 
 	conn.Connect()
 	readyCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
