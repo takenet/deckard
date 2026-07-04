@@ -131,12 +131,14 @@ Check the [values.yaml](https://github.com/takenet/deckard/blob/main/helm/values
 
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
-| `connectionSecret.storage.existingSecret` | Existing Secret containing the storage connection string | `""` |
-| `connectionSecret.storage.key` | Secret key for the storage connection string | `storage-uri` |
-| `connectionSecret.cache.existingSecret` | Existing Secret containing the cache connection string | `""` |
-| `connectionSecret.cache.key` | Secret key for the cache connection string | `cache-uri` |
+| `storage.connectionSecret.existingSecret` | Existing Secret containing the storage connection string | `""` |
+| `storage.connectionSecret.key` | Secret key for the storage connection string | `storage-uri` |
+| `cache.connectionSecret.existingSecret` | Existing Secret containing the cache connection string | `""` |
+| `cache.connectionSecret.key` | Secret key for the cache connection string | `cache-uri` |
 
-When `mongodb.enabled=false` or `redis.enabled=false`, use the corresponding `connectionSecret.*` settings to provide external connection URIs.
+When `mongodb.enabled=false` or `redis.enabled=false`, use the corresponding `storage.connectionSecret.*` or `cache.connectionSecret.*` settings to provide external connection URIs.
+
+The legacy top-level `connectionSecret.storage.*` and `connectionSecret.cache.*` values are still supported for backward compatibility, but are deprecated. When both legacy and scoped values are set, the scoped `storage.connectionSecret.*` and `cache.connectionSecret.*` values take precedence.
 
 ### Redis' Chart configuration
 

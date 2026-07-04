@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"time"
 
 	"github.com/takenet/deckard"
 	"google.golang.org/grpc"
@@ -17,16 +18,18 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer conn.Close()
 
 	conn.Connect()
+	readyCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	for state := conn.GetState(); state != connectivity.Ready; state = conn.GetState() {
-		if !conn.WaitForStateChange(context.Background(), state) {
+		if !conn.WaitForStateChange(readyCtx, state) {
 			log.Fatal("gRPC connection closed before becoming ready")
 		}
 	}
 
 	client := deckard.NewDeckardClient(conn)
-	defer conn.Close()
 
 	// Create a new message
 	response, err := client.Add(context.Background(), &deckard.AddRequest{

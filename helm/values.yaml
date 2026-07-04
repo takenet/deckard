@@ -43,13 +43,11 @@ containerPorts: []
 
 connectionSecret:
   storage:
-    # Use an existing Secret for the storage connection instead of having the chart generate one.
-    # Direct storage URI overrides are not exposed through values.yaml; disable mongodb.enabled and provide the URI with this Secret.
+    # Deprecated: use storage.connectionSecret instead.
     existingSecret: ""
     key: storage-uri
   cache:
-    # Use an existing Secret for the cache connection instead of having the chart generate one.
-    # Direct cache URI overrides are not exposed through values.yaml; disable redis.enabled and provide the URI with this Secret.
+    # Deprecated: use cache.connectionSecret instead.
     existingSecret: ""
     key: cache-uri
 
@@ -58,6 +56,11 @@ storage:
   # Available options: MONGODB, MEMORY
   # Remember to set the mongodb.enabled to false if you want to use a existing MongoDB or a Memory storage
   type: MONGODB
+  connectionSecret:
+    # Use an existing Secret for the storage connection instead of having the chart generate one.
+    # Direct storage URI overrides are not exposed through values.yaml; disable mongodb.enabled and provide the URI with this Secret.
+    existingSecret: ""
+    key: storage-uri
   mongodb:
     # Deckard's DECKARD_MONGODB_DATABASE environment variable
     database: "deckard"
@@ -95,6 +98,11 @@ cache:
   # Available options: REDIS, MEMORY
   # Remember to set the redis.enabled to false if you want to use a self-deployed Redis or a Memory storage
   type: REDIS
+  connectionSecret:
+    # Use an existing Secret for the cache connection instead of having the chart generate one.
+    # Direct cache URI overrides are not exposed through values.yaml; disable redis.enabled and provide the URI with this Secret.
+    existingSecret: ""
+    key: cache-uri
   redis:
     # Deckard's DECKARD_REDIS_DB environment variable
     database: 0

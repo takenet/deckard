@@ -86,33 +86,36 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Redis subchart fullname
 */}}
+{{- define "deckard.dependency.fullname" -}}
+{{- $chartValues := get . "chartValues" -}}
+{{- $chartName := get . "chartName" -}}
+{{- $context := get . "context" -}}
+{{- $fullnameOverride := get $chartValues "fullnameOverride" -}}
+{{- $nameOverride := get $chartValues "nameOverride" -}}
+{{- if $fullnameOverride -}}
+{{- $fullnameOverride | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- $name := default $chartName $nameOverride -}}
+{{- if contains $name $context.Release.Name -}}
+{{- $context.Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-%s" $context.Release.Name $name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Redis subchart fullname
+*/}}
 {{- define "deckard.redis.fullname" -}}
-{{- if .Values.redis.fullnameOverride }}
-{{- .Values.redis.fullnameOverride | trunc 50 | trimSuffix "-" }}
-{{- else }}
-{{- $name := default "redis" .Values.redis.nameOverride }}
-{{- if contains $name .Release.Name }}
-{{- .Release.Name | trunc 50 | trimSuffix "-" }}
-{{- else }}
-{{- printf "%s-%s" .Release.Name $name | trunc 50 | trimSuffix "-" }}
-{{- end }}
-{{- end }}
+{{- include "deckard.dependency.fullname" (dict "chartName" "redis" "chartValues" .Values.redis "context" .) -}}
 {{- end }}
 
 {{/*
 MongoDB subchart fullname
 */}}
 {{- define "deckard.mongodb.fullname" -}}
-{{- if .Values.mongodb.fullnameOverride }}
-{{- .Values.mongodb.fullnameOverride | trunc 50 | trimSuffix "-" }}
-{{- else }}
-{{- $name := default "mongodb" .Values.mongodb.nameOverride }}
-{{- if contains $name .Release.Name }}
-{{- .Release.Name | trunc 50 | trimSuffix "-" }}
-{{- else }}
-{{- printf "%s-%s" .Release.Name $name | trunc 50 | trimSuffix "-" }}
-{{- end }}
-{{- end }}
+{{- include "deckard.dependency.fullname" (dict "chartName" "mongodb" "chartValues" .Values.mongodb "context" .) -}}
 {{- end }}
 
 {{/*
@@ -131,11 +134,76 @@ Define Cache URI
 {{- end }}
 
 {{/*
+Storage connection secret existingSecret
+*/}}
+{{- define "deckard.storageConnectionSecretExistingSecret" -}}
+{{- $storageConnectionSecret := get .Values.storage "connectionSecret" | default dict -}}
+{{- $existingSecret := get $storageConnectionSecret "existingSecret" -}}
+{{- if $existingSecret -}}
+{{- $existingSecret -}}
+{{- else -}}
+{{- $legacyConnectionSecret := get .Values.connectionSecret "storage" | default dict -}}
+{{- get $legacyConnectionSecret "existingSecret" -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Storage connection secret key
+*/}}
+{{- define "deckard.storageConnectionSecretKey" -}}
+{{- $storageConnectionSecret := get .Values.storage "connectionSecret" | default dict -}}
+{{- $secretKey := get $storageConnectionSecret "key" -}}
+{{- $legacyConnectionSecret := get .Values.connectionSecret "storage" | default dict -}}
+{{- $legacySecretKey := get $legacyConnectionSecret "key" -}}
+{{- $defaultSecretKey := "storage-uri" -}}
+{{- if and $legacySecretKey (eq $secretKey $defaultSecretKey) (ne $legacySecretKey $defaultSecretKey) -}}
+{{- $legacySecretKey -}}
+{{- else if $secretKey -}}
+{{- $secretKey -}}
+{{- else -}}
+{{- $legacySecretKey -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Cache connection secret existingSecret
+*/}}
+{{- define "deckard.cacheConnectionSecretExistingSecret" -}}
+{{- $cacheConnectionSecret := get .Values.cache "connectionSecret" | default dict -}}
+{{- $existingSecret := get $cacheConnectionSecret "existingSecret" -}}
+{{- if $existingSecret -}}
+{{- $existingSecret -}}
+{{- else -}}
+{{- $legacyConnectionSecret := get .Values.connectionSecret "cache" | default dict -}}
+{{- get $legacyConnectionSecret "existingSecret" -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Cache connection secret key
+*/}}
+{{- define "deckard.cacheConnectionSecretKey" -}}
+{{- $cacheConnectionSecret := get .Values.cache "connectionSecret" | default dict -}}
+{{- $secretKey := get $cacheConnectionSecret "key" -}}
+{{- $legacyConnectionSecret := get .Values.connectionSecret "cache" | default dict -}}
+{{- $legacySecretKey := get $legacyConnectionSecret "key" -}}
+{{- $defaultSecretKey := "cache-uri" -}}
+{{- if and $legacySecretKey (eq $secretKey $defaultSecretKey) (ne $legacySecretKey $defaultSecretKey) -}}
+{{- $legacySecretKey -}}
+{{- else if $secretKey -}}
+{{- $secretKey -}}
+{{- else -}}
+{{- $legacySecretKey -}}
+{{- end -}}
+{{- end }}
+
+{{/*
 Storage connection secret name
 */}}
 {{- define "deckard.storageConnectionSecretName" -}}
-{{- if .Values.connectionSecret.storage.existingSecret }}
-{{- .Values.connectionSecret.storage.existingSecret -}}
+{{- $existingSecret := include "deckard.storageConnectionSecretExistingSecret" . -}}
+{{- if $existingSecret }}
+{{- $existingSecret -}}
 {{- else }}
 {{- printf "%s-storage" (include "deckard.fullname" .) }}
 {{- end }}
@@ -145,8 +213,9 @@ Storage connection secret name
 Cache connection secret name
 */}}
 {{- define "deckard.cacheConnectionSecretName" -}}
-{{- if .Values.connectionSecret.cache.existingSecret }}
-{{- .Values.connectionSecret.cache.existingSecret -}}
+{{- $existingSecret := include "deckard.cacheConnectionSecretExistingSecret" . -}}
+{{- if $existingSecret }}
+{{- $existingSecret -}}
 {{- else }}
 {{- printf "%s-cache" (include "deckard.fullname" .) }}
 {{- end }}
@@ -156,7 +225,7 @@ Cache connection secret name
 Whether the chart should create the storage connection secret
 */}}
 {{- define "deckard.shouldCreateStorageConnectionSecret" -}}
-{{- if .Values.connectionSecret.storage.existingSecret -}}
+{{- if include "deckard.storageConnectionSecretExistingSecret" . -}}
 false
 {{- else if ne (include "deckard.storage.uri" .) "" -}}
 true
@@ -169,7 +238,7 @@ false
 Whether the chart should create the cache connection secret
 */}}
 {{- define "deckard.shouldCreateCacheConnectionSecret" -}}
-{{- if .Values.connectionSecret.cache.existingSecret -}}
+{{- if include "deckard.cacheConnectionSecretExistingSecret" . -}}
 false
 {{- else if ne (include "deckard.cache.uri" .) "" -}}
 true
@@ -183,7 +252,7 @@ Whether storage URI env should be configured
 */}}
 {{- define "deckard.shouldSetStorageURI" -}}
 {{- if eq .Values.storage.type "MONGODB" -}}
-{{- if or (ne .Values.connectionSecret.storage.existingSecret "") (and .Values.mongodb.enabled (ne (include "deckard.storage.uri" .) "")) -}}
+{{- if or (ne (include "deckard.storageConnectionSecretExistingSecret" .) "") (and .Values.mongodb.enabled (ne (include "deckard.storage.uri" .) "")) -}}
 true
 {{- else -}}
 false
@@ -198,7 +267,7 @@ Whether cache URI env should be configured
 */}}
 {{- define "deckard.shouldSetCacheURI" -}}
 {{- if eq .Values.cache.type "REDIS" -}}
-{{- if or (ne .Values.connectionSecret.cache.existingSecret "") (and .Values.redis.enabled (ne (include "deckard.cache.uri" .) "")) -}}
+{{- if or (ne (include "deckard.cacheConnectionSecretExistingSecret" .) "") (and .Values.redis.enabled (ne (include "deckard.cache.uri" .) "")) -}}
 true
 {{- else -}}
 false
