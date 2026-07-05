@@ -832,7 +832,9 @@ func (cache *RedisCache) generalCacheKey(key string) string {
 }
 
 func (cache *RedisCache) validateQueueName(queue string) error {
-	if cache.clusterMode && strings.ContainsAny(queue, "{}") {
+	// Braces are reserved even in standalone mode so existing queues remain
+	// migratable to Redis Cluster without ambiguous hash-tag parsing.
+	if strings.ContainsAny(queue, "{}") {
 		return errQueueNameContainsClusterHashTag
 	}
 

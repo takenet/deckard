@@ -333,13 +333,13 @@ func TestValidateQueueNameRejectsClusterHashTagCharsInClusterMode(t *testing.T) 
 	require.NoError(t, cache.validateQueueName("valid-queue"))
 }
 
-func TestValidateQueueNameAllowsClusterHashTagCharsOutsideClusterMode(t *testing.T) {
+func TestValidateQueueNameRejectsClusterHashTagCharsOutsideClusterMode(t *testing.T) {
 	t.Parallel()
 
 	cache := &RedisCache{clusterMode: false}
 
-	require.NoError(t, cache.validateQueueName("bad{queue"))
-	require.NoError(t, cache.validateQueueName("bad}queue"))
+	require.ErrorIs(t, cache.validateQueueName("bad{queue"), errQueueNameContainsClusterHashTag)
+	require.ErrorIs(t, cache.validateQueueName("bad}queue"), errQueueNameContainsClusterHashTag)
 	require.NoError(t, cache.validateQueueName("valid-queue"))
 }
 

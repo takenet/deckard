@@ -14,7 +14,7 @@ Briefly:
 - An application inserts a message to be queued and its configuration (TTL, metadata, payload, priority score, etc).
     - The message will be prioritized with a default timestamp-based algorithm if the provided score is 0 (the default value).
 - A worker application pull messages from Deckard at regular intervals and performs any processing.
-    - The worker can also send a score filter (max score and min score) in the pull request. This enables theoughput controlling with score algorithms and many other features.
+    - The worker can also send a score filter (max score and min score) in the pull request. This enables throughput controlling with score algorithms and many other features.
     - When it finishes processing a message, the application must notify with the processing result.
     - When notifying, the application may also provide a lock time, to lock the message for a certain duration of time before being requeued and delivered again. Locking mechanism have a 1-second precision.
     - It is also possible to notify a message without lock but changing its priority score to be delivered again.
@@ -47,7 +47,7 @@ The **main** objectives of the project are:
 
 ### **What Deckard is not?**
 
-It is important to note that Deckard is not a conventional messaging/queue system. If your use case does not involve priority, cyclic queuing, or a locking mechanism, it is recommended to consider alternatives such as GCP PubSub, Kafka, RabbitMQ, Azure Service Bus, Amazon SQS, or other messaging systems.
+It is important to note that Deckard is not a conventional messaging/queue system. If your use case does not involve priority, cyclic queuing, or a throughput control, it is recommended to consider alternatives such as GCP PubSub, Kafka, RabbitMQ, Azure Service Bus, Amazon SQS, or other messaging systems.
 
 ## Project Status
 
@@ -57,7 +57,7 @@ The performance and reliability of Deckard are directly dependent on the storage
 
 > Currently, we have projects that utilize MongoDB in both a virtual machine environment and a Kubernetes environment. However, it's worth noting that we have had more extensive usage of MongoDB in a virtual machine (VM) environment compared to Kubernetes. When deploying Deckard, it is important to configure MongoDB properly, following MongoDB's recommendations for production environments (documented here: [MongoDB Production Notes](https://www.mongodb.com/docs/manual/administration/production-notes/)).
 
-While the project is being released with a `0.1.0` version due to necessary code modifications for open-sourcing, it has been thoroughly tested and proven to be reliable in production scenarios.
+While the project is being released with a `0.1.x` version due to necessary code modifications for open-sourcing, it has been thoroughly tested and proven to be reliable in production scenarios.
 
 Please refer to our [issues](https://github.com/takenet/deckard/issues) section for more details. Your feedback and suggestions are highly appreciated and can be shared in our [discussions](https://github.com/takenet/deckard/discussions).
 

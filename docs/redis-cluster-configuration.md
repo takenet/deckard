@@ -77,6 +77,11 @@ Keys use hash tags to ensure co-location:
 
 The `{clusterhash}` hash tag ensures all keys for the same queue hash to the same cluster slot.
 
+Because Deckard reserves `{` and `}` for Redis Cluster hash tags, queue names
+cannot contain brace characters even when running against standalone Redis. This
+prevents ambiguous key parsing and keeps existing queues safely migratable to a
+future Redis Cluster deployment.
+
 ## Migration from Single Node to Cluster
 
 In addition to the key-format differences below, note that this PR also changes the Redis configuration model for standalone deployments. If you are upgrading from an older Deckard version, migrate your standalone Redis settings to `DECKARD_CACHE_URI` before or during rollout.
