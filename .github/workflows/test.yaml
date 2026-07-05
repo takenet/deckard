@@ -38,10 +38,6 @@ jobs:
 
       - uses: actions/checkout@v7
 
-      # Redis Cluster can't be modeled as a single GitHub Actions "services:" container: it needs
-      # 6 nodes plus a one-shot init step to form the cluster, so it's started via docker compose
-      # instead. Nodes run with network_mode: host and --cluster-announce-ip 127.0.0.1, so they're
-      # reachable at localhost:7000-7005 from the go test process running directly on the runner.
       - name: Start Redis Cluster
         run: |
           docker compose -f docker/docker-compose.yml up -d \
