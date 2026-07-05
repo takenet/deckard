@@ -76,7 +76,7 @@ jobs:
       - name: Stop Redis Cluster
         if: ${{ always() }}
         continue-on-error: true
-        run: docker compose -f docker/docker-compose.yml down -v
+        run: docker compose --env-file docker/.env -f docker/docker-compose.yml down -v
 
       - name: Publish test results
         uses: actions/upload-artifact@v7

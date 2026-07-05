@@ -89,16 +89,21 @@ func (config *ViperConfigKey) GetDuration() time.Duration {
 
 	// Custom getter so both the default and the resolved values go through the same
 	// parsing path (time.ParseDuration), keeping comparisons in getWithFallback consistent.
+	//
+	// Note: the inner viper.IsSet guard is intentionally absent here. getWithFallback
+	// only calls getDuration when viper.IsSet returns true for the key. If we added a
+	// second IsSet check inside, an empty or invalid override (e.g. DECKARD_HOUSEKEEPER_TASK_TIMEOUT_DELAY="")
+	// would cause getDuration to return 0, which == defaultVal only when the default is 0.
+	// For non-zero defaults (like "1s") the 0 would not equal defaultVal, so getWithFallback
+	// would return 0 instead of the default - silently discarding the configured default.
 	getDuration := func(key string) time.Duration {
-		if viper.IsSet(key) {
-			if duration := viper.GetDuration(key); duration != 0 {
-				return duration
-			}
+		if duration := viper.GetDuration(key); duration != 0 {
+			return duration
+		}
 
-			if str := viper.GetString(key); str != "" {
-				if parsed, err := time.ParseDuration(str); err == nil {
-					return parsed
-				}
+		if str := viper.GetString(key); str != "" {
+			if parsed, err := time.ParseDuration(str); err == nil {
+				return parsed
 			}
 		}
 
