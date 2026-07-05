@@ -252,3 +252,26 @@ func TestViperConfigKey_GetDuration_AliasOverridesDefault(t *testing.T) {
 	viper.Set("alias1", "10s")
 	require.Equal(t, 10*time.Second, config.GetDuration())
 }
+
+func TestViperConfigKey_GetDuration_InvalidStringFallsBackToDefault(t *testing.T) {
+	defer viper.Reset()
+
+	config := &ViperConfigKey{
+		Key:     "test_duration_invalid",
+		Aliases: []string{"alias1"},
+		Default: "5s",
+	}
+
+	viper.SetDefault(config.GetKey(), config.GetDefault())
+	for _, alias := range config.GetAliases() {
+		viper.SetDefault(alias, config.GetDefault())
+	}
+
+	// Sanity: unset returns default.
+	require.Equal(t, 5*time.Second, config.GetDuration())
+
+	// Setting the key to an unparseable string must NOT override the default.
+	viper.Set(config.GetKey(), "not-a-duration")
+	require.Equal(t, 5*time.Second, config.GetDuration(),
+		"invalid duration string must not override the configured default")
+}
