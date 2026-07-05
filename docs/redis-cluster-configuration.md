@@ -72,70 +72,73 @@ The `{clusterhash}` hash tag ensures all keys for the same queue hash to the sam
 
 ## Migration from Single Node to Cluster
 
-### Option 1: Fresh Deployment
-1. Deploy new Deckard instance with cluster configuration
-2. Migrate data using your preferred method
-3. Switch traffic to new deployment
+Single-node keys (`deckard:queue:myqueue`) and cluster-mode keys (`deckard:queue:{myqueue}`) are
+literally different key strings, not just differently-atomic. This means an **in-place migration
+is not supported**: pointing a cluster-mode Deckard instance at the same Redis data (via RDB
+restore, `redis-cli --cluster import`, replication + resharding, etc.) will not work - the new
+instance won't find any of the old keys and every queue will appear empty, while the old keys are
+left behind as orphaned data.
 
-### Option 2: In-place Migration (Advanced)
-⚠️ **Warning**: This approach requires careful planning and testing.
+Because Redis here is a rebuildable cache/index over the durable `storage` backend (not the source
+of truth for message content), the supported migration path is:
 
-1. Ensure your Redis cluster is properly configured
-2. Update Deckard configuration to enable cluster mode
-3. Restart Deckard instance
-
-Note: Existing keys will remain in the old format and will need manual migration if cross-key atomicity is required.
+1. Provision a fresh, empty Redis Cluster.
+2. Deploy Deckard pointed at it with `redis.cluster.mode: true`.
+3. Let the housekeeper's existing recovery task (`RecoveryMessagesPool`) rebuild the active, lock,
+   and processing pools directly from `storage` - no manual key migration needed.
+4. Note: any message that was mid-flight (locked, awaiting ack/nack) at cutover time loses its lock
+   state and becomes immediately deliverable again, consistent with Deckard's at-least-once
+   semantics. Plan the cutover during a quiet window if duplicate delivery during the switch is a
+   concern.
+5. Decommission the old single-node Redis once queue sizes are verified against `storage`.
 
 ## Docker Compose Example
 
-```yaml
-version: "3.8"
+The repository's [`docker/docker-compose.yml`](../docker/docker-compose.yml) already ships a
+6-node Redis Cluster (3 masters + 3 replicas) for local development and testing:
+`redis-cluster-node-0` through `redis-cluster-node-5`, plus a `redis-cluster-init` helper service
+that forms the cluster. All cluster node containers (and the init helper) run with
+`network_mode: host` and `--cluster-announce-ip 127.0.0.1`, so the cluster is reachable at
+`localhost:7000`-`localhost:7005` from processes running directly on the host (not just from other
+containers) - this is what makes it usable directly by `go test` and by CI runners, not only by
+other docker-compose services.
 
-services:
-  deckard:
-    image: blipai/deckard:latest
-    environment:
-      - DECKARD_CACHE_TYPE=REDIS
-      - DECKARD_REDIS_CLUSTER_MODE=true
-      - DECKARD_REDIS_CLUSTER_ADDRESSES=redis-node-1:6379,redis-node-2:6379,redis-node-3:6379
-    depends_on:
-      - redis-node-1
-      - redis-node-2
-      - redis-node-3
+Bring the cluster up with:
 
-  redis-node-1:
-    image: redis:7.0
-    command: redis-server --port 6379 --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000
-    ports:
-      - "6379:6379"
+```bash
+docker compose -f docker/docker-compose.yml up -d \
+  redis-cluster-node-0 redis-cluster-node-1 redis-cluster-node-2 \
+  redis-cluster-node-3 redis-cluster-node-4 redis-cluster-node-5
 
-  redis-node-2:
-    image: redis:7.0
-    command: redis-server --port 6379 --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000
-    ports:
-      - "6380:6379"
+docker compose -f docker/docker-compose.yml run --rm redis-cluster-init
+```
 
-  redis-node-3:
-    image: redis:7.0
-    command: redis-server --port 6379 --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000
-    ports:
-      - "6381:6379"
+Point Deckard at it with:
+```bash
+DECKARD_REDIS_CLUSTER_MODE=true
+DECKARD_REDIS_CLUSTER_ADDRESSES=localhost:7000,localhost:7001,localhost:7002
+```
+
+Tear it down with:
+```bash
+docker compose -f docker/docker-compose.yml down -v
 ```
 
 ## Testing
 
-### Local Development with Docker
-Use the provided script to set up a local Redis cluster:
+Cluster integration tests (everything matching `-run Cluster` in
+`internal/queue/cache/redis_cache_cluster_test.go`) connect to the cluster started above at
+`localhost:7000-7002` and run as part of the normal integration test suite (`make test` /
+`make integration-test`) - there is no separate opt-in flag. Bring the cluster up first (see
+above), then run:
 
 ```bash
-./scripts/setup-redis-cluster.sh
-```
-
-### Running Cluster Tests
-```bash
-export REDIS_CLUSTER_TEST=1
 go test -v ./internal/queue/cache/ -run Cluster
 ```
+
+The same `CacheIntegrationTestSuite` used for single-node Redis and the in-memory cache also runs
+against the cluster (via `TestRedisCacheClusterIntegration`), so any new cache behavior test
+automatically gets cluster coverage without needing a separate cluster-specific copy.
 
 ## Troubleshooting
 

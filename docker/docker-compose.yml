@@ -86,6 +86,20 @@ services:
     networks:
       - default
 
+  redisinsight:
+    image: redis/redisinsight:latest
+    ports:
+      - "5540:5540"
+    depends_on:
+      - redis-cluster-node-0
+      - redis-cluster-node-1
+      - redis-cluster-node-2
+      - redis-cluster-node-3
+      - redis-cluster-node-4
+      - redis-cluster-node-5
+    networks:
+      - default
+
 volumes:
   redis-cluster-0-data:
   redis-cluster-1-data:

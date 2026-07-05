@@ -1,7 +1,6 @@
 package cache
 
 import (
-	"os"
 	"testing"
 
 	"fmt"
@@ -16,11 +15,6 @@ import (
 func TestRedisCacheClusterIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
-	}
-
-	// Check if cluster test environment is available
-	if os.Getenv("REDIS_CLUSTER_TEST") == "" {
-		t.Skip("REDIS_CLUSTER_TEST environment variable not set, skipping cluster tests")
 	}
 
 	config.Configure(true)
@@ -45,11 +39,6 @@ func TestNewClusterCacheWithoutServerShouldErrorIntegration(t *testing.T) {
 		t.Skip()
 	}
 
-	// Check if cluster test environment is available
-	if os.Getenv("REDIS_CLUSTER_TEST") == "" {
-		t.Skip("REDIS_CLUSTER_TEST environment variable not set, skipping cluster tests")
-	}
-
 	config.Configure(true)
 	config.CacheConnectionRetryEnabled.Set(false)
 	config.RedisClusterMode.Set(true)
@@ -68,11 +57,6 @@ func TestNewClusterCacheWithoutServerShouldErrorIntegration(t *testing.T) {
 func TestRedisCacheClusterListQueuesIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
-	}
-
-	// Check if cluster test environment is available
-	if os.Getenv("REDIS_CLUSTER_TEST") == "" {
-		t.Skip("REDIS_CLUSTER_TEST environment variable not set, skipping cluster tests")
 	}
 
 	config.Configure(true)
@@ -117,11 +101,6 @@ func TestRedisCacheClusterListQueuesFansOutAcrossShards(t *testing.T) {
 		t.Skip()
 	}
 
-	// Check if cluster test environment is available
-	if os.Getenv("REDIS_CLUSTER_TEST") == "" {
-		t.Skip("REDIS_CLUSTER_TEST environment variable not set, skipping cluster tests")
-	}
-
 	config.Configure(true)
 	config.RedisClusterMode.Set(true)
 	config.RedisClusterAddresses.Set("localhost:7000,localhost:7001,localhost:7002")
@@ -157,11 +136,6 @@ func TestRedisCacheClusterListQueuesFansOutAcrossShards(t *testing.T) {
 func TestRedisCacheClusterLuaScriptsIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
-	}
-
-	// Check if cluster test environment is available
-	if os.Getenv("REDIS_CLUSTER_TEST") == "" {
-		t.Skip("REDIS_CLUSTER_TEST environment variable not set, skipping cluster tests")
 	}
 
 	config.Configure(true)
@@ -228,10 +202,6 @@ func TestRedisCacheClusterLuaScriptsIntegration(t *testing.T) {
 func TestInsertShouldInsertWithCorrectScoreClusterIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
-	}
-
-	if os.Getenv("REDIS_CLUSTER_TEST") == "" {
-		t.Skip("REDIS_CLUSTER_TEST environment variable not set, skipping cluster tests")
 	}
 
 	config.Configure(true)

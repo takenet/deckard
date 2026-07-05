@@ -12,6 +12,7 @@ import (
 	"github.com/meirf/gopart"
 	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
+	"github.com/spf13/viper"
 	"github.com/takenet/deckard/internal/config"
 	"github.com/takenet/deckard/internal/dtime"
 	"github.com/takenet/deckard/internal/logger"
@@ -19,7 +20,6 @@ import (
 	"github.com/takenet/deckard/internal/queue/message"
 	"github.com/takenet/deckard/internal/queue/pool"
 	"github.com/takenet/deckard/internal/queue/score"
-	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -171,16 +171,23 @@ func clusterAddressesFromConfig() []string {
 	return sanitizeAddresses(strings.Split(config.RedisClusterAddresses.Get(), ","))
 }
 
+// sanitizeAddresses trims whitespace and drops empty entries. It also splits each entry on commas,
+// so it transparently handles both a proper address list and a single flat comma-separated string
+// (e.g. viper.GetStringSlice returns a one-element slice containing the whole string when the
+// underlying config value - such as DECKARD_REDIS_CLUSTER_ADDRESSES or a plain Set("a:1,b:2") -
+// isn't a real list) without silently producing one bogus multi-colon "address".
 func sanitizeAddresses(addresses []string) []string {
 	sanitized := make([]string, 0, len(addresses))
 
 	for _, address := range addresses {
-		trimmed := strings.TrimSpace(address)
-		if trimmed == "" {
-			continue
-		}
+		for _, part := range strings.Split(address, ",") {
+			trimmed := strings.TrimSpace(part)
+			if trimmed == "" {
+				continue
+			}
 
-		sanitized = append(sanitized, trimmed)
+			sanitized = append(sanitized, trimmed)
+		}
 	}
 
 	return sanitized
@@ -251,6 +258,27 @@ func (cache *RedisCache) Flush(ctx context.Context) {
 	defer func() {
 		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(now), metric.WithAttributes(attribute.String("op", "flush")))
 	}()
+
+	// FLUSHDB is a keyless command: just like SCAN, a single ClusterClient.FlushDB call only
+	// reaches one (round-robin-picked) master shard, silently leaving every other shard's data
+	// in place. Fan out via ForEachMaster so Flush actually clears the whole cluster.
+	if cache.clusterMode {
+		clusterClient, ok := cache.Client.(*redis.ClusterClient)
+		if !ok {
+			logger.S(ctx).Error("cluster mode enabled but redis client is not a *redis.ClusterClient, skipping flush")
+			return
+		}
+
+		err := clusterClient.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+			return master.FlushDB(ctx).Err()
+		})
+
+		if err != nil {
+			logger.S(ctx).Errorf("error flushing redis cluster: %v", err)
+		}
+
+		return
+	}
 
 	cache.Client.FlushDB(ctx)
 }
