@@ -23,12 +23,12 @@ type DeckardIntegrationTestSuite struct {
 
 func (suite *DeckardIntegrationTestSuite) AfterTest(_, _ string) {
 	suite.deckardCache.Flush(ctx)
-	suite.deckardStorage.Flush(ctx)
+	_, _ = suite.deckardStorage.Flush(ctx)
 }
 
 func (suite *DeckardIntegrationTestSuite) BeforeTest(_, _ string) {
 	suite.deckardCache.Flush(ctx)
-	suite.deckardStorage.Flush(ctx)
+	_, _ = suite.deckardStorage.Flush(ctx)
 }
 
 func (suite *DeckardIntegrationTestSuite) TestAddMessageDefaultScoreIntegration() {

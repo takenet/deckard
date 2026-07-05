@@ -133,29 +133,51 @@ The default values depends on the server implementation. For more information ch
 
 ### Cache Configuration
 
+Redis connection details (address, credentials, database, TLS, timeouts, pool size, retries,
+etc.) are configured exclusively through `DECKARD_CACHE_URI`. There is no fallback to discrete
+address/port/password/db environment variables. The URI is parsed by
+[go-redis](https://github.com/redis/go-redis), so any query parameter it supports can be used:
+`dial_timeout`, `read_timeout`, `write_timeout`, `pool_size`, `min_idle_conns`, `max_retries`,
+`max_retry_backoff`, `conn_max_idle_time`, `conn_max_lifetime`, `client_name`, `protocol`, etc.
+(standalone also supports `skip_verify`, see the TLS note below).
+
 | Environment Variable         | Default | Description |
 |------------------------------|---------|-------------|
 | `DECKARD_CACHE_TYPE` | `MEMORY` | The cache implementation to use. Available: MEMORY, REDIS |
-| `DECKARD_CACHE_URI` | | The cache Connection URI to connect with the cache service. Currently only a Redis URI is accepted. It will take precedence over any other environment variable related to the connection Redis connection. |
-| `DECKARD_REDIS_ADDRESS` | `localhost` | The redis address to connect while using redis cache implementation. It will be overriden by `DECKARD_CACHE_URI` if present.  |
-| `DECKARD_REDIS_PASSWORD` |  | The redis password to connect while using redis cache implementation. It will be overriden by `DECKARD_CACHE_URI` if present. |
-| `DECKARD_REDIS_PORT` | `6379` | The redis port to connect while using redis cache implementation. It will be overriden by `DECKARD_CACHE_URI` if present. |
-| `DECKARD_REDIS_DB` | `0` | The database to use while using redis cache implementation. It will be overriden by `DECKARD_CACHE_URI` if present. |
+| `DECKARD_CACHE_URI` | | **Required when `DECKARD_CACHE_TYPE=REDIS`.** The Redis connection URI (`redis://` or `rediss://`). In cluster mode (see below) this uses go-redis's cluster URL format instead of the plain standalone one. |
+| `DECKARD_REDIS_CLUSTER_MODE` | `false` | Enables Redis Cluster mode. When `true`, `DECKARD_CACHE_URI` is parsed as a cluster URL (see below) instead of a plain standalone URI. |
+
+Standalone examples (parsed by [`redis.ParseURL`](https://pkg.go.dev/github.com/redis/go-redis/v9#ParseURL)):
+
+- `DECKARD_CACHE_URI=redis://user:pass@redis.example:6379/0`
+- With TLS: `DECKARD_CACHE_URI=rediss://user:pass@redis.example:6380/0`
+- With TLS and no certificate verification (not recommended in production): `DECKARD_CACHE_URI=rediss://user:pass@redis.example:6380/0?skip_verify=true`
+
+Cluster examples (parsed by [`redis.ParseClusterURL`](https://pkg.go.dev/github.com/redis/go-redis/v9#ParseClusterURL), go-redis's own convention: one base URI holding credentials/TLS/tuning options, with extra seed nodes appended as repeated `addr=host:port` query parameters):
+
+- `DECKARD_REDIS_CLUSTER_MODE=true` and `DECKARD_CACHE_URI=redis://node-1:6379?addr=node-2:6379&addr=node-3:6379`
+- With auth and TLS: `DECKARD_REDIS_CLUSTER_MODE=true` and `DECKARD_CACHE_URI=rediss://user:pass@node-1:6379?addr=node-2:6379&addr=node-3:6379`
+
+Two Redis Cluster limitations worth knowing about:
+
+- Redis Cluster does not support `SELECT`, so there's no database number to configure - it always operates on database 0 regardless of what's in the URI.
+- `skip_verify` is only recognized by the standalone parser; it is **not** a valid parameter on a cluster URL (go-redis rejects it there), so insecure TLS is not available in cluster mode.
+
 
 ### Storage Configuration
+
+MongoDB connection details (hosts, credentials, auth source, TLS, pool size, etc.) are configured
+exclusively through `DECKARD_STORAGE_URI`, applied via the MongoDB driver's own connection-string
+parsing (so any [MongoDB connection string option](https://www.mongodb.com/docs/manual/reference/connection-string/#connection-string-options) is available, e.g. `authSource`, `tls`, `maxPoolSize`, `replicaSet`).
 
 | Environment Variable         | Default | Description |
 |------------------------------|---------|-------------|
 | `DECKARD_STORAGE_TYPE` | `MEMORY` | The storage implementation to use. Available: MEMORY, MONGODB |
-| `DECKARD_STORAGE_URI` |  | The storage Connection URI to connect with the storage service. Currently only a MongoDB URI is accepted. It can override any other environment variable related to the connection MongoDB connection since it takes precedence. |
-| `DECKARD_MONGODB_ADDRESSES` | `localhost:27017` | The MongoDB addresses separated by comma to connect while using MongoDB storage implementation. It can be overridden by `DECKARD_STORAGE_URI`. |
-| `DECKARD_MONGODB_AUTH_DB` |  | The MongoDB auth database to authenticate while using MongoDB storage implementation. It can be overridden by `DECKARD_STORAGE_URI`. |
-| `DECKARD_MONGODB_PASSWORD` |  | The MongoDB password to authenticate while using MongoDB storage implementation. It can be overridden by `DECKARD_STORAGE_URI`. |
-| `DECKARD_MONGODB_DATABASE` | `deckard` | The MongoDB database to use to store messages while using MongoDB storage implementation. |
-| `DECKARD_MONGODB_COLLECTION` | `queue` | The MongoDB collection to use to store messages while using MongoDB storage implementation. |
-| `DECKARD_MONGODB_USER` |  | The MongoDB user to authenticate while using MongoDB storage implementation. It can be overridden by `DECKARD_STORAGE_URI`. |
-| `DECKARD_MONGODB_SSL` | `false` | To enable SSL while using MongoDB storage implementation. It can be overridden by `DECKARD_STORAGE_URI`. |
-| `DECKARD_MONGODB_QUEUE_CONFIGURATION_COLLECTION` | `queue_configuration` | The MongoDB collection to use to store queue configurations while using MongoDB storage implementation. |
+| `DECKARD_STORAGE_URI` |  | **Required when `DECKARD_STORAGE_TYPE=MONGODB`.** The MongoDB connection URI. |
+| `DECKARD_MONGODB_DATABASE` | `deckard` | The MongoDB database to use to store messages. |
+| `DECKARD_MONGODB_COLLECTION` | `queue` | The MongoDB collection to use to store messages. |
+| `DECKARD_MONGODB_QUEUE_CONFIGURATION_COLLECTION` | `queue_configuration` | The MongoDB collection to use to store queue configurations. |
+
 
 ### Housekeeper Configuration
 

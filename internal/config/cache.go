@@ -27,34 +27,15 @@ var CacheConnectionRetryDelay = Create(&ViperConfigKey{
 })
 
 // Redis Configurations
-
-var RedisPassword = Create(&ViperConfigKey{
-	Key: "redis.password",
-})
-
-var RedisAddress = Create(&ViperConfigKey{
-	Key:     "redis.address",
-	Default: "localhost",
-})
-
-var RedisPort = Create(&ViperConfigKey{
-	Key:     "redis.port",
-	Default: 6379,
-})
-
-var RedisDB = Create(&ViperConfigKey{
-	Key:     "redis.db",
-	Default: 0,
-})
+//
+// Connection details (address, credentials, database, TLS, timeouts, pool size, etc.) are
+// configured exclusively through CacheUri (DECKARD_CACHE_URI): a standalone redis:// or rediss://
+// URI for single-node mode, or go-redis's cluster URL format for cluster mode - see
+// redis.ParseClusterURL and clusterOptionsFromConfig.
 
 // Redis Cluster Configurations
 
 var RedisClusterMode = Create(&ViperConfigKey{
 	Key:     "redis.cluster.mode",
 	Default: false,
-})
-
-var RedisClusterAddresses = Create(&ViperConfigKey{
-	Key:     "redis.cluster.addresses",
-	Default: nil,
 })

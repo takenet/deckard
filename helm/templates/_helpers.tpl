@@ -125,9 +125,9 @@ Define Cache URI
 {{- if eq .Values.cache.type "REDIS" }}
 {{- if .Values.redis.enabled }}
 {{- if eq .Values.redis.architecture "standalone" }}
-{{- printf "redis://:%s@%s-master.%s.svc:%s/%s" .Values.redis.auth.password (include "deckard.redis.fullname" .) .Release.Namespace (toString .Values.redis.service.ports.redis) (toString .Values.cache.redis.database) }}
+{{- printf "redis://:%s@%s-master.%s.svc:%s/0" .Values.redis.auth.password (include "deckard.redis.fullname" .) .Release.Namespace (toString .Values.redis.service.ports.redis) }}
 {{- else }}
-{{- printf "redis://:%s@%s-headless.%s.svc:%s/%s" .Values.redis.auth.password (include "deckard.redis.fullname" .) .Release.Namespace (toString .Values.redis.service.ports.redis) (toString .Values.cache.redis.database) }}
+{{- printf "redis://:%s@%s-headless.%s.svc:%s/0" .Values.redis.auth.password (include "deckard.redis.fullname" .) .Release.Namespace (toString .Values.redis.service.ports.redis) }}
 {{- end }}
 {{- end }}
 {{- end }}

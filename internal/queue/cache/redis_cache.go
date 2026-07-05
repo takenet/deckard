@@ -12,7 +12,6 @@ import (
 	"github.com/meirf/gopart"
 	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
-	"github.com/spf13/viper"
 	"github.com/takenet/deckard/internal/config"
 	"github.com/takenet/deckard/internal/dtime"
 	"github.com/takenet/deckard/internal/logger"
@@ -23,6 +22,8 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
+
+var errCacheUriRequired = errors.New("cache.uri (DECKARD_CACHE_URI) is required when cache.type is REDIS")
 
 // RedisClient interface abstracts the differences between single-node and cluster Redis clients
 type RedisClient interface {
@@ -96,24 +97,9 @@ func NewRedisCache(ctx context.Context) (*RedisCache, error) {
 }
 
 func createSingleNodeClient(ctx context.Context) (RedisClient, error) {
-	uri := config.CacheUri.Get()
-
-	var options *redis.Options
-	if uri == "" {
-		address := fmt.Sprint(config.RedisAddress.Get(), ":", config.RedisPort.GetInt())
-
-		options = &redis.Options{
-			Addr:     address,
-			Password: config.RedisPassword.Get(),
-			DB:       config.RedisDB.GetInt(),
-		}
-	} else {
-		var err error
-		options, err = redis.ParseURL(uri)
-
-		if err != nil {
-			return nil, fmt.Errorf("error parsing redis uri: %w", err)
-		}
+	options, err := singleNodeOptionsFromConfig()
+	if err != nil {
+		return nil, err
 	}
 
 	logger.S(ctx).Info("Connecting to ", options.Addr, " Redis instance")
@@ -131,17 +117,12 @@ func createSingleNodeClient(ctx context.Context) (RedisClient, error) {
 }
 
 func createClusterClient(ctx context.Context) (RedisClient, error) {
-	addresses := clusterAddressesFromConfig()
-	if len(addresses) == 0 {
-		return nil, errors.New("redis.cluster.addresses must be specified when cluster mode is enabled")
+	options, err := clusterOptionsFromConfig()
+	if err != nil {
+		return nil, err
 	}
 
-	options := &redis.ClusterOptions{
-		Addrs:    addresses,
-		Password: config.RedisPassword.Get(),
-	}
-
-	logger.S(ctx).Info("Connecting to Redis cluster with addresses: ", addresses)
+	logger.S(ctx).Info("Connecting to Redis cluster with addresses: ", options.Addrs)
 
 	start := dtime.Now()
 
@@ -155,42 +136,37 @@ func createClusterClient(ctx context.Context) (RedisClient, error) {
 	return clusterClient, nil
 }
 
-func clusterAddressesFromConfig() []string {
-	addresses := viper.GetStringSlice(config.RedisClusterAddresses.GetKey())
-	if len(addresses) > 0 {
-		return sanitizeAddresses(addresses)
+func singleNodeOptionsFromConfig() (*redis.Options, error) {
+	uri := config.CacheUri.Get()
+	if uri == "" {
+		return nil, errCacheUriRequired
 	}
 
-	for _, alias := range config.RedisClusterAddresses.GetAliases() {
-		addresses = viper.GetStringSlice(alias)
-		if len(addresses) > 0 {
-			return sanitizeAddresses(addresses)
-		}
+	options, err := redis.ParseURL(uri)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing redis uri: %w", err)
 	}
 
-	return sanitizeAddresses(strings.Split(config.RedisClusterAddresses.Get(), ","))
+	return options, nil
 }
 
-// sanitizeAddresses trims whitespace and drops empty entries. It also splits each entry on commas,
-// so it transparently handles both a proper address list and a single flat comma-separated string
-// (e.g. viper.GetStringSlice returns a one-element slice containing the whole string when the
-// underlying config value - such as DECKARD_REDIS_CLUSTER_ADDRESSES or a plain Set("a:1,b:2") -
-// isn't a real list) without silently producing one bogus multi-colon "address".
-func sanitizeAddresses(addresses []string) []string {
-	sanitized := make([]string, 0, len(addresses))
-
-	for _, address := range addresses {
-		for _, part := range strings.Split(address, ",") {
-			trimmed := strings.TrimSpace(part)
-			if trimmed == "" {
-				continue
-			}
-
-			sanitized = append(sanitized, trimmed)
-		}
+// clusterOptionsFromConfig delegates to redis.ParseClusterURL, go-redis's own URL format for
+// Redis Cluster: a base redis://|rediss:// URI for the first seed node, with additional seed
+// nodes appended as repeated addr= query parameters (e.g.
+// "redis://node-1:6379?addr=node-2:6379&addr=node-3:6379"). Credentials and TLS are part of the
+// base URI and apply to every node.
+func clusterOptionsFromConfig() (*redis.ClusterOptions, error) {
+	uri := config.CacheUri.Get()
+	if uri == "" {
+		return nil, errCacheUriRequired
 	}
 
-	return sanitized
+	options, err := redis.ParseClusterURL(uri)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing redis cluster uri: %w", err)
+	}
+
+	return options, nil
 }
 
 func waitForSingleNodeClient(options *redis.Options) (*redis.Client, error) {

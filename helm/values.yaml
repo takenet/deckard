@@ -101,20 +101,18 @@ cache:
   type: REDIS
   connectionSecret:
     # Use an existing Secret for the cache connection instead of having the chart generate one.
-    # Direct cache URI overrides are not exposed through values.yaml; disable redis.enabled and provide the URI with this Secret.
+    # The Secret value is the sole source of Redis connection details (address, credentials, db, TLS,
+    # timeouts, pool size, etc.): a redis:// or rediss:// URI for standalone, or go-redis's cluster
+    # URL format for Redis Cluster (base URI + repeated addr=host:port query params), e.g.
+    # "redis://node-1:6379?addr=node-2:6379&addr=node-3:6379".
     existingSecret: ""
     key: cache-uri
   redis:
-    # Deckard's DECKARD_REDIS_DB environment variable
-    database: 0
-    # Deprecated and blocked for security reasons. Use cache.connectionSecret.* only.
-    password: ""
     cluster:
-      # Deckard's DECKARD_REDIS_CLUSTER_MODE environment variable
+      # Deckard's DECKARD_REDIS_CLUSTER_MODE environment variable.
+      # Only supported with an external Redis Cluster: set redis.enabled=false and provide
+      # cache.connectionSecret.existingSecret with the cluster URL described above.
       mode: false
-      # Deckard's DECKARD_REDIS_CLUSTER_ADDRESSES environment variable.
-      # Comma-separated list of host:port values.
-      addresses: ""
 
 # See available options here: https://github.com/bitnami/charts/tree/main/bitnami/redis
 redis:

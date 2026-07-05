@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"strconv"
@@ -25,6 +24,8 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
+
+var errStorageUriRequired = errors.New("storage.uri (DECKARD_STORAGE_URI) is required when storage.type is MONGODB")
 
 type MongoCollectionInterface interface {
 	UpdateOne(ctx context.Context, filter interface{}, update interface{}, opts ...options.Lister[options.UpdateOneOptions]) (*mongo.UpdateResult, error)
@@ -52,7 +53,10 @@ var _ Storage = &MongoStorage{}
 var deleteChunkSize = 100
 
 func NewMongoStorage(ctx context.Context) (*MongoStorage, error) {
-	mongoSecondaryOpts := createOptions()
+	mongoSecondaryOpts, err := createOptions()
+	if err != nil {
+		return nil, err
+	}
 
 	logger.S(ctx).Info("Connecting to ", mongoSecondaryOpts.Hosts, " MongoDB instance(s).")
 
@@ -64,7 +68,11 @@ func NewMongoStorage(ctx context.Context) (*MongoStorage, error) {
 		return nil, err
 	}
 
-	mongoPrimaryOptions := createOptions()
+	mongoPrimaryOptions, err := createOptions()
+	if err != nil {
+		return nil, err
+	}
+
 	mongoPrimaryOptions.SetReadPreference(readpref.PrimaryPreferred())
 	clientPrimaryPreference, err := waitForClient(ctx, mongoPrimaryOptions)
 	if err != nil {
@@ -86,45 +94,28 @@ func NewMongoStorage(ctx context.Context) (*MongoStorage, error) {
 	}, nil
 }
 
-func createOptions() *options.ClientOptions {
+func createOptions() (*options.ClientOptions, error) {
+	uri := config.StorageUri.Get()
+	if uri == "" {
+		return nil, errStorageUriRequired
+	}
+
 	mongoOpts := options.Client()
 	mongoOpts.SetAppName(project.Name)
 
 	// OpenTelemetry APM
 	mongoOpts.SetMonitor(otelmongo.NewMonitor())
 
-	uri := config.StorageUri.Get()
-	if uri != "" {
-		mongoOpts.ApplyURI(uri)
+	mongoOpts.ApplyURI(uri)
 
-		return mongoOpts
+	// Local/CI MongoDB instances typically fail fast; a short server selection timeout avoids
+	// waiting out the full default (30s) per retry attempt against a host that's simply not up yet.
+	if strings.Contains(uri, "localhost") {
+		duration := time.Second
+		mongoOpts.ServerSelectionTimeout = &duration
 	}
 
-	mongoOpts.SetMaxPoolSize(uint64(config.MongoMaxPoolSize.GetInt()))
-
-	user := config.MongoUser.Get()
-	if user != "" {
-		mongoOpts.SetAuth(options.Credential{
-			AuthSource: config.MongoAuthDb.Get(),
-			Username:   user,
-			Password:   config.MongoPassword.Get(),
-		})
-	}
-
-	addresses := config.MongoAddresses.Get()
-	if addresses != "" {
-		if strings.Contains(addresses, "localhost") {
-			duration := time.Second
-			mongoOpts.ServerSelectionTimeout = &duration
-		}
-		mongoOpts.SetHosts(strings.Split(addresses, ","))
-	}
-
-	if config.MongoSsl.GetBool() {
-		mongoOpts.SetTLSConfig(&tls.Config{})
-	}
-
-	return mongoOpts
+	return mongoOpts, nil
 }
 
 func waitForClient(ctx context.Context, opts *options.ClientOptions) (*mongo.Client, error) {

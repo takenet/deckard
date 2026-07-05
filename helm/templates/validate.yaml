@@ -22,14 +22,6 @@
 {{- fail "cache.connectionSecret.key must be set when cache.type=REDIS and a cache connection secret is used or generated (connectionSecret.cache.key is deprecated but still supported)" }}
 {{- end }}
 
-{{- if and $usesRedis .Values.cache.redis.cluster.mode (eq (trim .Values.cache.redis.cluster.addresses) "") }}
-{{- fail "cache.redis.cluster.addresses is required when cache.redis.cluster.mode=true" }}
-{{- end }}
-
-{{- if and $usesRedis (ne (trim (toString .Values.cache.redis.password)) "") }}
-{{- fail "cache.redis.password is not allowed. Use cache.connectionSecret.existingSecret + cache.connectionSecret.key instead." }}
-{{- end }}
-
-{{- if and $usesRedis .Values.cache.redis.cluster.mode .Values.redis.enabled (ne .Values.redis.architecture "standalone") }}
-{{- fail "cache.redis.cluster.mode=true is only supported with an external Redis Cluster (set redis.enabled=false and provide cache.connectionSecret.existingSecret, or use cluster addresses). The built-in bitnami/redis subchart in this chart version is used as standalone cache." }}
+{{- if and $usesRedis .Values.cache.redis.cluster.mode .Values.redis.enabled }}
+{{- fail "cache.redis.cluster.mode=true requires redis.enabled=false: Redis Cluster is only supported via an external cluster. Set redis.enabled=false and provide cache.connectionSecret.existingSecret with a comma-separated list of node URIs (e.g. redis://node-1:6379,redis://node-2:6379)." }}
 {{- end }}

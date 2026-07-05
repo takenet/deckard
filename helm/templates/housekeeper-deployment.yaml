@@ -66,14 +66,8 @@ spec:
                   name: {{ include "deckard.cacheConnectionSecretName" . }}
                   key: {{ include "deckard.cacheConnectionSecretKey" . | quote }}
             {{- end }}
-            - name: DECKARD_REDIS_DB
-              value: {{ quote .Values.cache.redis.database }}
             - name: DECKARD_REDIS_CLUSTER_MODE
               value: {{ quote .Values.cache.redis.cluster.mode }}
-            {{- if .Values.cache.redis.cluster.addresses }}
-            - name: DECKARD_REDIS_CLUSTER_ADDRESSES
-              value: {{ quote .Values.cache.redis.cluster.addresses }}
-            {{- end }}
           ports:
             - name: grpc
               containerPort: {{ .Values.housekeeper.service.port }}

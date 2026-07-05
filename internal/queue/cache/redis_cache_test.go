@@ -17,7 +17,7 @@ func TestRedisCacheIntegration(t *testing.T) {
 	}
 
 	config.Configure(true)
-	config.RedisAddress.Set("localhost")
+	config.CacheUri.Set("redis://localhost:6379/0")
 
 	cache, err := NewRedisCache(ctx)
 
@@ -35,11 +35,24 @@ func TestNewCacheWithoutServerShouldErrorIntegration(t *testing.T) {
 
 	defer viper.Reset()
 	config.CacheConnectionRetryEnabled.Set(false)
-	config.RedisPort.Set(12345)
+	config.CacheUri.Set("redis://localhost:12345/0")
 
 	_, err := NewRedisCache(ctx)
 
 	require.Error(t, err)
+}
+
+func TestNewCacheWithoutCacheUriShouldErrorIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
+	config.Configure(true)
+	config.CacheUri.Set("")
+
+	_, err := NewRedisCache(ctx)
+
+	require.ErrorIs(t, err, errCacheUriRequired)
 }
 
 func TestInsertShouldInsertWithCorrectScoreIntegration(t *testing.T) {
@@ -48,6 +61,7 @@ func TestInsertShouldInsertWithCorrectScoreIntegration(t *testing.T) {
 	}
 
 	config.Configure(true)
+	config.CacheUri.Set("redis://localhost:6379/0")
 
 	cache, err := NewRedisCache(ctx)
 	require.NoError(t, err)
@@ -97,24 +111,14 @@ func TestConnectWithRedisUsingConnectionURI(t *testing.T) {
 		t.Skip()
 	}
 
-	os.Setenv("DECKARD_REDIS_URI", "redis://localhost:6379/0")
-	os.Setenv("DECKARD_REDIS_ADDRESS", "none")
-	os.Setenv("DECKARD_REDIS_PASSWORD", "none")
-	os.Setenv("DECKARD_REDIS_PORT", "1234")
-	os.Setenv("DECKARD_REDIS_DB", "5")
+	// DECKARD_REDIS_URI resolves to the same config key as DECKARD_CACHE_URI (CacheUri's alias).
+	_ = os.Setenv("DECKARD_REDIS_URI", "redis://localhost:6379/0")
 
-	defer os.Unsetenv("DECKARD_REDIS_URI")
-	defer os.Unsetenv("DECKARD_REDIS_ADDRESS")
-	defer os.Unsetenv("DECKARD_REDIS_PASSWORD")
-	defer os.Unsetenv("DECKARD_REDIS_PORT")
-	defer os.Unsetenv("DECKARD_REDIS_DB")
+	defer func() { _ = os.Unsetenv("DECKARD_REDIS_URI") }()
 
 	config.Configure(true)
 
-	require.Equal(t, "none", config.RedisAddress.Get())
-	require.Equal(t, "none", config.RedisPassword.Get())
-	require.Equal(t, 1234, config.RedisPort.GetInt())
-	require.Equal(t, 5, config.RedisDB.GetInt())
+	require.Equal(t, "redis://localhost:6379/0", config.CacheUri.Get())
 
 	cache, err := NewRedisCache(ctx)
 	require.NoError(t, err)
@@ -136,4 +140,29 @@ func TestConnectWithRedisUsingConnectionURI(t *testing.T) {
 	assertQueueScoreIntegration(t, cache, "queue", "234", 123456)
 
 	cache.Flush(ctx)
+}
+
+// Not run with t.Parallel(): config.Configure/Set mutate process-global viper state, which would
+// race with other tests that also mutate it in parallel.
+func TestSingleNodeOptionsFromConfigWithoutURIShouldError(t *testing.T) {
+	config.Configure(true)
+	config.CacheUri.Set("")
+
+	_, err := singleNodeOptionsFromConfig()
+	require.ErrorIs(t, err, errCacheUriRequired)
+}
+
+// Not run with t.Parallel(): see TestSingleNodeOptionsFromConfigWithoutURIShouldError.
+func TestSingleNodeOptionsFromConfigWithRedissURI(t *testing.T) {
+	config.Configure(true)
+	config.CacheUri.Set("rediss://uri-user:uri-pass@redis-uri:6380/2?skip_verify=true")
+
+	options, err := singleNodeOptionsFromConfig()
+	require.NoError(t, err)
+	require.Equal(t, "redis-uri:6380", options.Addr)
+	require.Equal(t, "uri-user", options.Username)
+	require.Equal(t, "uri-pass", options.Password)
+	require.Equal(t, 2, options.DB)
+	require.NotNil(t, options.TLSConfig)
+	require.True(t, options.TLSConfig.InsecureSkipVerify)
 }

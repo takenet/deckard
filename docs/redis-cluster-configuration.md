@@ -8,53 +8,53 @@ Deckard supports both single-node Redis and Redis Cluster deployments. When Redi
 
 ## Configuration
 
+Redis connection details (address, credentials, database, TLS) are configured exclusively
+through `DECKARD_CACHE_URI`. There is no fallback to discrete address/port/password/db
+parameters.
+
 ### Single Node Redis (Default)
 
 This is the traditional configuration that works with a single Redis instance:
 
-```yaml
-cache:
-  type: REDIS
-redis:
-  address: localhost
-  port: 6379
-  password: '' # optional
-  db: 0 # optional
+```bash
+DECKARD_CACHE_TYPE=REDIS
+DECKARD_CACHE_URI=redis://localhost:6379/0
 ```
 
-Environment variables:
+With authentication and TLS:
 
 ```bash
 DECKARD_CACHE_TYPE=REDIS
-DECKARD_REDIS_ADDRESS=localhost
-DECKARD_REDIS_PORT=6379
-DECKARD_REDIS_PASSWORD=mypassword  # optional
-DECKARD_REDIS_DB=0                 # optional
+DECKARD_CACHE_URI=rediss://user:pass@localhost:6380/0
 ```
 
 ### Redis Cluster
 
-To enable Redis Cluster support:
-
-```yaml
-cache:
-  type: REDIS
-redis:
-  cluster:
-    mode: true
-    addresses: redis-node-1:6379,redis-node-2:6379,redis-node-3:6379
-```
-
-Note: `redis.cluster.addresses` is parsed as a comma-separated string (same format used by `DECKARD_REDIS_CLUSTER_ADDRESSES`).
-
-Environment variables:
+To enable Redis Cluster support, set `DECKARD_REDIS_CLUSTER_MODE=true` and provide a cluster URL
+in `DECKARD_CACHE_URI`, using go-redis's own cluster URL format (parsed by
+[`redis.ParseClusterURL`](https://pkg.go.dev/github.com/redis/go-redis/v9#ParseClusterURL)): a
+base URI for the first seed node, with the remaining seed nodes appended as repeated
+`addr=host:port` query parameters. Credentials, TLS and connection tuning options all belong to
+the base URI and apply to every node:
 
 ```bash
 DECKARD_CACHE_TYPE=REDIS
 DECKARD_REDIS_CLUSTER_MODE=true
-DECKARD_REDIS_CLUSTER_ADDRESSES=redis-node-1:6379,redis-node-2:6379,redis-node-3:6379
-DECKARD_REDIS_PASSWORD=mypassword  # optional, if cluster requires auth
+DECKARD_CACHE_URI=redis://redis-node-1:6379?addr=redis-node-2:6379&addr=redis-node-3:6379
 ```
+
+With authentication and TLS:
+
+```bash
+DECKARD_CACHE_TYPE=REDIS
+DECKARD_REDIS_CLUSTER_MODE=true
+DECKARD_CACHE_URI=rediss://user:pass@redis-node-1:6379?addr=redis-node-2:6379&addr=redis-node-3:6379
+```
+
+Two Redis Cluster limitations to be aware of:
+
+- There is no database selector: Redis Cluster does not support `SELECT` and always operates on database 0.
+- `skip_verify` (insecure TLS, used for standalone above) is not accepted by the cluster URL parser.
 
 ## Key Naming Differences
 
@@ -136,9 +136,9 @@ go test -v ./internal/queue/cache/ -run Cluster
 
 ### Common Issues
 
-**1. "redis.cluster.addresses must be specified" error**
+**1. "cache.uri (DECKARD_CACHE_URI) is required when cache.type is REDIS" error**
 
-- Ensure `DECKARD_REDIS_CLUSTER_ADDRESSES` is set when cluster mode is enabled
+- Ensure `DECKARD_CACHE_URI` is set to a cluster URL (base URI plus `addr=` query parameters) when cluster mode is enabled
 
 **2. "CROSSSLOT Keys in request don't hash to the same slot" error**
 

@@ -126,10 +126,14 @@ Check the [values.yaml](https://github.com/takenet/deckard/blob/main/helm/values
 | Parameter                       | Description                                                                 | Default |
 | ------------------------------- | --------------------------------------------------------------------------- | ------- |
 | `cache.type`                    | Deckard cache type (REDIS, MEMORY)                                          | `REDIS` |
-| `cache.redis.database`          | Redis database for Deckard to use                                           | `0`     |
-| `cache.redis.password`          | Deprecated/blocked (plain text password not allowed; use cache connection Secret) | `""`    |
 | `cache.redis.cluster.mode`      | Enable Deckard Redis Cluster mode (`DECKARD_REDIS_CLUSTER_MODE`)            | `false` |
-| `cache.redis.cluster.addresses` | Comma-separated Redis Cluster addresses (`DECKARD_REDIS_CLUSTER_ADDRESSES`) | `""`    |
+
+Redis connection details (address, credentials, database, TLS, timeouts, pool size, etc.) are configured exclusively through the `cache.connectionSecret` value used as `DECKARD_CACHE_URI`.
+
+- Standalone URI example: `redis://user:pass@redis.example:6379/0`
+- Standalone TLS URI example: `rediss://user:pass@redis.example:6380/0`
+- Optional insecure TLS mode for development only (standalone only, see [Redis Cluster with Helm](#redis-cluster-with-helm)): `rediss://user:pass@redis.example:6380/0?skip_verify=true`
+- Cluster mode (`cache.redis.cluster.mode=true`): the secret value uses go-redis's cluster URL format - a base URI plus repeated `addr=host:port` query parameters for the remaining seed nodes, e.g. `redis://node-1:6379?addr=node-2:6379&addr=node-3:6379`.
 
 ### Connection secret configuration
 
@@ -171,10 +175,11 @@ cache:
   redis:
     cluster:
       mode: true
-      addresses: redis-node-1:6379,redis-node-2:6379,redis-node-3:6379
 ```
 
-- The built-in `bitnami/redis` dependency in this chart is documented and validated for standalone cache usage in this chart version.
+and set `cache.connectionSecret.existingSecret` (with `cache.connectionSecret.key`) to a Secret whose value is a cluster URL in go-redis's format: a base URI plus repeated `addr=host:port` query parameters, e.g. `redis://redis-node-1:6379?addr=redis-node-2:6379&addr=redis-node-3:6379`. Redis Cluster has no database selector (no `SELECT`), and its URL parser does not accept `skip_verify`.
+
+- The built-in `bitnami/redis` dependency in this chart is documented and validated for standalone cache usage only; enabling it together with `cache.redis.cluster.mode=true` fails chart validation.
 
 ### MongoDB's Chart configuration
 

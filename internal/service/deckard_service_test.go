@@ -81,7 +81,7 @@ func TestMessageSizeLimitDeckardGRPCServeIntegration(t *testing.T) {
 	defer cancel()
 	conn, err := newBlockingClientConn(ctx, fmt.Sprint("localhost:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	client := deckard.NewDeckardClient(conn)
 
@@ -127,7 +127,7 @@ func TestMemoryDeckardGRPCServeIntegration(t *testing.T) {
 	defer cancel()
 	conn, err := newBlockingClientConn(ctx, fmt.Sprint("localhost:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	client := deckard.NewDeckardClient(conn)
 
@@ -183,7 +183,7 @@ func TestDeckardServerTLS(t *testing.T) {
 	defer cancel()
 	conn, err := newBlockingClientConn(ctx, fmt.Sprint("localhost:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(cert))
 	require.NoError(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	client := deckard.NewDeckardClient(conn)
 
@@ -236,7 +236,7 @@ func TestDeckardMutualTLS(t *testing.T) {
 	defer cancel()
 	conn, err := newBlockingClientConn(ctx, fmt.Sprint("localhost:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(cert))
 	require.NoError(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	client := deckard.NewDeckardClient(conn)
 
@@ -286,11 +286,14 @@ func TestRedisAndMongoDeckardIntegration(t *testing.T) {
 
 	config.Configure(true)
 
+	config.StorageUri.Set("mongodb://localhost:27017/unit_test")
 	config.MongoDatabase.Set("unit_test")
 
 	storage, err := storage.NewMongoStorage(context.Background())
 
 	require.NoError(t, err)
+
+	config.CacheUri.Set("redis://localhost:6379/0")
 
 	cache, err := cache.NewRedisCache(context.Background())
 
@@ -796,7 +799,7 @@ func TestDeckardServerKeepalive(t *testing.T) {
 		defer cancel()
 		conn, err := newBlockingClientConn(ctx, fmt.Sprint("localhost:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(insecure.NewCredentials()))
 		require.NoError(t, err)
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 
 		client := deckard.NewDeckardClient(conn)
 
@@ -845,7 +848,7 @@ func TestDeckardServerKeepalive(t *testing.T) {
 		defer dialCancel()
 		conn, err := newBlockingClientConn(dialCtx, fmt.Sprint("localhost:", config.GrpcPort.GetInt()), grpc.WithTransportCredentials(insecure.NewCredentials()))
 		require.NoError(t, err)
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 
 		waitCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
@@ -890,7 +893,7 @@ func TestDeckardServerKeepalive(t *testing.T) {
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		)
 		require.NoError(t, err)
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 
 		timeoutDuration := 5 * time.Second
 		waitCtx, cancel := context.WithTimeout(ctx, timeoutDuration)

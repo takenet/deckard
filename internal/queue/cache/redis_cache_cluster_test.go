@@ -19,7 +19,7 @@ func TestRedisCacheClusterIntegration(t *testing.T) {
 
 	config.Configure(true)
 	config.RedisClusterMode.Set(true)
-	config.RedisClusterAddresses.Set("localhost:7000,localhost:7001,localhost:7002")
+	config.CacheUri.Set("redis://localhost:7000?addr=localhost:7001&addr=localhost:7002")
 
 	cache, err := NewRedisCache(ctx)
 
@@ -42,7 +42,7 @@ func TestNewClusterCacheWithoutServerShouldErrorIntegration(t *testing.T) {
 	config.Configure(true)
 	config.CacheConnectionRetryEnabled.Set(false)
 	config.RedisClusterMode.Set(true)
-	config.RedisClusterAddresses.Set("localhost:19999")
+	config.CacheUri.Set("redis://localhost:19999")
 
 	_, err := NewRedisCache(ctx)
 
@@ -61,7 +61,7 @@ func TestRedisCacheClusterListQueuesIntegration(t *testing.T) {
 
 	config.Configure(true)
 	config.RedisClusterMode.Set(true)
-	config.RedisClusterAddresses.Set("localhost:7000,localhost:7001,localhost:7002")
+	config.CacheUri.Set("redis://localhost:7000?addr=localhost:7001&addr=localhost:7002")
 
 	cache, err := NewRedisCache(ctx)
 	require.NoError(t, err)
@@ -103,7 +103,7 @@ func TestRedisCacheClusterListQueuesFansOutAcrossShards(t *testing.T) {
 
 	config.Configure(true)
 	config.RedisClusterMode.Set(true)
-	config.RedisClusterAddresses.Set("localhost:7000,localhost:7001,localhost:7002")
+	config.CacheUri.Set("redis://localhost:7000?addr=localhost:7001&addr=localhost:7002")
 
 	cache, err := NewRedisCache(ctx)
 	require.NoError(t, err)
@@ -140,7 +140,7 @@ func TestRedisCacheClusterLuaScriptsIntegration(t *testing.T) {
 
 	config.Configure(true)
 	config.RedisClusterMode.Set(true)
-	config.RedisClusterAddresses.Set("localhost:7000,localhost:7001,localhost:7002")
+	config.CacheUri.Set("redis://localhost:7000?addr=localhost:7001&addr=localhost:7002")
 
 	cache, err := NewRedisCache(ctx)
 	require.NoError(t, err)
@@ -211,7 +211,7 @@ func TestInsertShouldInsertWithCorrectScoreClusterIntegration(t *testing.T) {
 
 	config.Configure(true)
 	config.RedisClusterMode.Set(true)
-	config.RedisClusterAddresses.Set("localhost:7000,localhost:7001,localhost:7002")
+	config.CacheUri.Set("redis://localhost:7000?addr=localhost:7001&addr=localhost:7002")
 
 	cache, err := NewRedisCache(ctx)
 	require.NoError(t, err)
@@ -237,11 +237,11 @@ func TestInsertShouldInsertWithCorrectScoreClusterIntegration(t *testing.T) {
 func TestRedisClusterConfigurationValidation(t *testing.T) {
 	config.Configure(true)
 	config.RedisClusterMode.Set(true)
-	config.RedisClusterAddresses.Set("") // Empty addresses should cause error
+	config.CacheUri.Set("") // Empty URI should cause error
 
 	_, err := NewRedisCache(ctx)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "redis.cluster.addresses must be specified")
+	require.ErrorIs(t, err, errCacheUriRequired)
 }
 
 // TestRedisClusterKeyGeneration is a pure unit test (no live Redis needed) covering the same
@@ -297,4 +297,52 @@ func TestParseQueueKeyWithoutClusterMode(t *testing.T) {
 
 	require.Equal(t, "test-queue", cache.parseQueueKey("deckard:queue:test-queue", nil))
 	require.Equal(t, "test-queue", cache.parseQueueKey("deckard:queue:test-queue:tmp", PROCESSING_POOL_REGEX))
+}
+
+// Not run with t.Parallel(): config.Configure/Set mutate process-global viper state, which would
+// race with other tests that also mutate it in parallel.
+func TestClusterOptionsFromConfigWithoutURIShouldError(t *testing.T) {
+	config.Configure(true)
+	config.CacheUri.Set("")
+
+	_, err := clusterOptionsFromConfig()
+	require.ErrorIs(t, err, errCacheUriRequired)
+}
+
+// Not run with t.Parallel(): see TestClusterOptionsFromConfigWithoutURIShouldError.
+func TestClusterOptionsFromConfigWithAddrParams(t *testing.T) {
+	config.Configure(true)
+	config.CacheUri.Set("redis://redis-user:redis-pass@redis-a:6379?addr=redis-b:6379")
+
+	options, err := clusterOptionsFromConfig()
+	require.NoError(t, err)
+	require.Equal(t, []string{"redis-a:6379", "redis-b:6379"}, options.Addrs)
+	require.Equal(t, "redis-user", options.Username)
+	require.Equal(t, "redis-pass", options.Password)
+	require.Nil(t, options.TLSConfig)
+}
+
+// Not run with t.Parallel(): see TestClusterOptionsFromConfigWithoutURIShouldError.
+func TestClusterOptionsFromConfigWithRedissURI(t *testing.T) {
+	config.Configure(true)
+	config.CacheUri.Set("rediss://uri-user:uri-pass@redis-1:6379?addr=redis-2:6379")
+
+	options, err := clusterOptionsFromConfig()
+	require.NoError(t, err)
+	require.Equal(t, []string{"redis-1:6379", "redis-2:6379"}, options.Addrs)
+	require.Equal(t, "uri-user", options.Username)
+	require.Equal(t, "uri-pass", options.Password)
+	require.NotNil(t, options.TLSConfig)
+}
+
+// go-redis's cluster URL parser (unlike its standalone one) does not support skip_verify: this
+// documents that asymmetry so it isn't mistaken for a bug if someone tries it against a cluster.
+//
+// Not run with t.Parallel(): see TestClusterOptionsFromConfigWithoutURIShouldError.
+func TestClusterOptionsFromConfigWithSkipVerifyShouldError(t *testing.T) {
+	config.Configure(true)
+	config.CacheUri.Set("rediss://redis-1:6379?skip_verify=true")
+
+	_, err := clusterOptionsFromConfig()
+	require.Error(t, err)
 }

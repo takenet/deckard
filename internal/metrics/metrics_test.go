@@ -111,7 +111,7 @@ func TestListenAndServe(t *testing.T) {
 		if err != nil {
 			continue
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		// Check if the response status code is 200 OK
 		if resp.StatusCode != http.StatusOK {
