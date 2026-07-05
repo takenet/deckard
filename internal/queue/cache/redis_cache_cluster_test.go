@@ -189,9 +189,14 @@ func TestRedisCacheClusterLuaScriptsIntegration(t *testing.T) {
 	require.True(t, locked)
 
 	// Test Remove operation (uses removeElementScript)
+	//
+	// removed counts ZREM hits across every pool (active, processing, lock_ack, lock_nack,
+	// lock_ack:score, lock_nack:score), not distinct message IDs: msg2 is only ever in the
+	// processing pool (1 hit), but msg1 was locked above, so lockElementScript put it in both the
+	// lock_ack pool and its companion lock_ack:score pool (2 hits) - hence 3, not len(ids)=2.
 	removed, err := cache.Remove(ctx, queueName, "msg1", "msg2")
 	require.NoError(t, err)
-	require.Equal(t, int64(2), removed)
+	require.Equal(t, int64(3), removed)
 
 	cache.Flush(ctx)
 }
