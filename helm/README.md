@@ -31,7 +31,7 @@ helm uninstall deckard
 The command removes all the Kubernetes components associated with the chart and deletes the release.
 
 > **WARNING**
-> 
+>
 > It will also delete the MongoDB and Redis deployments if they were deployed by the chart.
 
 ## Persistence
@@ -58,83 +58,87 @@ Check the [values.yaml](https://github.com/takenet/deckard/blob/main/helm/values
 
 ### Deckard's main deployment configuration
 
-| Parameter | Description | Default |
-| --------- | ----------- | ------- |
-| `replicaCount` | Number of replicas | `1` |
-| `image.repository` | Deckard image repository | `blipai/deckard` |
-| `image.pullPolicy` | Image pull policy | `IfNotPresent` |
-| `image.tag` | Image tag (overrides appVersion) | `""` |
-| `imagePullSecrets` | Image pull secrets | `[]` |
-| `nameOverride` | Override the name of the chart | `""` |
-| `fullnameOverride` | Override the full name of the chart | `""` |
-| `labels` | Additional labels | `{}` |
-| `audit.enabled` | Enable Deckard's audit system | `false` |
-| `env` | Additional environment variables | `[]` |
-| `podAnnotations` | Additional pod annotations | `{}` |
-| `podSecurityContext` | Pod security context | `{}` |
-| `securityContext` | Container security context | `{}` |
-| `service.enabled` | Enable Kubernetes service | `true` |
-| `service.type` | Kubernetes service type | `ClusterIP` |
-| `service.port` | Kubernetes service port | `8081` |
-| `ingress.enabled` | Enable ingress | `false` |
-| `ingress.className` | Ingress class name | `""` |
-| `ingress.annotations` | Ingress annotations | `{}` |
-| `ingress.tls` | Ingress TLS configuration | `[]` |
-| `resources` | Resource requests and limits | `{}` |
-| `autoscaling.enabled` | Enable autoscaling | `false` |
-| `autoscaling.minReplicas` | Minimum number of replicas | `1` |
-| `autoscaling.maxReplicas` | Maximum number of replicas | `10` |
-| `autoscaling.targetCPUUtilizationPercentage` | Target CPU utilization percentage | `80` |
-| `nodeSelector` | Node selector | `{}` |
-| `tolerations` | Tolerations | `[]` |
-| `affinity` | Affinity | `{}` |
+| Parameter                                    | Description                         | Default          |
+| -------------------------------------------- | ----------------------------------- | ---------------- |
+| `replicaCount`                               | Number of replicas                  | `1`              |
+| `image.repository`                           | Deckard image repository            | `blipai/deckard` |
+| `image.pullPolicy`                           | Image pull policy                   | `IfNotPresent`   |
+| `image.tag`                                  | Image tag (overrides appVersion)    | `""`             |
+| `imagePullSecrets`                           | Image pull secrets                  | `[]`             |
+| `nameOverride`                               | Override the name of the chart      | `""`             |
+| `fullnameOverride`                           | Override the full name of the chart | `""`             |
+| `labels`                                     | Additional labels                   | `{}`             |
+| `audit.enabled`                              | Enable Deckard's audit system       | `false`          |
+| `env`                                        | Additional environment variables    | `[]`             |
+| `podAnnotations`                             | Additional pod annotations          | `{}`             |
+| `podSecurityContext`                         | Pod security context                | `{}`             |
+| `securityContext`                            | Container security context          | `{}`             |
+| `service.enabled`                            | Enable Kubernetes service           | `true`           |
+| `service.type`                               | Kubernetes service type             | `ClusterIP`      |
+| `service.port`                               | Kubernetes service port             | `8081`           |
+| `ingress.enabled`                            | Enable ingress                      | `false`          |
+| `ingress.className`                          | Ingress class name                  | `""`             |
+| `ingress.annotations`                        | Ingress annotations                 | `{}`             |
+| `ingress.tls`                                | Ingress TLS configuration           | `[]`             |
+| `resources`                                  | Resource requests and limits        | `{}`             |
+| `autoscaling.enabled`                        | Enable autoscaling                  | `false`          |
+| `autoscaling.minReplicas`                    | Minimum number of replicas          | `1`              |
+| `autoscaling.maxReplicas`                    | Maximum number of replicas          | `10`             |
+| `autoscaling.targetCPUUtilizationPercentage` | Target CPU utilization percentage   | `80`             |
+| `nodeSelector`                               | Node selector                       | `{}`             |
+| `tolerations`                                | Tolerations                         | `[]`             |
+| `affinity`                                   | Affinity                            | `{}`             |
 
 ### Housekeeper deployment configuration
 
-| Parameter | Description | Default |
-| --------- | ----------- | ------- |
-| `housekeeper.self.enabled` | Enable housekeeper task in the same pod as the Deckard gRPC service | `false` |
-| `housekeeper.enabled` | Deploy a separate housekeeper deployment | `true` |
-| `housekeeper.image.repository` | Housekeeper image repository | `blipai/deckard` |
-| `housekeeper.image.pullPolicy` | Housekeeper image pull policy | `IfNotPresent` |
-| `housekeeper.image.tag` | Housekeeper image tag (overrides appVersion) | `""` |
-| `housekeeper.replicaCount` | Number of replicas for the housekeeper deployment | `1` |
-| `housekeeper.labels` | Additional labels for the housekeeper deployment | `{}` |
-| `housekeeper.podAnnotations` | Additional pod annotations for the housekeeper deployment | `{}` |
-| `housekeeper.podSecurityContext` | Pod security context for the housekeeper deployment | `{}` |
-| `housekeeper.securityContext` | Container security context for the housekeeper deployment | `{}` |
-| `housekeeper.env` | Additional environment variables for the housekeeper deployment | `[]` |
-| `housekeeper.resources` | Resource requests and limits for the housekeeper deployment | `{}` |
-| `housekeeper.nodeSelector` | Node selector for the housekeeper deployment | `{}` |
-| `housekeeper.tolerations` | Tolerations for the housekeeper deployment | `[]` |
-| `housekeeper.affinity` | Affinity for the housekeeper deployment | `{}` |
-| `housekeeper.service.enabled` | Enable Kubernetes service for the housekeeper deployment | `true` |
-| `housekeeper.service.type` | Kubernetes service type for the housekeeper deployment | `ClusterIP` |
-| `housekeeper.service.port` | Kubernetes service port for the housekeeper deployment | `8081` |
+| Parameter                        | Description                                                         | Default          |
+| -------------------------------- | ------------------------------------------------------------------- | ---------------- |
+| `housekeeper.self.enabled`       | Enable housekeeper task in the same pod as the Deckard gRPC service | `false`          |
+| `housekeeper.enabled`            | Deploy a separate housekeeper deployment                            | `true`           |
+| `housekeeper.image.repository`   | Housekeeper image repository                                        | `blipai/deckard` |
+| `housekeeper.image.pullPolicy`   | Housekeeper image pull policy                                       | `IfNotPresent`   |
+| `housekeeper.image.tag`          | Housekeeper image tag (overrides appVersion)                        | `""`             |
+| `housekeeper.replicaCount`       | Number of replicas for the housekeeper deployment                   | `1`              |
+| `housekeeper.labels`             | Additional labels for the housekeeper deployment                    | `{}`             |
+| `housekeeper.podAnnotations`     | Additional pod annotations for the housekeeper deployment           | `{}`             |
+| `housekeeper.podSecurityContext` | Pod security context for the housekeeper deployment                 | `{}`             |
+| `housekeeper.securityContext`    | Container security context for the housekeeper deployment           | `{}`             |
+| `housekeeper.env`                | Additional environment variables for the housekeeper deployment     | `[]`             |
+| `housekeeper.resources`          | Resource requests and limits for the housekeeper deployment         | `{}`             |
+| `housekeeper.nodeSelector`       | Node selector for the housekeeper deployment                        | `{}`             |
+| `housekeeper.tolerations`        | Tolerations for the housekeeper deployment                          | `[]`             |
+| `housekeeper.affinity`           | Affinity for the housekeeper deployment                             | `{}`             |
+| `housekeeper.service.enabled`    | Enable Kubernetes service for the housekeeper deployment            | `true`           |
+| `housekeeper.service.type`       | Kubernetes service type for the housekeeper deployment              | `ClusterIP`      |
+| `housekeeper.service.port`       | Kubernetes service port for the housekeeper deployment              | `8081`           |
+
 ### Deckard's storage configuration
 
-| Parameter | Description | Default |
-| --------- | ----------- | ------- |
-| `storage.type` | Deckard storage type (MONGODB, MEMORY) | `MONGODB` |
-| `storage.mongodb.database` | MongoDB database name for Deckard to use | `deckard` |
-| `storage.mongodb.collection` | MongoDB collection name for Deckard to use | `queue` |
+| Parameter                                        | Description                                                    | Default               |
+| ------------------------------------------------ | -------------------------------------------------------------- | --------------------- |
+| `storage.type`                                   | Deckard storage type (MONGODB, MEMORY)                         | `MONGODB`             |
+| `storage.mongodb.database`                       | MongoDB database name for Deckard to use                       | `deckard`             |
+| `storage.mongodb.collection`                     | MongoDB collection name for Deckard to use                     | `queue`               |
 | `storage.mongodb.queue_configuration_collection` | MongoDB queue configuration collection name for Deckard to use | `queue_configuration` |
 
 ### Deckard's cache configuration
 
-| Parameter | Description | Default |
-| --------- | ----------- | ------- |
-| `cache.type` | Deckard cache type (REDIS, MEMORY) | `REDIS` |
-| `cache.redis.database` | Redis database for Deckard to use | `0` |
+| Parameter                       | Description                                                                 | Default |
+| ------------------------------- | --------------------------------------------------------------------------- | ------- |
+| `cache.type`                    | Deckard cache type (REDIS, MEMORY)                                          | `REDIS` |
+| `cache.redis.database`          | Redis database for Deckard to use                                           | `0`     |
+| `cache.redis.password`          | Deprecated/blocked (plain text password not allowed; use cache connection Secret) | `""`    |
+| `cache.redis.cluster.mode`      | Enable Deckard Redis Cluster mode (`DECKARD_REDIS_CLUSTER_MODE`)            | `false` |
+| `cache.redis.cluster.addresses` | Comma-separated Redis Cluster addresses (`DECKARD_REDIS_CLUSTER_ADDRESSES`) | `""`    |
 
 ### Connection secret configuration
 
-| Parameter | Description | Default |
-| --------- | ----------- | ------- |
-| `storage.connectionSecret.existingSecret` | Existing Secret containing the storage connection string | `""` |
-| `storage.connectionSecret.key` | Secret key for the storage connection string | `storage-uri` |
-| `cache.connectionSecret.existingSecret` | Existing Secret containing the cache connection string | `""` |
-| `cache.connectionSecret.key` | Secret key for the cache connection string | `cache-uri` |
+| Parameter                                 | Description                                              | Default       |
+| ----------------------------------------- | -------------------------------------------------------- | ------------- |
+| `storage.connectionSecret.existingSecret` | Existing Secret containing the storage connection string | `""`          |
+| `storage.connectionSecret.key`            | Secret key for the storage connection string             | `storage-uri` |
+| `cache.connectionSecret.existingSecret`   | Existing Secret containing the cache connection string   | `""`          |
+| `cache.connectionSecret.key`              | Secret key for the cache connection string               | `cache-uri`   |
 
 When `mongodb.enabled=false` or `redis.enabled=false`, use the corresponding `storage.connectionSecret.*` or `cache.connectionSecret.*` settings to provide external connection URIs.
 
@@ -146,14 +150,31 @@ If the Redis is enabled and you want to deploy your own Redis using this chart, 
 
 For more `redis` configurations check [bitnami's chart available configurations](https://github.com/bitnami/charts/tree/main/bitnami/redis/)
 
-| Parameter | Description | Default |
-| --------- | ----------- | ------- |
-| `redis.enabled` | Deploy a Redis using the bitnami chart | `true` |
-| `redis.architecture` | Redis architecture | `standalone` |
-| `redis.auth.enabled` | Enable Redis authentication | `true` |
-| `redis.auth.password` | Redis password | `deckard` |
+| Parameter             | Description                            | Default      |
+| --------------------- | -------------------------------------- | ------------ |
+| `redis.enabled`       | Deploy a Redis using the bitnami chart | `true`       |
+| `redis.architecture`  | Redis architecture                     | `standalone` |
+| `redis.auth.enabled`  | Enable Redis authentication            | `true`       |
+| `redis.auth.password` | Redis password for the bitnami/redis subchart (you may also use `redis.auth.existingSecret`) | `""`    |
 
 > If you disabled the redis chart using `redis.enabled` as `false`, any property with the prefix `redis.` will be ignored.
+
+### Redis Cluster with Helm
+
+Deckard's Redis Cluster mode is configured through `cache.redis.cluster.*` values (application-level config), not by toggling only the Redis subchart architecture.
+
+- For external Redis Cluster, set `redis.enabled=false`, provide your cache connection secret, and set:
+
+```yaml
+cache:
+  type: REDIS
+  redis:
+    cluster:
+      mode: true
+      addresses: redis-node-1:6379,redis-node-2:6379,redis-node-3:6379
+```
+
+- The built-in `bitnami/redis` dependency in this chart is documented and validated for standalone cache usage in this chart version.
 
 ### MongoDB's Chart configuration
 
@@ -161,13 +182,13 @@ If the MongoDB is enabled and you want to deploy your own MongoDB using this cha
 
 For more `mongodb` configurations check [bitnami's chart available configurations](https://github.com/bitnami/charts/tree/main/bitnami/mongodb/)
 
-| Parameter | Description | Default |
-| --------- | ----------- | ------- |
-| `mongodb.enabled` | Deploy a MongoDB using the bitnami chart. | `true` |
-| `mongodb.auth.enabled` | Enable MongoDB authentication | `true` |
-| `mongodb.auth.rootUser` | MongoDB root username | `deckard` |
-| `mongodb.auth.rootPassword` | MongoDB root password | `deckard` |
-| `mongodb.architecture` | MongoDB architectur | `standalone` |
+| Parameter                   | Description                               | Default      |
+| --------------------------- | ----------------------------------------- | ------------ |
+| `mongodb.enabled`           | Deploy a MongoDB using the bitnami chart. | `true`       |
+| `mongodb.auth.enabled`      | Enable MongoDB authentication             | `true`       |
+| `mongodb.auth.rootUser`     | MongoDB root username                     | `deckard`    |
+| `mongodb.auth.rootPassword` | MongoDB root password for the bitnami/mongodb subchart (you may also use `mongodb.auth.existingSecret`) | `""`    |
+| `mongodb.architecture`      | MongoDB architectur                       | `standalone` |
 
 > If you disabled the MongoDB chart using `mongodb.enabled` as `false`, any property with the prefix `mongodb.` will be ignored.
 

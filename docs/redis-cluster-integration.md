@@ -1,8 +1,15 @@
-# Redis Cluster Integration Plan
+# Redis Cluster Integration (Implemented)
+
+> Status: implemented.
+>
+> This document was originally a planning artifact. The implementation has been completed.
+> For operational configuration and current behavior, use
+> [docs/redis-cluster-configuration.md](./redis-cluster-configuration.md) and the Helm chart docs at
+> [helm/README.md](../helm/README.md).
 
 ## Overview
 
-This document outlines the plan to improve Deckard's integration with Redis Clusters while maintaining backward compatibility with single-node Redis deployments.
+This document originally outlined the plan to improve Deckard's integration with Redis Clusters while maintaining backward compatibility with single-node Redis deployments.
 
 ## Problem Statement
 
@@ -39,28 +46,28 @@ Modify key naming to use Redis hash tags, ensuring all queue-related keys hash t
 
 The `{myqueue}` hash tag ensures all keys for the same queue land on the same Redis Cluster slot.
 
-## Implementation Plan
+## Implementation Summary
 
 ### Phase 1: Configuration Support
-- [ ] Add Redis Cluster configuration option
-- [ ] Add cluster-aware key naming toggle
-- [ ] Support both legacy and cluster-compatible modes
+- [x] Added Redis Cluster configuration options (`redis.cluster.mode`, `redis.cluster.addresses`)
+- [x] Added cluster-aware key naming toggle
+- [x] Preserved single-node compatibility by default
 
 ### Phase 2: Key Naming Strategy
-- [ ] Modify key generation functions to use hash tags when cluster mode is enabled
-- [ ] Ensure backward compatibility with existing deployments
-- [ ] Update all key generation methods in RedisCache
+- [x] Key generation uses hash tags in cluster mode
+- [x] Backward compatibility preserved for single-node mode
+- [x] Redis cache key generation updated accordingly
 
 ### Phase 3: Integration Testing
-- [ ] Create Redis Cluster docker-compose setup
-- [ ] Add integration tests for cluster functionality
-- [ ] Validate all Lua scripts work with clustered Redis
-- [ ] Test migration scenarios
+- [x] Added Redis Cluster docker-compose setup
+- [x] Added integration tests for cluster functionality
+- [x] Validated script behavior with clustered Redis
+- [x] Documented migration behavior and constraints
 
 ### Phase 4: Documentation & Deployment
-- [ ] Update deployment documentation
-- [ ] Add Redis Cluster configuration examples
-- [ ] Document migration path from single-node to cluster
+- [x] Updated deployment documentation
+- [x] Added Redis Cluster configuration examples
+- [x] Documented migration path from single-node to cluster
 
 ## Backward Compatibility
 

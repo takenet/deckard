@@ -75,9 +75,10 @@ mongodb:
   enabled: true
   auth:
     enabled: true
-    # In a production environment prefer setting all passwords and configurations using mongodb's existingSecret chart field
+    # You can use mongodb.auth.existingSecret for better secret management.
+    # Plain text values here are part of bitnami/mongodb config and are allowed.
     rootUser: deckard
-    rootPassword: deckard
+    rootPassword: ""
   service:
     ports:
       mongodb: 27017
@@ -106,6 +107,14 @@ cache:
   redis:
     # Deckard's DECKARD_REDIS_DB environment variable
     database: 0
+    # Deprecated and blocked for security reasons. Use cache.connectionSecret.* only.
+    password: ""
+    cluster:
+      # Deckard's DECKARD_REDIS_CLUSTER_MODE environment variable
+      mode: false
+      # Deckard's DECKARD_REDIS_CLUSTER_ADDRESSES environment variable.
+      # Comma-separated list of host:port values.
+      addresses: ""
 
 # See available options here: https://github.com/bitnami/charts/tree/main/bitnami/redis
 redis:
@@ -117,8 +126,9 @@ redis:
       redis: 6379
   auth:
     enabled: true
-    # In a production environment prefer setting all passwords using redis's existingSecret chart field
-    password: deckard
+    # You can use redis.auth.existingSecret for better secret management.
+    # Plain text values here are part of bitnami/redis config and are allowed.
+    password: ""
 
 service:
   enabled: true
