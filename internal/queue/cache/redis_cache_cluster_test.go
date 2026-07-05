@@ -12,14 +12,20 @@ import (
 	"github.com/takenet/deckard/internal/queue/pool"
 )
 
+const testRedisClusterURI = "redis://localhost:7000?addr=localhost:7001&addr=localhost:7002"
+
+func configureClusterIntegrationTest() {
+	config.Configure(true)
+	config.RedisClusterMode.Set(true)
+	config.CacheUri.Set(testRedisClusterURI)
+}
+
 func TestRedisCacheClusterIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
 	}
 
-	config.Configure(true)
-	config.RedisClusterMode.Set(true)
-	config.CacheUri.Set("redis://localhost:7000?addr=localhost:7001&addr=localhost:7002")
+	configureClusterIntegrationTest()
 
 	cache, err := NewRedisCache(ctx)
 
@@ -59,9 +65,7 @@ func TestRedisCacheClusterListQueuesIntegration(t *testing.T) {
 		t.Skip()
 	}
 
-	config.Configure(true)
-	config.RedisClusterMode.Set(true)
-	config.CacheUri.Set("redis://localhost:7000?addr=localhost:7001&addr=localhost:7002")
+	configureClusterIntegrationTest()
 
 	cache, err := NewRedisCache(ctx)
 	require.NoError(t, err)
@@ -101,9 +105,7 @@ func TestRedisCacheClusterListQueuesFansOutAcrossShards(t *testing.T) {
 		t.Skip()
 	}
 
-	config.Configure(true)
-	config.RedisClusterMode.Set(true)
-	config.CacheUri.Set("redis://localhost:7000?addr=localhost:7001&addr=localhost:7002")
+	configureClusterIntegrationTest()
 
 	cache, err := NewRedisCache(ctx)
 	require.NoError(t, err)
@@ -138,9 +140,7 @@ func TestRedisCacheClusterLuaScriptsIntegration(t *testing.T) {
 		t.Skip()
 	}
 
-	config.Configure(true)
-	config.RedisClusterMode.Set(true)
-	config.CacheUri.Set("redis://localhost:7000?addr=localhost:7001&addr=localhost:7002")
+	configureClusterIntegrationTest()
 
 	cache, err := NewRedisCache(ctx)
 	require.NoError(t, err)
@@ -177,6 +177,13 @@ func TestRedisCacheClusterLuaScriptsIntegration(t *testing.T) {
 	require.Contains(t, pulledMessages, "msg1")
 	require.Contains(t, pulledMessages, "msg2")
 
+	msg1Processing, err := cache.IsProcessing(ctx, queueName, "msg1")
+	require.NoError(t, err)
+	require.True(t, msg1Processing)
+	msg2Processing, err := cache.IsProcessing(ctx, queueName, "msg2")
+	require.NoError(t, err)
+	require.True(t, msg2Processing)
+
 	// Test LockMessage operation (uses lockElementScript)
 	message1 := &message.Message{
 		ID:     "msg1",
@@ -188,6 +195,13 @@ func TestRedisCacheClusterLuaScriptsIntegration(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, locked)
 
+	msg1Processing, err = cache.IsProcessing(ctx, queueName, "msg1")
+	require.NoError(t, err)
+	require.False(t, msg1Processing)
+	msg2Processing, err = cache.IsProcessing(ctx, queueName, "msg2")
+	require.NoError(t, err)
+	require.True(t, msg2Processing)
+
 	// Test Remove operation (uses removeElementScript)
 	//
 	// removed counts ZREM hits across every pool (active, processing, lock_ack, lock_nack,
@@ -197,6 +211,17 @@ func TestRedisCacheClusterLuaScriptsIntegration(t *testing.T) {
 	removed, err := cache.Remove(ctx, queueName, "msg1", "msg2")
 	require.NoError(t, err)
 	require.Equal(t, int64(3), removed)
+
+	msg1Processing, err = cache.IsProcessing(ctx, queueName, "msg1")
+	require.NoError(t, err)
+	require.False(t, msg1Processing)
+	msg2Processing, err = cache.IsProcessing(ctx, queueName, "msg2")
+	require.NoError(t, err)
+	require.False(t, msg2Processing)
+
+	pulledMessages, err = cache.PullMessages(ctx, queueName, 1, nil, nil, 5000)
+	require.NoError(t, err)
+	require.Nil(t, pulledMessages)
 
 	cache.Flush(ctx)
 }
@@ -209,9 +234,7 @@ func TestInsertShouldInsertWithCorrectScoreClusterIntegration(t *testing.T) {
 		t.Skip()
 	}
 
-	config.Configure(true)
-	config.RedisClusterMode.Set(true)
-	config.CacheUri.Set("redis://localhost:7000?addr=localhost:7001&addr=localhost:7002")
+	configureClusterIntegrationTest()
 
 	cache, err := NewRedisCache(ctx)
 	require.NoError(t, err)

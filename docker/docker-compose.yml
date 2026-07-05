@@ -1,3 +1,5 @@
+version: "3.8"
+
 services:
   redis:
     image: "redis:8.0"
@@ -28,11 +30,6 @@ services:
     command: redis-server --port 7000 --bind 0.0.0.0 --protected-mode no --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7000 --cluster-announce-bus-port 17000 --appendonly yes
     volumes:
       - redis-cluster-0-data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "-p", "7000", "ping"]
-      interval: 1s
-      timeout: 2s
-      retries: 30
 
   redis-cluster-node-1:
     image: "redis:7.0"
@@ -42,11 +39,6 @@ services:
     command: redis-server --port 7001 --bind 0.0.0.0 --protected-mode no --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7001 --cluster-announce-bus-port 17001 --appendonly yes
     volumes:
       - redis-cluster-1-data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "-p", "7001", "ping"]
-      interval: 1s
-      timeout: 2s
-      retries: 30
 
   redis-cluster-node-2:
     image: "redis:7.0"
@@ -56,11 +48,6 @@ services:
     command: redis-server --port 7002 --bind 0.0.0.0 --protected-mode no --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7002 --cluster-announce-bus-port 17002 --appendonly yes
     volumes:
       - redis-cluster-2-data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "-p", "7002", "ping"]
-      interval: 1s
-      timeout: 2s
-      retries: 30
 
   redis-cluster-node-3:
     image: "redis:7.0"
@@ -70,11 +57,6 @@ services:
     command: redis-server --port 7003 --bind 0.0.0.0 --protected-mode no --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7003 --cluster-announce-bus-port 17003 --appendonly yes
     volumes:
       - redis-cluster-3-data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "-p", "7003", "ping"]
-      interval: 1s
-      timeout: 2s
-      retries: 30
 
   redis-cluster-node-4:
     image: "redis:7.0"
@@ -84,11 +66,6 @@ services:
     command: redis-server --port 7004 --bind 0.0.0.0 --protected-mode no --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7004 --cluster-announce-bus-port 17004 --appendonly yes
     volumes:
       - redis-cluster-4-data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "-p", "7004", "ping"]
-      interval: 1s
-      timeout: 2s
-      retries: 30
 
   redis-cluster-node-5:
     image: "redis:7.0"
@@ -98,54 +75,37 @@ services:
     command: redis-server --port 7005 --bind 0.0.0.0 --protected-mode no --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7005 --cluster-announce-bus-port 17005 --appendonly yes
     volumes:
       - redis-cluster-5-data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "-p", "7005", "ping"]
-      interval: 1s
-      timeout: 2s
-      retries: 30
 
-  # Helper service to initialize the cluster. Waits on each node's healthcheck (redis-cli ping)
-  # instead of a fixed sleep, so it starts as soon as the nodes are actually ready to accept
-  # connections - no more, no less.
-  #
-  # Idempotent on restarts: the nodes persist their cluster state to disk (--appendonly yes +
-  # --cluster-config-file nodes.conf, backed by the redis-cluster-*-data volumes), so after a
-  # restart they already know they belong to a cluster. `redis-cli --cluster create` refuses to
-  # run against non-empty nodes ("Node ... is not empty"), so we skip it when a node is already
-  # non-empty.
-  #
-  # We check the same conditions `redis-cli --cluster create` itself uses to decide "empty":
-  # cluster_known_nodes > 1 (the node already gossips with peers) or a non-zero keyspace
-  # (dbsize > 0). We deliberately do NOT rely on `cluster_state:ok`, because right after a
-  # restart the nodes can still be non-empty (already know each other from nodes.conf) while
-  # cluster_state is momentarily "fail"/transitioning until gossip settles - checking
-  # cluster_state alone raced with that window and still tried (and failed) to re-create the
-  # cluster.
+  # Helper service to initialize the cluster
   redis-cluster-init:
     image: "redis:7.0"
     network_mode: host
     depends_on:
-      redis-cluster-node-0:
-        condition: service_healthy
-      redis-cluster-node-1:
-        condition: service_healthy
-      redis-cluster-node-2:
-        condition: service_healthy
-      redis-cluster-node-3:
-        condition: service_healthy
-      redis-cluster-node-4:
-        condition: service_healthy
-      redis-cluster-node-5:
-        condition: service_healthy
+      - redis-cluster-node-0
+      - redis-cluster-node-1
+      - redis-cluster-node-2
+      - redis-cluster-node-3
+      - redis-cluster-node-4
+      - redis-cluster-node-5
     command:
       - sh
       - -c
       - |
-        known_nodes=$$(redis-cli -p 7000 cluster info | grep cluster_known_nodes | cut -d: -f2 | tr -d '\r')
-        dbsize=$$(redis-cli -p 7000 dbsize)
+        set -e
+        for port in 7000 7001 7002 7003 7004 7005; do
+          retries=30
+          until redis-cli -h 127.0.0.1 -p "$$port" ping >/dev/null 2>&1; do
+            retries=$$((retries - 1))
+            if [ "$$retries" -le 0 ]; then
+              echo "redis node on port $$port did not become ready in time" >&2
+              exit 1
+            fi
+            sleep 1
+          done
+        done
 
-        if [ "$${known_nodes:-1}" -gt 1 ] || [ "$${dbsize:-0}" -gt 0 ]; then
-          echo "Node 127.0.0.1:7000 is already part of a cluster (known_nodes=$$known_nodes, dbsize=$$dbsize), skipping creation."
+        if redis-cli -h 127.0.0.1 -p 7000 cluster info 2>/dev/null | grep -q "cluster_state:ok"; then
+          echo "redis cluster already initialized"
           exit 0
         fi
 
@@ -159,85 +119,19 @@ services:
           --cluster-replicas 1 \
           --cluster-yes
 
-
-  # RedisInsight, preconfigured to connect to both the standalone Redis and the cluster started
-  # above.
-  #
-  # Uses network_mode: host (like the cluster nodes) instead of the bridge network + container
-  # hostname approach, since our nodes announce 127.0.0.1 (see the note above) - RI_REDIS_HOST
-  # must be an address RedisInsight can actually reach, and "redis-cluster-node-0" only resolves
-  # from other containers on the same bridge network, not from a host-networked container. With
-  # host networking, RedisInsight reaches the seed node directly at 127.0.0.1:7000 and, since it's
-  # cluster-enabled, discovers the other 5 nodes on its own. The standalone "redis" service also
-  # publishes its port to the host (see REDIS_PORT in docker/.env), so it's reachable the same way
-  # at 127.0.0.1:$REDIS_PORT.
-  #
-  # RedisInsight preconfigures additional databases via numeric-suffixed env vars: the first
-  # database uses RI_REDIS_HOST/PORT/ALIAS (no suffix), the second uses RI_REDIS_HOST1/PORT1/ALIAS1,
-  # and so on.
   redisinsight:
     image: redis/redisinsight:latest
-    network_mode: host
-    environment:
-      RI_ACCEPT_TERMS_AND_CONDITIONS: "true"
-      RI_REDIS_HOST: "127.0.0.1"
-      RI_REDIS_PORT: "7000"
-      RI_REDIS_ALIAS: "deckard-redis-cluster"
-      RI_REDIS_TLS: "false"
-      RI_REDIS_HOST1: "127.0.0.1"
-      RI_REDIS_PORT1: "$REDIS_PORT"
-      RI_REDIS_ALIAS1: "deckard-redis-standalone"
-      RI_REDIS_TLS1: "false"
+    ports:
+      - "5540:5540"
     depends_on:
-      redis:
-        condition: service_started
-      redis-cluster-init:
-        condition: service_completed_successfully
-
-  # Optional local Deckard connected to standalone Redis.
-  # Enable with: docker compose --profile deckard up -d deckard
-  deckard:
-    image: "${DECKARD_IMAGE:-deckard:local}"
-    pull_policy: never
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-    profiles: ["deckard"]
-    network_mode: host
-    environment:
-      DECKARD_CACHE_TYPE: REDIS
-      DECKARD_STORAGE_TYPE: MONGODB
-      DECKARD_GRPC_PORT: "${DECKARD_PORT:-8081}"
-      DECKARD_CACHE_URI: "redis://127.0.0.1:${REDIS_PORT}/0"
-      DECKARD_STORAGE_URI: "mongodb://127.0.0.1:${MONGODB_PORT}/${DECKARD_MONGODB_DATABASE:-deckard_standalone}"
-    depends_on:
-      redis:
-        condition: service_started
-      mongodb:
-        condition: service_started
-
-  # Optional local Deckard connected to Redis Cluster.
-  # Enable with: docker compose --profile deckard-cluster up -d deckard-redis-cluster
-  deckard-redis-cluster:
-    image: "${DECKARD_IMAGE:-deckard:local}"
-    pull_policy: never
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-    profiles: ["deckard-cluster"]
-    network_mode: host
-    environment:
-      DECKARD_CACHE_TYPE: REDIS
-      DECKARD_STORAGE_TYPE: MONGODB
-      DECKARD_GRPC_PORT: "${DECKARD_CLUSTER_PORT:-8082}"
-      DECKARD_REDIS_CLUSTER_MODE: "true"
-      DECKARD_CACHE_URI: "redis://127.0.0.1:7000?addr=127.0.0.1:7001&addr=127.0.0.1:7002&addr=127.0.0.1:7003&addr=127.0.0.1:7004&addr=127.0.0.1:7005"
-      DECKARD_STORAGE_URI: "mongodb://127.0.0.1:${MONGODB_PORT}/${DECKARD_CLUSTER_MONGODB_DATABASE:-deckard_cluster}"
-    depends_on:
-      mongodb:
-        condition: service_started
-      redis-cluster-init:
-        condition: service_completed_successfully
+      - redis-cluster-node-0
+      - redis-cluster-node-1
+      - redis-cluster-node-2
+      - redis-cluster-node-3
+      - redis-cluster-node-4
+      - redis-cluster-node-5
+    networks:
+      - default
 
 volumes:
   redis-cluster-0-data:

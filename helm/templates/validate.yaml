@@ -1,5 +1,6 @@
 {{- $usesMongo := eq .Values.storage.type "MONGODB" -}}
 {{- $usesRedis := eq .Values.cache.type "REDIS" -}}
+{{- $usesRedisCluster := and $usesRedis .Values.cache.redis.cluster.mode -}}
 {{- $hasStorageSecret := ne (include "deckard.storageConnectionSecretExistingSecret" .) "" -}}
 {{- $hasCacheSecret := ne (include "deckard.cacheConnectionSecretExistingSecret" .) "" -}}
 
@@ -8,6 +9,10 @@
 
 {{- if and $usesMongo (not .Values.mongodb.enabled) (not $hasStorageSecret) }}
 {{- fail "storage.connectionSecret.existingSecret is required when storage.type=MONGODB and mongodb.enabled=false (connectionSecret.storage.existingSecret is deprecated but still supported)" }}
+{{- end }}
+
+{{- if and $usesRedisCluster (not .Values.redis.enabled) (not $hasCacheSecret) }}
+{{- fail "cache.redis.cluster.mode=true requires cache.connectionSecret.existingSecret (or deprecated connectionSecret.cache.existingSecret) when redis.enabled=false. The referenced Secret value must be a go-redis cluster URL with a base URI and repeated addr=host:port query parameters (for example: redis://node-1:6379?addr=node-2:6379&addr=node-3:6379)." }}
 {{- end }}
 
 {{- if and $usesRedis (not .Values.redis.enabled) (not $hasCacheSecret) }}
@@ -22,6 +27,10 @@
 {{- fail "cache.connectionSecret.key must be set when cache.type=REDIS and a cache connection secret is used or generated (connectionSecret.cache.key is deprecated but still supported)" }}
 {{- end }}
 
-{{- if and $usesRedis .Values.cache.redis.cluster.mode .Values.redis.enabled }}
-{{- fail "cache.redis.cluster.mode=true requires redis.enabled=false: Redis Cluster is only supported via an external cluster. Set redis.enabled=false and provide cache.connectionSecret.existingSecret with a comma-separated list of node URIs (e.g. redis://node-1:6379,redis://node-2:6379)." }}
+{{- if and $usesRedisCluster (eq $cacheSecretKey "") }}
+{{- fail "cache.redis.cluster.mode=true requires cache.connectionSecret.key because the referenced Secret entry must contain the Redis Cluster URL (connectionSecret.cache.key is deprecated but still supported)." }}
+{{- end }}
+
+{{- if and $usesRedisCluster .Values.redis.enabled }}
+{{- fail "cache.redis.cluster.mode=true requires redis.enabled=false: Redis Cluster is only supported via an external cluster. Set redis.enabled=false and provide cache.connectionSecret.existingSecret with a valid go-redis cluster URL (base URI + repeated addr=host:port query params), for example: redis://node-1:6379?addr=node-2:6379&addr=node-3:6379." }}
 {{- end }}

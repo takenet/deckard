@@ -119,28 +119,55 @@ func createOptions() (*options.ClientOptions, error) {
 }
 
 func waitForClient(ctx context.Context, opts *options.ClientOptions) (*mongo.Client, error) {
+	attempts := config.StorageConnectionRetryAttempts.GetInt()
+	retryEnabled := config.StorageConnectionRetryEnabled.GetBool()
+	retryDelay := config.StorageConnectionRetryDelay.GetDuration()
+
+	if attempts < 1 {
+		attempts = 1
+	}
+
 	var err error
 	var client *mongo.Client
 
-	for i := 1; i <= config.StorageConnectionRetryAttempts.GetInt(); i++ {
-		var cancelFunc context.CancelFunc = func() {}
+	for i := 1; i <= attempts; i++ {
+		attemptCtx := ctx
+		var cancel context.CancelFunc
 		if opts.ConnectTimeout != nil {
-			ctx, cancelFunc = context.WithTimeout(ctx, *opts.ConnectTimeout)
+			attemptCtx, cancel = context.WithTimeout(ctx, *opts.ConnectTimeout)
 		}
-		defer cancelFunc()
 
-		client, err = createClient(ctx, opts)
+		client, err = createClient(attemptCtx, opts)
+		if cancel != nil {
+			cancel()
+		}
 
-		if err == nil || !config.StorageConnectionRetryEnabled.GetBool() {
+		if err == nil {
+			return client, nil
+		}
+
+		if !retryEnabled || i == attempts {
 			break
 		}
 
-		logger.S(ctx).Warnf("Failed to connect to MongoDB (%d times). Trying again in %s.", i, config.StorageConnectionRetryDelay.GetDuration())
+		logger.S(ctx).Warnf("Failed to connect to MongoDB (%d/%d attempts). Trying again in %s.", i, attempts, retryDelay)
 
-		<-time.After(config.StorageConnectionRetryDelay.GetDuration())
+		timer := time.NewTimer(retryDelay)
+		select {
+		case <-ctx.Done():
+			if !timer.Stop() {
+				<-timer.C
+			}
+			return nil, fmt.Errorf("mongo connection retries canceled: %w", ctx.Err())
+		case <-timer.C:
+		}
 	}
 
-	return client, err
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to MongoDB after %d attempt(s): %w", attempts, err)
+	}
+
+	return client, nil
 }
 
 func createClient(ctx context.Context, opts *options.ClientOptions) (*mongo.Client, error) {
