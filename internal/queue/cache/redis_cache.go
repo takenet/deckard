@@ -947,7 +947,7 @@ func (cache *RedisCache) lockPoolScore(queue string, lockType LockType) string {
 func resolveConfiguredPrefix() string {
 	prefix := strings.TrimSpace(config.CachePrefix.Get())
 	if prefix == "" {
-		return "deckard"
+		return "deckard_v1"
 	}
 
 	return strings.Trim(prefix, ":")
@@ -955,7 +955,7 @@ func resolveConfiguredPrefix() string {
 
 func (cache *RedisCache) configuredPrefix() string {
 	if cache.keyPrefix == "" {
-		return "deckard"
+		return "deckard_v1"
 	}
 
 	return cache.keyPrefix

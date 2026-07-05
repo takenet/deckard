@@ -28,7 +28,7 @@ var CacheConnectionRetryDelay = Create(&ViperConfigKey{
 
 var CachePrefix = Create(&ViperConfigKey{
 	Key:     "cache.prefix",
-	Default: "deckard",
+	Default: "deckard_v1",
 })
 
 // Redis Configurations

@@ -63,17 +63,17 @@ Two Redis Cluster limitations to be aware of:
 
 Keys are named without hash tags:
 
-- `deckard:queue:clusterhash`
-- `deckard:queue:clusterhash:tmp`
-- `deckard:queue:clusterhash:lock_ack`
+- `deckard_v1:queue:clusterhash`
+- `deckard_v1:queue:clusterhash:tmp`
+- `deckard_v1:queue:clusterhash:lock_ack`
 
 ### Redis Cluster
 
 Keys use hash tags to ensure co-location:
 
-- `deckard:queue:{clusterhash}`
-- `deckard:queue:{clusterhash}:tmp`
-- `deckard:queue:{clusterhash}:lock_ack`
+- `deckard_v1:queue:{clusterhash}`
+- `deckard_v1:queue:{clusterhash}:tmp`
+- `deckard_v1:queue:{clusterhash}:lock_ack`
 
 The `{clusterhash}` hash tag ensures all keys for the same queue hash to the same cluster slot.
 
@@ -86,7 +86,7 @@ future Redis Cluster deployment.
 
 In addition to the key-format differences below, note that this PR also changes the Redis configuration model for standalone deployments. If you are upgrading from an older Deckard version, migrate your standalone Redis settings to `DECKARD_CACHE_URI` before or during rollout.
 
-Single-node keys (`deckard:queue:myqueue`) and cluster-mode keys (`deckard:queue:{myqueue}`) are literally different key strings, not just differently-atomic. This means an **in-place migration is not supported**: pointing a cluster-mode Deckard instance at the same Redis data (via RDB restore, `redis-cli --cluster import`, replication + resharding, etc.) will not work - the new instance won't find any of the old keys and every queue will appear empty, while the old keys are left behind as orphaned data.
+Single-node keys (`deckard_v1:queue:myqueue`) and cluster-mode keys (`deckard_v1:queue:{myqueue}`) are literally different key strings, not just differently-atomic. This means an **in-place migration is not supported**: pointing a cluster-mode Deckard instance at the same Redis data (via RDB restore, `redis-cli --cluster import`, replication + resharding, etc.) will not work - the new instance won't find any of the old keys and every queue will appear empty, while the old keys are left behind as orphaned data.
 
 Because Redis here is a rebuildable cache/index over the durable `storage` backend (not the source
 of truth for message content), the supported migration path is:
