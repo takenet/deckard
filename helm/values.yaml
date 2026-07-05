@@ -78,7 +78,7 @@ mongodb:
     # You can use mongodb.auth.existingSecret for better secret management.
     # Plain text values here are part of bitnami/mongodb config and are allowed.
     rootUser: deckard
-    rootPassword: ""
+    rootPassword: "deckard"
   service:
     ports:
       mongodb: 27017
@@ -126,7 +126,7 @@ redis:
     enabled: true
     # You can use redis.auth.existingSecret for better secret management.
     # Plain text values here are part of bitnami/redis config and are allowed.
-    password: ""
+    password: "deckard"
 
 service:
   enabled: true

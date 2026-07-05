@@ -74,7 +74,7 @@ jobs:
         run: make integration-test
 
       - name: Stop Redis Cluster
-        if: ${{ !cancelled() }}
+        if: ${{ always() }}
         continue-on-error: true
         run: docker compose -f docker/docker-compose.yml down -v
 

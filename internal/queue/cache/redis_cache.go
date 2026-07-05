@@ -24,6 +24,7 @@ import (
 )
 
 var errCacheUriRequired = errors.New("cache.uri (DECKARD_CACHE_URI) is required when cache.type is REDIS")
+var errCacheConnectionRetryAttemptsInvalid = errors.New("cache.connection.retry.attempts must be greater than 0")
 var errQueueNameContainsClusterHashTag = errors.New("queue names cannot contain '{' or '}'")
 
 // RedisClient interface abstracts the differences between single-node and cluster Redis clients
@@ -172,6 +173,10 @@ func clusterOptionsFromConfig() (*redis.ClusterOptions, error) {
 
 func waitForSingleNodeClient(ctx context.Context, options *redis.Options) (*redis.Client, error) {
 	var err error
+	attempts := config.CacheConnectionRetryAttempts.GetInt()
+	if attempts < 1 {
+		return nil, errCacheConnectionRetryAttemptsInvalid
+	}
 
 	redisClient := redis.NewClient(options)
 
@@ -184,7 +189,7 @@ func waitForSingleNodeClient(ctx context.Context, options *redis.Options) (*redi
 		return nil, fmt.Errorf("error setting up redis tracing: %w", err)
 	}
 
-	for i := 1; i <= config.CacheConnectionRetryAttempts.GetInt(); i++ {
+	for i := 1; i <= attempts; i++ {
 		var pingResult string
 		pingResult, err = redisClient.Ping(ctx).Result()
 
@@ -213,6 +218,10 @@ func waitForSingleNodeClient(ctx context.Context, options *redis.Options) (*redi
 
 func waitForClusterClient(ctx context.Context, options *redis.ClusterOptions) (*redis.ClusterClient, error) {
 	var err error
+	attempts := config.CacheConnectionRetryAttempts.GetInt()
+	if attempts < 1 {
+		return nil, errCacheConnectionRetryAttemptsInvalid
+	}
 
 	clusterClient := redis.NewClusterClient(options)
 
@@ -225,7 +234,7 @@ func waitForClusterClient(ctx context.Context, options *redis.ClusterOptions) (*
 		return nil, fmt.Errorf("error setting up redis cluster tracing: %w", err)
 	}
 
-	for i := 1; i <= config.CacheConnectionRetryAttempts.GetInt(); i++ {
+	for i := 1; i <= attempts; i++ {
 		var pingResult string
 		pingResult, err = clusterClient.Ping(ctx).Result()
 
