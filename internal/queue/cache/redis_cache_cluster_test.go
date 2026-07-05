@@ -323,18 +323,30 @@ func TestParseQueueKeyWithoutClusterMode(t *testing.T) {
 	require.Equal(t, "test-queue", cache.parseQueueKey("deckard:queue:test-queue:tmp", PROCESSING_POOL_REGEX))
 }
 
-func TestValidateQueueNameRejectsClusterHashTagChars(t *testing.T) {
+func TestValidateQueueNameRejectsClusterHashTagCharsInClusterMode(t *testing.T) {
 	t.Parallel()
 
-	require.ErrorIs(t, validateQueueName("bad{queue"), errQueueNameContainsClusterHashTag)
-	require.ErrorIs(t, validateQueueName("bad}queue"), errQueueNameContainsClusterHashTag)
-	require.NoError(t, validateQueueName("valid-queue"))
+	cache := &RedisCache{clusterMode: true}
+
+	require.ErrorIs(t, cache.validateQueueName("bad{queue"), errQueueNameContainsClusterHashTag)
+	require.ErrorIs(t, cache.validateQueueName("bad}queue"), errQueueNameContainsClusterHashTag)
+	require.NoError(t, cache.validateQueueName("valid-queue"))
 }
 
-func TestInsertRejectsQueueNamesContainingClusterHashTagChars(t *testing.T) {
+func TestValidateQueueNameAllowsClusterHashTagCharsOutsideClusterMode(t *testing.T) {
 	t.Parallel()
 
-	cache := &RedisCache{}
+	cache := &RedisCache{clusterMode: false}
+
+	require.NoError(t, cache.validateQueueName("bad{queue"))
+	require.NoError(t, cache.validateQueueName("bad}queue"))
+	require.NoError(t, cache.validateQueueName("valid-queue"))
+}
+
+func TestInsertRejectsQueueNamesContainingClusterHashTagCharsInClusterMode(t *testing.T) {
+	t.Parallel()
+
+	cache := &RedisCache{clusterMode: true}
 
 	_, err := cache.Insert(ctx, "bad{queue}")
 	require.ErrorIs(t, err, errQueueNameContainsClusterHashTag)

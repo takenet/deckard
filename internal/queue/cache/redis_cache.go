@@ -107,7 +107,7 @@ func createSingleNodeClient(ctx context.Context) (RedisClient, error) {
 
 	start := dtime.Now()
 
-	redisClient, err := waitForSingleNodeClient(options)
+	redisClient, err := waitForSingleNodeClient(ctx, options)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +127,7 @@ func createClusterClient(ctx context.Context) (RedisClient, error) {
 
 	start := dtime.Now()
 
-	clusterClient, err := waitForClusterClient(options)
+	clusterClient, err := waitForClusterClient(ctx, options)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +170,7 @@ func clusterOptionsFromConfig() (*redis.ClusterOptions, error) {
 	return options, nil
 }
 
-func waitForSingleNodeClient(options *redis.Options) (*redis.Client, error) {
+func waitForSingleNodeClient(ctx context.Context, options *redis.Options) (*redis.Client, error) {
 	var err error
 
 	redisClient := redis.NewClient(options)
@@ -186,15 +186,18 @@ func waitForSingleNodeClient(options *redis.Options) (*redis.Client, error) {
 
 	for i := 1; i <= config.CacheConnectionRetryAttempts.GetInt(); i++ {
 		var pingResult string
-		pingResult, err = redisClient.Ping(context.Background()).Result()
+		pingResult, err = redisClient.Ping(ctx).Result()
 
 		if (err == nil && pingResult == "PONG") || !config.CacheConnectionRetryEnabled.GetBool() {
 			break
 		}
 
-		logger.S(context.Background()).Warnf("Failed to connect to Redis (%d times). Trying again in %s.", i, config.CacheConnectionRetryDelay.GetDuration())
+		logger.S(ctx).Warnf("Failed to connect to Redis (%d times). Trying again in %s.", i, config.CacheConnectionRetryDelay.GetDuration())
 
-		<-time.After(config.CacheConnectionRetryDelay.GetDuration())
+		if waitErr := waitForRetry(ctx, config.CacheConnectionRetryDelay.GetDuration()); waitErr != nil {
+			err = waitErr
+			break
+		}
 	}
 
 	if err != nil {
@@ -208,7 +211,7 @@ func waitForSingleNodeClient(options *redis.Options) (*redis.Client, error) {
 	return redisClient, err
 }
 
-func waitForClusterClient(options *redis.ClusterOptions) (*redis.ClusterClient, error) {
+func waitForClusterClient(ctx context.Context, options *redis.ClusterOptions) (*redis.ClusterClient, error) {
 	var err error
 
 	clusterClient := redis.NewClusterClient(options)
@@ -224,15 +227,18 @@ func waitForClusterClient(options *redis.ClusterOptions) (*redis.ClusterClient, 
 
 	for i := 1; i <= config.CacheConnectionRetryAttempts.GetInt(); i++ {
 		var pingResult string
-		pingResult, err = clusterClient.Ping(context.Background()).Result()
+		pingResult, err = clusterClient.Ping(ctx).Result()
 
 		if (err == nil && pingResult == "PONG") || !config.CacheConnectionRetryEnabled.GetBool() {
 			break
 		}
 
-		logger.S(context.Background()).Warnf("Failed to connect to Redis cluster (%d times). Trying again in %s.", i, config.CacheConnectionRetryDelay.GetDuration())
+		logger.S(ctx).Warnf("Failed to connect to Redis cluster (%d times). Trying again in %s.", i, config.CacheConnectionRetryDelay.GetDuration())
 
-		<-time.After(config.CacheConnectionRetryDelay.GetDuration())
+		if waitErr := waitForRetry(ctx, config.CacheConnectionRetryDelay.GetDuration()); waitErr != nil {
+			err = waitErr
+			break
+		}
 	}
 
 	if err != nil {
@@ -244,6 +250,18 @@ func waitForClusterClient(options *redis.ClusterOptions) (*redis.ClusterClient, 
 	}
 
 	return clusterClient, err
+}
+
+func waitForRetry(ctx context.Context, delay time.Duration) error {
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
 }
 
 func (cache *RedisCache) Flush(ctx context.Context) {
@@ -279,7 +297,7 @@ func (cache *RedisCache) Flush(ctx context.Context) {
 }
 
 func (cache *RedisCache) Remove(ctx context.Context, queue string, ids ...string) (removed int64, err error) {
-	if err := validateQueueName(queue); err != nil {
+	if err := cache.validateQueueName(queue); err != nil {
 		return 0, err
 	}
 
@@ -501,7 +519,7 @@ func (cache *RedisCache) MakeAvailable(ctx context.Context, message *message.Mes
 		return false, errors.New("invalid message queue")
 	}
 
-	if err := validateQueueName(message.Queue); err != nil {
+	if err := cache.validateQueueName(message.Queue); err != nil {
 		return false, err
 	}
 
@@ -530,7 +548,7 @@ func (cache *RedisCache) LockMessage(ctx context.Context, message *message.Messa
 		return false, errors.New("invalid queue to lock")
 	}
 
-	if err := validateQueueName(message.Queue); err != nil {
+	if err := cache.validateQueueName(message.Queue); err != nil {
 		return false, err
 	}
 
@@ -562,7 +580,7 @@ func (cache *RedisCache) LockMessage(ctx context.Context, message *message.Messa
 }
 
 func (cache *RedisCache) UnlockMessages(ctx context.Context, queue string, lockType LockType) ([]string, error) {
-	if err := validateQueueName(queue); err != nil {
+	if err := cache.validateQueueName(queue); err != nil {
 		return nil, err
 	}
 
@@ -588,7 +606,7 @@ func (cache *RedisCache) UnlockMessages(ctx context.Context, queue string, lockT
 }
 
 func (cache *RedisCache) PullMessages(ctx context.Context, queue string, n int64, minScore *float64, maxScore *float64, ackDeadlineMs int64) (ids []string, err error) {
-	if err := validateQueueName(queue); err != nil {
+	if err := cache.validateQueueName(queue); err != nil {
 		return nil, err
 	}
 
@@ -666,7 +684,7 @@ func resultToIds(result interface{}) []string {
 }
 
 func (cache *RedisCache) TimeoutMessages(ctx context.Context, queue string) ([]string, error) {
-	if err := validateQueueName(queue); err != nil {
+	if err := cache.validateQueueName(queue); err != nil {
 		return nil, err
 	}
 
@@ -688,7 +706,7 @@ func (cache *RedisCache) TimeoutMessages(ctx context.Context, queue string) ([]s
 }
 
 func (cache *RedisCache) Insert(ctx context.Context, queue string, messages ...*message.Message) ([]string, error) {
-	if err := validateQueueName(queue); err != nil {
+	if err := cache.validateQueueName(queue); err != nil {
 		return nil, err
 	}
 
@@ -740,7 +758,7 @@ func (cache *RedisCache) Insert(ctx context.Context, queue string, messages ...*
 }
 
 func (cache *RedisCache) IsProcessing(ctx context.Context, queue string, id string) (bool, error) {
-	if err := validateQueueName(queue); err != nil {
+	if err := cache.validateQueueName(queue); err != nil {
 		return false, err
 	}
 
@@ -772,7 +790,7 @@ func (cache *RedisCache) Get(ctx context.Context, key string) (string, error) {
 		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), metric.WithAttributes(attribute.String("op", "get")))
 	}()
 
-	cmd := cache.Client.Get(context.Background(), cache.generalCacheKey(key))
+	cmd := cache.Client.Get(ctx, cache.generalCacheKey(key))
 	value, err := cmd.Result()
 
 	if err == redis.Nil {
@@ -792,7 +810,7 @@ func (cache *RedisCache) Set(ctx context.Context, key string, value string) erro
 		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), metric.WithAttributes(attribute.String("op", "set")))
 	}()
 
-	cmd := cache.Client.Set(context.Background(), cache.generalCacheKey(key), value, 0)
+	cmd := cache.Client.Set(ctx, cache.generalCacheKey(key), value, 0)
 
 	if cmd.Err() != nil {
 		return fmt.Errorf("error setting cache element: %w", cmd.Err())
@@ -813,8 +831,8 @@ func (cache *RedisCache) generalCacheKey(key string) string {
 	return fmt.Sprint("deckard:", key)
 }
 
-func validateQueueName(queue string) error {
-	if strings.ContainsAny(queue, "{}") {
+func (cache *RedisCache) validateQueueName(queue string) error {
+	if cache.clusterMode && strings.ContainsAny(queue, "{}") {
 		return errQueueNameContainsClusterHashTag
 	}
 
