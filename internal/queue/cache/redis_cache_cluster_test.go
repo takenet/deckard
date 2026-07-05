@@ -1,9 +1,11 @@
 package cache
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/takenet/deckard/internal/config"
@@ -132,6 +134,67 @@ func TestRedisCacheClusterListQueuesFansOutAcrossShards(t *testing.T) {
 	require.ElementsMatch(t, expectedQueues, activeQueues, "ListQueues must find every queue regardless of which shard it hashes to")
 
 	cache.Flush(ctx)
+}
+
+// TestRedisCacheClusterFlushCleansLargeDataset validates flush behavior with a larger
+// dataset: 500 queues with 2 messages each (1000 total). It ensures flush removes
+// all queue-visible data and all raw prefix keys across cluster masters.
+func TestRedisCacheClusterFlushCleansLargeDataset(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
+	configureClusterIntegrationTest()
+
+	cache, err := NewRedisCache(ctx)
+	require.NoError(t, err)
+
+	cache.Flush(ctx)
+
+	const queueCount = 500
+	const messagesPerQueue = 2
+
+	for i := 0; i < queueCount; i++ {
+		queueName := fmt.Sprintf("flush-large-queue-%d", i)
+
+		messages := make([]*message.Message, 0, messagesPerQueue)
+		for j := 0; j < messagesPerQueue; j++ {
+			messages = append(messages, &message.Message{
+				ID:          fmt.Sprintf("msg-%d-%d", i, j),
+				Description: "flush large dataset",
+				Queue:       queueName,
+				Score:       float64(j + 1),
+			})
+		}
+
+		_, err = cache.Insert(ctx, queueName, messages...)
+		require.NoError(t, err)
+	}
+
+	queuesBeforeFlush, err := cache.ListQueues(ctx, "flush-large-queue-*", pool.PRIMARY_POOL)
+	require.NoError(t, err)
+	require.Len(t, queuesBeforeFlush, queueCount)
+
+	cache.Flush(ctx)
+
+	queuesAfterFlush, err := cache.ListQueues(ctx, "flush-large-queue-*", pool.PRIMARY_POOL)
+	require.NoError(t, err)
+	require.Empty(t, queuesAfterFlush)
+
+	if clusterClient, ok := cache.Client.(*redis.ClusterClient); ok {
+		var keysAfterFlush int64
+		err = clusterClient.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+			count, countErr := master.DBSize(ctx).Result()
+			if countErr != nil {
+				return countErr
+			}
+
+			keysAfterFlush += count
+			return nil
+		})
+		require.NoError(t, err)
+		require.Equal(t, int64(0), keysAfterFlush)
+	}
 }
 
 func TestRedisCacheClusterLuaScriptsIntegration(t *testing.T) {
