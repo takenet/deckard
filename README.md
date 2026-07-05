@@ -165,6 +165,8 @@ Two Redis Cluster limitations worth knowing about:
 
 ### Storage Configuration
 
+MongoDB is still supported, but the configuration format changed in this PR: MongoDB deployments now use `DECKARD_STORAGE_URI`. Existing deployments that previously relied on legacy discrete MongoDB settings must migrate to the URI-based format.
+
 MongoDB connection details (hosts, credentials, auth source, TLS, pool size, etc.) are configured
 through `DECKARD_STORAGE_URI`, applied via the MongoDB driver's own connection-string
 parsing (so any [MongoDB connection string option](https://www.mongodb.com/docs/manual/reference/connection-string/#connection-string-options) is available, e.g. `authSource`, `tls`, `maxPoolSize`, `replicaSet`).
