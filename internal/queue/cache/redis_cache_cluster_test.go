@@ -1,9 +1,8 @@
 package cache
 
 import (
-	"testing"
-
 	"fmt"
+	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -311,6 +310,8 @@ func TestParseQueueKeyStripsClusterHashTag(t *testing.T) {
 	require.Equal(t, "test-queue", cache.parseQueueKey("deckard:queue:{test-queue}:tmp", PROCESSING_POOL_REGEX))
 	require.Equal(t, "test-queue", cache.parseQueueKey("deckard:queue:{test-queue}:lock_ack", LOCK_ACK_POOL_REGEX))
 	require.Equal(t, "test-queue", cache.parseQueueKey("deckard:queue:{test-queue}:lock_nack", LOCK_NACK_POOL_REGEX))
+	require.Equal(t, "queue}name", cache.parseQueueKey("deckard:queue:{queue}name}", nil))
+	require.Equal(t, "queue{name}", cache.parseQueueKey("deckard:queue:{queue{name}}", nil))
 }
 
 func TestParseQueueKeyWithoutClusterMode(t *testing.T) {
@@ -320,6 +321,23 @@ func TestParseQueueKeyWithoutClusterMode(t *testing.T) {
 
 	require.Equal(t, "test-queue", cache.parseQueueKey("deckard:queue:test-queue", nil))
 	require.Equal(t, "test-queue", cache.parseQueueKey("deckard:queue:test-queue:tmp", PROCESSING_POOL_REGEX))
+}
+
+func TestValidateQueueNameRejectsClusterHashTagChars(t *testing.T) {
+	t.Parallel()
+
+	require.ErrorIs(t, validateQueueName("bad{queue"), errQueueNameContainsClusterHashTag)
+	require.ErrorIs(t, validateQueueName("bad}queue"), errQueueNameContainsClusterHashTag)
+	require.NoError(t, validateQueueName("valid-queue"))
+}
+
+func TestInsertRejectsQueueNamesContainingClusterHashTagChars(t *testing.T) {
+	t.Parallel()
+
+	cache := &RedisCache{}
+
+	_, err := cache.Insert(ctx, "bad{queue}")
+	require.ErrorIs(t, err, errQueueNameContainsClusterHashTag)
 }
 
 // Not run with t.Parallel(): config.Configure/Set mutate process-global viper state, which would

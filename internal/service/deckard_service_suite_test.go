@@ -21,14 +21,25 @@ type DeckardIntegrationTestSuite struct {
 	deckardStorage storage.Storage
 }
 
-func (suite *DeckardIntegrationTestSuite) AfterTest(_, _ string) {
+func (suite *DeckardIntegrationTestSuite) flushTestState() {
+	suite.T().Helper()
+
+	if suite.deckardCache == nil || suite.deckardStorage == nil {
+		suite.T().Fatal("integration test suite storage dependencies are not configured")
+		return
+	}
+
 	suite.deckardCache.Flush(ctx)
-	_, _ = suite.deckardStorage.Flush(ctx)
+	_, err := suite.deckardStorage.Flush(ctx)
+	require.NoError(suite.T(), err)
+}
+
+func (suite *DeckardIntegrationTestSuite) AfterTest(_, _ string) {
+	suite.flushTestState()
 }
 
 func (suite *DeckardIntegrationTestSuite) BeforeTest(_, _ string) {
-	suite.deckardCache.Flush(ctx)
-	_, _ = suite.deckardStorage.Flush(ctx)
+	suite.flushTestState()
 }
 
 func (suite *DeckardIntegrationTestSuite) TestAddMessageDefaultScoreIntegration() {
