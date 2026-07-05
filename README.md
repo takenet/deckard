@@ -57,7 +57,7 @@ The performance and reliability of Deckard are directly dependent on the storage
 
 > Currently, we have projects that utilize MongoDB in both a virtual machine environment and a Kubernetes environment. However, it's worth noting that we have had more extensive usage of MongoDB in a virtual machine (VM) environment compared to Kubernetes. When deploying Deckard, it is important to configure MongoDB properly, following MongoDB's recommendations for production environments (documented here: [MongoDB Production Notes](https://www.mongodb.com/docs/manual/administration/production-notes/)).
 
-While the project is being released with a `0.1.x` version due to necessary code modifications for open-sourcing, it has been thoroughly tested and proven to be reliable in production scenarios.
+Deckard is now in the `1.0.0` release-candidate phase. The open-source distribution has reached a stable baseline, and the current focus is hardening for very high-scale workloads, especially Redis Cluster operation and housekeeper resilience, before the final `1.0.0` release.
 
 Please refer to our [issues](https://github.com/takenet/deckard/issues) section for more details. Your feedback and suggestions are highly appreciated and can be shared in our [discussions](https://github.com/takenet/deckard/discussions).
 
