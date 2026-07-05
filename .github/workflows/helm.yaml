@@ -3,7 +3,11 @@ name: Deploy Deckard Helm chart to Github Pages
 on:
   release:
     types:
-      - released
+      # 'published' covers both stable releases and pre-releases. Helm charts released with a
+      # SemVer pre-release version (e.g. "1.0.0-rc1") are still safely published here, since Helm
+      # ignores pre-release chart versions by default unless --devel is explicitly passed.
+      # See: https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#release
+      - published
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:

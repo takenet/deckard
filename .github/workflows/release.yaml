@@ -3,7 +3,9 @@ name: Release
 on:
   release:
     types:
-      - released
+      # 'published' covers both stable releases and pre-releases (e.g. Release Candidates).
+      # See: https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#release
+      - published
 
 env:
   KO_DOCKER_REPO: index.docker.io/blipai
@@ -90,6 +92,8 @@ jobs:
       - name: Publish image
         env:
           auth_token: ${{ secrets.DOCKER_HUB_TOKEN }}
+          # Don't move the ':latest' tag to a Release Candidate build.
+          SKIP_LATEST_TAG: ${{ contains(github.ref_name, '-rc') }}
         run: |
           echo "${auth_token}" | ko login index.docker.io --username albertosilvablipai --password-stdin
           make build-image
