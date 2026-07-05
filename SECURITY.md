@@ -10,11 +10,12 @@ Deckard is currently in the `1.0.0` release-candidate phase.
 
 We are maintaining the release-candidate line while we finalize hardening for high-scale workloads, especially Redis Cluster operation and housekeeper resilience, before the final `1.0.0` release.
 
-For now, all `1.0.0-rc.x` versions are supported and will keep getting security updates.
+The following versions are supported and will keep getting security updates.
 
 | Version | Supported          |
 | ------- | ------------------ |
 | 1.0.0-rc.x | :white_check_mark: |
+| 0.1.x | :white_check_mark: |
 
 ## Reporting a Vulnerability
 
