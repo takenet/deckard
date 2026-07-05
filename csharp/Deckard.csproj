@@ -6,7 +6,7 @@
     <RootNamespace>Takenet.Deckard</RootNamespace>
     <Company>Takenet</Company>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageVersion>1.0.0-rc1</PackageVersion>
+    <PackageVersion>1.0.0-rc2-SNAPSHOT</PackageVersion>
     <Title>Client for Deckard - A Cyclic Priority Queue (CPQ)</Title>
     <Description>Deckard is a messaging system inspired by projects like: Google Cloud PubSub, Nats, Kafka and others.</Description>
     <PackageProjectUrl>https://github.com/takenet/deckard</PackageProjectUrl>
