@@ -95,7 +95,7 @@ mongodb:
       db.queue.createIndex({ "id": 1, "queue": 1 }, { unique: true });
 
 cache:
-  # Deckard's DECKARD_REDIS_TYPE environment variable
+  # Deckard's DECKARD_CACHE_TYPE environment variable
   # Available options: REDIS, MEMORY
   # Remember to set the redis.enabled to false if you want to use a self-deployed Redis or a Memory storage
   type: REDIS

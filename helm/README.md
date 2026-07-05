@@ -159,7 +159,7 @@ For more `redis` configurations check [bitnami's chart available configurations]
 | `redis.enabled`       | Deploy a Redis using the bitnami chart | `true`       |
 | `redis.architecture`  | Redis architecture                     | `standalone` |
 | `redis.auth.enabled`  | Enable Redis authentication            | `true`       |
-| `redis.auth.password` | Redis password for the bitnami/redis subchart (you may also use `redis.auth.existingSecret`) | `""`    |
+| `redis.auth.password` | Redis password for the bitnami/redis subchart (you may also use `redis.auth.existingSecret`) | `deckard` |
 
 > If you disabled the redis chart using `redis.enabled` as `false`, any property with the prefix `redis.` will be ignored.
 
@@ -192,7 +192,7 @@ For more `mongodb` configurations check [bitnami's chart available configuration
 | `mongodb.enabled`           | Deploy a MongoDB using the bitnami chart. | `true`       |
 | `mongodb.auth.enabled`      | Enable MongoDB authentication             | `true`       |
 | `mongodb.auth.rootUser`     | MongoDB root username                     | `deckard`    |
-| `mongodb.auth.rootPassword` | MongoDB root password for the bitnami/mongodb subchart (you may also use `mongodb.auth.existingSecret`) | `""`    |
+| `mongodb.auth.rootPassword` | MongoDB root password for the bitnami/mongodb subchart (you may also use `mongodb.auth.existingSecret`) | `deckard` |
 | `mongodb.architecture`      | MongoDB architectur                       | `standalone` |
 
 > If you disabled the MongoDB chart using `mongodb.enabled` as `false`, any property with the prefix `mongodb.` will be ignored.
