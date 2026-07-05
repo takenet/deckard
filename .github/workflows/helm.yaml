@@ -52,6 +52,14 @@ jobs:
         uses: actions/upload-pages-artifact@v5
         with:
           path: 'helm-release/'
+          # Namespace the artifact per run attempt so that re-running this
+          # workflow (e.g. after a transient Pages/Actions API error) doesn't
+          # collide with an artifact already uploaded by a previous attempt.
+          # Without this, deploy-pages fails with:
+          # "Multiple artifacts named github-pages were unexpectedly found for this workflow run."
+          name: github-pages-${{ github.run_attempt }}
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
+        with:
+          artifact_name: github-pages-${{ github.run_attempt }}
