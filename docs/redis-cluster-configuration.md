@@ -11,9 +11,11 @@ Deckard supports both single-node Redis and Redis Cluster deployments. When Redi
 Redis connection details (address, credentials, database, TLS) are configured through
 `DECKARD_CACHE_URI`.
 
-### Single Node Redis (Default)
+### Single Node Redis
 
-This is the traditional configuration that works with a single Redis instance:
+Single-node Redis is still supported, but the configuration format changed in this PR: Redis deployments now use `DECKARD_CACHE_URI`. Existing standalone deployments that previously relied on separate address/port/password/db settings must migrate to the URI-based format.
+
+This is the required standalone configuration format:
 
 ```bash
 DECKARD_CACHE_TYPE=REDIS
@@ -76,6 +78,8 @@ Keys use hash tags to ensure co-location:
 The `{clusterhash}` hash tag ensures all keys for the same queue hash to the same cluster slot.
 
 ## Migration from Single Node to Cluster
+
+In addition to the key-format differences below, note that this PR also changes the Redis configuration model for standalone deployments. If you are upgrading from an older Deckard version, migrate your standalone Redis settings to `DECKARD_CACHE_URI` before or during rollout.
 
 Single-node keys (`deckard:queue:myqueue`) and cluster-mode keys (`deckard:queue:{myqueue}`) are literally different key strings, not just differently-atomic. This means an **in-place migration is not supported**: pointing a cluster-mode Deckard instance at the same Redis data (via RDB restore, `redis-cli --cluster import`, replication + resharding, etc.) will not work - the new instance won't find any of the old keys and every queue will appear empty, while the old keys are left behind as orphaned data.
 
