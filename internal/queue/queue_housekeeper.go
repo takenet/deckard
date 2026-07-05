@@ -236,6 +236,7 @@ func RecoveryMessagesPool(ctx context.Context, pool *Queue) (metrify bool) {
 
 func tryToStartRecovery(ctx context.Context, pool *Queue) bool {
 	logger.S(ctx).Info("Starting full cache recovery.")
+
 	err := pool.cache.Set(ctx, cache.RECOVERY_RUNNING, "true")
 
 	if err != nil {

@@ -14,7 +14,7 @@ Briefly:
 - An application inserts a message to be queued and its configuration (TTL, metadata, payload, priority score, etc).
     - The message will be prioritized with a default timestamp-based algorithm if the provided score is 0 (the default value).
 - A worker application pull messages from Deckard at regular intervals and performs any processing.
-    - The worker can also send a score filter (max score and min score) in the pull request. This enables theoughput controlling with score algorithms and many other features.
+    - The worker can also send a score filter (max score and min score) in the pull request. This enables throughput controlling with score algorithms and many other features.
     - When it finishes processing a message, the application must notify with the processing result.
     - When notifying, the application may also provide a lock time, to lock the message for a certain duration of time before being requeued and delivered again. Locking mechanism have a 1-second precision.
     - It is also possible to notify a message without lock but changing its priority score to be delivered again.
@@ -47,7 +47,7 @@ The **main** objectives of the project are:
 
 ### **What Deckard is not?**
 
-It is important to note that Deckard is not a conventional messaging/queue system. If your use case does not involve priority, cyclic queuing, or a locking mechanism, it is recommended to consider alternatives such as GCP PubSub, Kafka, RabbitMQ, Azure Service Bus, Amazon SQS, or other messaging systems.
+It is important to note that Deckard is not a conventional messaging/queue system. If your use case does not involve priority, cyclic queuing, or a throughput control, it is recommended to consider alternatives such as GCP PubSub, Kafka, RabbitMQ, Azure Service Bus, Amazon SQS, or other messaging systems.
 
 ## Project Status
 
@@ -57,7 +57,7 @@ The performance and reliability of Deckard are directly dependent on the storage
 
 > Currently, we have projects that utilize MongoDB in both a virtual machine environment and a Kubernetes environment. However, it's worth noting that we have had more extensive usage of MongoDB in a virtual machine (VM) environment compared to Kubernetes. When deploying Deckard, it is important to configure MongoDB properly, following MongoDB's recommendations for production environments (documented here: [MongoDB Production Notes](https://www.mongodb.com/docs/manual/administration/production-notes/)).
 
-While the project is being released with a `0.1.0` version due to necessary code modifications for open-sourcing, it has been thoroughly tested and proven to be reliable in production scenarios.
+Deckard is now in the `1.0.0` release-candidate phase. The open-source distribution has reached a stable baseline, and the current focus is hardening for very high-scale workloads, especially Redis Cluster operation and housekeeper resilience, before the final `1.0.0` release.
 
 Please refer to our [issues](https://github.com/takenet/deckard/issues) section for more details. Your feedback and suggestions are highly appreciated and can be shared in our [discussions](https://github.com/takenet/deckard/discussions).
 
@@ -133,29 +133,54 @@ The default values depends on the server implementation. For more information ch
 
 ### Cache Configuration
 
+Redis connection details (address, credentials, database, TLS, timeouts, pool size, retries,
+etc.) are configured through `DECKARD_CACHE_URI`. The URI is parsed by
+[go-redis](https://github.com/redis/go-redis), so any query parameter it supports can be used:
+`dial_timeout`, `read_timeout`, `write_timeout`, `pool_size`, `min_idle_conns`, `max_retries`,
+`max_retry_backoff`, `conn_max_idle_time`, `conn_max_lifetime`, `client_name`, `protocol`, etc.
+(standalone also supports `skip_verify`, see the TLS note below).
+
 | Environment Variable         | Default | Description |
 |------------------------------|---------|-------------|
 | `DECKARD_CACHE_TYPE` | `MEMORY` | The cache implementation to use. Available: MEMORY, REDIS |
-| `DECKARD_CACHE_URI` | | The cache Connection URI to connect with the cache service. Currently only a Redis URI is accepted. It will take precedence over any other environment variable related to the connection Redis connection. |
-| `DECKARD_REDIS_ADDRESS` | `localhost` | The redis address to connect while using redis cache implementation. It will be overriden by `DECKARD_CACHE_URI` if present.  |
-| `DECKARD_REDIS_PASSWORD` |  | The redis password to connect while using redis cache implementation. It will be overriden by `DECKARD_CACHE_URI` if present. |
-| `DECKARD_REDIS_PORT` | `6379` | The redis port to connect while using redis cache implementation. It will be overriden by `DECKARD_CACHE_URI` if present. |
-| `DECKARD_REDIS_DB` | `0` | The database to use while using redis cache implementation. It will be overriden by `DECKARD_CACHE_URI` if present. |
+| `DECKARD_CACHE_URI` | | **Required when `DECKARD_CACHE_TYPE=REDIS`.** The Redis connection URI (`redis://` or `rediss://`). In cluster mode (see below) this uses go-redis's cluster URL format instead of the plain standalone one. |
+| `DECKARD_CACHE_PREFIX` | `deckard_v1` | Prefix for Deckard Redis keys (e.g. `deckard_v1:<key>`). Change it to run multiple Deckard instances in the same Redis without key collisions. |
+| `DECKARD_REDIS_CLUSTER_MODE` | `false` | Enables Redis Cluster mode. When `true`, `DECKARD_CACHE_URI` is parsed as a cluster URL (see below) instead of a plain standalone URI. |
+
+Standalone examples (parsed by [`redis.ParseURL`](https://pkg.go.dev/github.com/redis/go-redis/v9#ParseURL)):
+
+- `DECKARD_CACHE_URI=redis://user:pass@redis.example:6379/0`
+- With TLS: `DECKARD_CACHE_URI=rediss://user:pass@redis.example:6380/0`
+- With TLS and no certificate verification (not recommended in production): `DECKARD_CACHE_URI=rediss://user:pass@redis.example:6380/0?skip_verify=true`
+
+Cluster examples (parsed by [`redis.ParseClusterURL`](https://pkg.go.dev/github.com/redis/go-redis/v9#ParseClusterURL), go-redis's own convention: one base URI holding credentials/TLS/tuning options, with extra seed nodes appended as repeated `addr=host:port` query parameters):
+
+- `DECKARD_REDIS_CLUSTER_MODE=true` and `DECKARD_CACHE_URI=redis://node-1:6379?addr=node-2:6379&addr=node-3:6379`
+- With auth and TLS: `DECKARD_REDIS_CLUSTER_MODE=true` and `DECKARD_CACHE_URI=rediss://user:pass@node-1:6379?addr=node-2:6379&addr=node-3:6379`
+
+Two Redis Cluster limitations worth knowing about:
+
+- Redis Cluster does not support `SELECT`, so there's no database number to configure - it always operates on database 0 regardless of what's in the URI.
+- `skip_verify` is only recognized by the standalone parser; it is **not** a valid parameter on a cluster URL (go-redis rejects it there), so insecure TLS is not available in cluster mode.
+
+Deckard cache flush behavior is namespace-scoped: only keys under `DECKARD_CACHE_PREFIX` are deleted. Deckard does **not** run Redis `FLUSHDB`, so it is safe to share Redis with other applications (or multiple Deckard prefixes).
 
 ### Storage Configuration
+
+MongoDB is still supported, but the configuration format changed in this PR: MongoDB deployments now use `DECKARD_STORAGE_URI`. Existing deployments that previously relied on legacy discrete MongoDB settings must migrate to the URI-based format.
+
+MongoDB connection details (hosts, credentials, auth source, TLS, pool size, etc.) are configured
+through `DECKARD_STORAGE_URI`, applied via the MongoDB driver's own connection-string
+parsing (so any [MongoDB connection string option](https://www.mongodb.com/docs/manual/reference/connection-string/#connection-string-options) is available, e.g. `authSource`, `tls`, `maxPoolSize`, `replicaSet`).
 
 | Environment Variable         | Default | Description |
 |------------------------------|---------|-------------|
 | `DECKARD_STORAGE_TYPE` | `MEMORY` | The storage implementation to use. Available: MEMORY, MONGODB |
-| `DECKARD_STORAGE_URI` |  | The storage Connection URI to connect with the storage service. Currently only a MongoDB URI is accepted. It can override any other environment variable related to the connection MongoDB connection since it takes precedence. |
-| `DECKARD_MONGODB_ADDRESSES` | `localhost:27017` | The MongoDB addresses separated by comma to connect while using MongoDB storage implementation. It can be overridden by `DECKARD_STORAGE_URI`. |
-| `DECKARD_MONGODB_AUTH_DB` |  | The MongoDB auth database to authenticate while using MongoDB storage implementation. It can be overridden by `DECKARD_STORAGE_URI`. |
-| `DECKARD_MONGODB_PASSWORD` |  | The MongoDB password to authenticate while using MongoDB storage implementation. It can be overridden by `DECKARD_STORAGE_URI`. |
-| `DECKARD_MONGODB_DATABASE` | `deckard` | The MongoDB database to use to store messages while using MongoDB storage implementation. |
-| `DECKARD_MONGODB_COLLECTION` | `queue` | The MongoDB collection to use to store messages while using MongoDB storage implementation. |
-| `DECKARD_MONGODB_USER` |  | The MongoDB user to authenticate while using MongoDB storage implementation. It can be overridden by `DECKARD_STORAGE_URI`. |
-| `DECKARD_MONGODB_SSL` | `false` | To enable SSL while using MongoDB storage implementation. It can be overridden by `DECKARD_STORAGE_URI`. |
-| `DECKARD_MONGODB_QUEUE_CONFIGURATION_COLLECTION` | `queue_configuration` | The MongoDB collection to use to store queue configurations while using MongoDB storage implementation. |
+| `DECKARD_STORAGE_URI` |  | **Required when `DECKARD_STORAGE_TYPE=MONGODB`.** The MongoDB connection URI. |
+| `DECKARD_MONGODB_DATABASE` | `deckard` | The MongoDB database to use to store messages. |
+| `DECKARD_MONGODB_COLLECTION` | `queue` | The MongoDB collection to use to store messages. |
+| `DECKARD_MONGODB_QUEUE_CONFIGURATION_COLLECTION` | `queue_configuration` | The MongoDB collection to use to store queue configurations. |
+
 
 ### Housekeeper Configuration
 

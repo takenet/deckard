@@ -29,12 +29,12 @@ var StorageConnectionRetryDelay = Create(&ViperConfigKey{
 })
 
 // MongoDB Configurations
-
-var MongoAddresses = Create(&ViperConfigKey{
-	Key:     "mongo.addresses",
-	Aliases: []string{"mongodb.addresses"},
-	Default: "localhost:27017",
-})
+//
+// Connection details (hosts, credentials, auth source, TLS, pool size, timeouts, etc.) are
+// configured through StorageUri (DECKARD_STORAGE_URI), applied via the driver's own ApplyURI
+// connection-string parsing. MongoDatabase/MongoCollection/MongoQueueConfigurationCollection below
+// are schema configuration (which database/collections Deckard uses), not connection parameters,
+// so they remain independent of the URI.
 
 var MongoDatabase = Create(&ViperConfigKey{
 	Key:     "mongo.database",
@@ -46,33 +46,6 @@ var MongoCollection = Create(&ViperConfigKey{
 	Key:     "mongo.collection",
 	Aliases: []string{"mongodb.collection"},
 	Default: "queue",
-})
-
-var MongoUser = Create(&ViperConfigKey{
-	Key:     "mongo.user",
-	Aliases: []string{"mongodb.user"},
-})
-
-var MongoAuthDb = Create(&ViperConfigKey{
-	Key:     "mongo.auth_db",
-	Aliases: []string{"mongodb.auth_db"},
-})
-
-var MongoPassword = Create(&ViperConfigKey{
-	Key:     "mongo.password",
-	Aliases: []string{"mongodb.password"},
-})
-
-var MongoSsl = Create(&ViperConfigKey{
-	Key:     "mongo.ssl",
-	Aliases: []string{"mongodb.ssl"},
-	Default: false,
-})
-
-var MongoMaxPoolSize = Create(&ViperConfigKey{
-	Key:     "mongo.max_pool_size",
-	Aliases: []string{"mongodb.max_pool_size"},
-	Default: 100,
 })
 
 var MongoQueueConfigurationCollection = Create(&ViperConfigKey{

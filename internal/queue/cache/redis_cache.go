@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/meirf/gopart"
@@ -22,9 +23,23 @@ import (
 	"go.opentelemetry.io/otel/metric"
 )
 
+var errCacheUriRequired = errors.New("cache.uri (DECKARD_CACHE_URI) is required when cache.type is REDIS")
+var errCacheConnectionRetryAttemptsInvalid = errors.New("cache.connection.retry.attempts must be greater than 0")
+var errQueueNameContainsClusterHashTag = errors.New("queue names cannot contain '{' or '}'")
+
+// RedisClient interface abstracts the differences between single-node and cluster Redis clients
+type RedisClient interface {
+	redis.Cmdable
+	Close() error
+	Ping(ctx context.Context) *redis.StatusCmd
+	FlushDB(ctx context.Context) *redis.StatusCmd
+}
+
 type RedisCache struct {
-	Client  *redis.Client
-	scripts map[string]*redis.Script
+	Client      RedisClient
+	scripts     map[string]*redis.Script
+	clusterMode bool
+	keyPrefix   string
 }
 
 var _ Cache = &RedisCache{}
@@ -39,12 +54,13 @@ const (
 	moveFilteredElements = "move_primary_pool"
 	unlockElements       = "unlock_elements"
 
-	POOL_PREFIX            = "deckard:queue:"
+	POOL_SUFFIX            = ":queue:"
 	PROCESSING_POOL_SUFFIX = ":tmp"
 	LOCK_ACK_SUFFIX        = ":" + string(LOCK_ACK)
 	LOCK_NACK_SUFFIX       = ":" + string(LOCK_NACK)
-	LOCK_ACK_SCORE_SUFFIX  = ":" + string(LOCK_ACK) + ":score"
-	LOCK_NACK_SCORE_SUFFIX = ":" + string(LOCK_NACK) + ":score"
+	SCORE_SUFFIX           = ":score"
+	LOCK_ACK_SCORE_SUFFIX  = ":" + string(LOCK_ACK) + SCORE_SUFFIX
+	LOCK_NACK_SCORE_SUFFIX = ":" + string(LOCK_NACK) + SCORE_SUFFIX
 )
 
 var PROCESSING_POOL_REGEX = regexp.MustCompile("(.+)" + PROCESSING_POOL_SUFFIX + "$")
@@ -52,39 +68,25 @@ var LOCK_ACK_POOL_REGEX = regexp.MustCompile("(.+)" + LOCK_ACK_SUFFIX + "$")
 var LOCK_NACK_POOL_REGEX = regexp.MustCompile("(.+)" + LOCK_NACK_SUFFIX + "$")
 
 func NewRedisCache(ctx context.Context) (*RedisCache, error) {
-	uri := config.CacheUri.Get()
+	clusterMode := config.RedisClusterMode.GetBool()
 
-	var options *redis.Options
-	if uri == "" {
-		address := fmt.Sprint(config.RedisAddress.Get(), ":", config.RedisPort.GetInt())
+	var client RedisClient
+	var err error
 
-		options = &redis.Options{
-			Addr:     address,
-			Password: config.RedisPassword.Get(),
-			DB:       config.RedisDB.GetInt(),
-		}
+	if clusterMode {
+		client, err = createClusterClient(ctx)
 	} else {
-		var err error
-		options, err = redis.ParseURL(uri)
-
-		if err != nil {
-			return nil, fmt.Errorf("error parsing redis uri: %w", err)
-		}
+		client, err = createSingleNodeClient(ctx)
 	}
 
-	logger.S(ctx).Info("Connecting to ", options.Addr, " Redis instance(s)")
-
-	start := dtime.Now()
-
-	redisClient, err := waitForClient(options)
 	if err != nil {
 		return nil, err
 	}
 
-	logger.S(ctx).Debug("Connected to Redis cache in ", time.Since(start))
-
 	return &RedisCache{
-		Client: redisClient,
+		Client:      client,
+		clusterMode: clusterMode,
+		keyPrefix:   resolveConfiguredPrefix(),
 		scripts: map[string]*redis.Script{
 			removeElement:        redis.NewScript(removeElementScript),
 			pullElement:          redis.NewScript(pullElementsScript),
@@ -98,8 +100,85 @@ func NewRedisCache(ctx context.Context) (*RedisCache, error) {
 	}, nil
 }
 
-func waitForClient(options *redis.Options) (*redis.Client, error) {
+func createSingleNodeClient(ctx context.Context) (RedisClient, error) {
+	options, err := singleNodeOptionsFromConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	logger.S(ctx).Info("Connecting to ", options.Addr, " Redis instance")
+
+	start := dtime.Now()
+
+	redisClient, err := waitForSingleNodeClient(ctx, options)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.S(ctx).Debug("Connected to Redis cache in ", time.Since(start))
+
+	return redisClient, nil
+}
+
+func createClusterClient(ctx context.Context) (RedisClient, error) {
+	options, err := clusterOptionsFromConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	logger.S(ctx).Info("Connecting to Redis cluster with addresses: ", options.Addrs)
+
+	start := dtime.Now()
+
+	clusterClient, err := waitForClusterClient(ctx, options)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.S(ctx).Debug("Connected to Redis cluster in ", time.Since(start))
+
+	return clusterClient, nil
+}
+
+func singleNodeOptionsFromConfig() (*redis.Options, error) {
+	uri := config.CacheUri.Get()
+	if uri == "" {
+		return nil, errCacheUriRequired
+	}
+
+	options, err := redis.ParseURL(uri)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing redis uri: %w", err)
+	}
+
+	return options, nil
+}
+
+// clusterOptionsFromConfig delegates to redis.ParseClusterURL, go-redis's own URL format for
+// Redis Cluster: a base redis://|rediss:// URI for the first seed node, with additional seed
+// nodes appended as repeated addr= query parameters (e.g.
+// "redis://node-1:6379?addr=node-2:6379&addr=node-3:6379"). Credentials and TLS are part of the
+// base URI and apply to every node.
+func clusterOptionsFromConfig() (*redis.ClusterOptions, error) {
+	uri := config.CacheUri.Get()
+	if uri == "" {
+		return nil, errCacheUriRequired
+	}
+
+	options, err := redis.ParseClusterURL(uri)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing redis cluster uri: %w", err)
+	}
+
+	return options, nil
+}
+
+func waitForSingleNodeClient(ctx context.Context, options *redis.Options) (*redis.Client, error) {
 	var err error
+	attempts := config.CacheConnectionRetryAttempts.GetInt()
+	if attempts < 1 {
+		return nil, errCacheConnectionRetryAttemptsInvalid
+	}
 
 	redisClient := redis.NewClient(options)
 
@@ -112,20 +191,88 @@ func waitForClient(options *redis.Options) (*redis.Client, error) {
 		return nil, fmt.Errorf("error setting up redis tracing: %w", err)
 	}
 
-	for i := 1; i <= config.CacheConnectionRetryAttempts.GetInt(); i++ {
+	for i := 1; i <= attempts; i++ {
 		var pingResult string
-		pingResult, err = redisClient.Ping(context.Background()).Result()
+		pingResult, err = redisClient.Ping(ctx).Result()
 
 		if (err == nil && pingResult == "PONG") || !config.CacheConnectionRetryEnabled.GetBool() {
 			break
 		}
 
-		logger.S(context.Background()).Warnf("Failed to connect to Redis (%d times). Trying again in %s.", i, config.CacheConnectionRetryDelay.GetDuration())
+		logger.S(ctx).Warnf("Failed to connect to Redis (%d times). Trying again in %s.", i, config.CacheConnectionRetryDelay.GetDuration())
 
-		<-time.After(config.CacheConnectionRetryDelay.GetDuration())
+		if waitErr := waitForRetry(ctx, config.CacheConnectionRetryDelay.GetDuration()); waitErr != nil {
+			err = waitErr
+			break
+		}
+	}
+
+	if err != nil {
+		if closeErr := redisClient.Close(); closeErr != nil {
+			return nil, fmt.Errorf("error connecting to redis and closing redis client: %w", errors.Join(err, closeErr))
+		}
+
+		return nil, err
 	}
 
 	return redisClient, err
+}
+
+func waitForClusterClient(ctx context.Context, options *redis.ClusterOptions) (*redis.ClusterClient, error) {
+	var err error
+	attempts := config.CacheConnectionRetryAttempts.GetInt()
+	if attempts < 1 {
+		return nil, errCacheConnectionRetryAttemptsInvalid
+	}
+
+	clusterClient := redis.NewClusterClient(options)
+
+	// OpenTelemetry APM
+	if err := redisotel.InstrumentTracing(clusterClient); err != nil {
+		if closeErr := clusterClient.Close(); closeErr != nil {
+			return nil, fmt.Errorf("error setting up redis cluster tracing and closing redis cluster client: %w", errors.Join(err, closeErr))
+		}
+
+		return nil, fmt.Errorf("error setting up redis cluster tracing: %w", err)
+	}
+
+	for i := 1; i <= attempts; i++ {
+		var pingResult string
+		pingResult, err = clusterClient.Ping(ctx).Result()
+
+		if (err == nil && pingResult == "PONG") || !config.CacheConnectionRetryEnabled.GetBool() {
+			break
+		}
+
+		logger.S(ctx).Warnf("Failed to connect to Redis cluster (%d times). Trying again in %s.", i, config.CacheConnectionRetryDelay.GetDuration())
+
+		if waitErr := waitForRetry(ctx, config.CacheConnectionRetryDelay.GetDuration()); waitErr != nil {
+			err = waitErr
+			break
+		}
+	}
+
+	if err != nil {
+		if closeErr := clusterClient.Close(); closeErr != nil {
+			return nil, fmt.Errorf("error connecting to redis cluster and closing redis cluster client: %w", errors.Join(err, closeErr))
+		}
+
+		return nil, err
+	}
+
+	return clusterClient, err
+}
+
+func waitForRetry(ctx context.Context, delay time.Duration) error {
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
 }
 
 func (cache *RedisCache) Flush(ctx context.Context) {
@@ -134,10 +281,39 @@ func (cache *RedisCache) Flush(ctx context.Context) {
 		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(now), metric.WithAttributes(attribute.String("op", "flush")))
 	}()
 
-	cache.Client.FlushDB(ctx)
+	pattern := cache.fullPrefix() + ":*"
+
+	// Delete only this Deckard instance namespace. Never call FLUSHDB, since users may share
+	// the same Redis with other applications (or another Deckard with a different prefix).
+	// In cluster mode, fan out across masters to ensure every shard is cleaned.
+	if cache.clusterMode {
+		clusterClient, ok := cache.Client.(*redis.ClusterClient)
+		if !ok {
+			logger.S(ctx).Error("cluster mode enabled but redis client is not a *redis.ClusterClient, skipping flush")
+			return
+		}
+
+		err := clusterClient.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+			return deleteByPattern(ctx, master, pattern)
+		})
+
+		if err != nil {
+			logger.S(ctx).Errorf("error flushing redis cluster by prefix: %v", err)
+		}
+
+		return
+	}
+
+	if err := deleteByPattern(ctx, cache.Client, pattern); err != nil {
+		logger.S(ctx).Errorf("error flushing redis by prefix: %v", err)
+	}
 }
 
 func (cache *RedisCache) Remove(ctx context.Context, queue string, ids ...string) (removed int64, err error) {
+	if err := cache.validateQueueName(queue); err != nil {
+		return 0, err
+	}
+
 	total := int64(0)
 
 	execStart := dtime.Now()
@@ -179,7 +355,7 @@ func (cache *RedisCache) Remove(ctx context.Context, queue string, ids ...string
 	return total, nil
 }
 
-// TODO: We should list queues using storage with iterator, and not redis. Rethink this usage
+// Queue listing currently scans Redis keys directly.
 func (cache *RedisCache) ListQueues(ctx context.Context, pattern string, poolType pool.PoolType) (queues []string, err error) {
 	execStart := dtime.Now()
 	defer func() {
@@ -202,22 +378,44 @@ func (cache *RedisCache) ListQueues(ctx context.Context, pattern string, poolTyp
 		searchPattern = cache.lockPool(pattern, LOCK_NACK)
 	}
 
-	// Use SCAN instead of KEYS to avoid blocking Redis
-	data := make([]string, 0)
-	cursor := uint64(0)
-	for {
-		var keys []string
-		var err error
-		keys, cursor, err = cache.Client.Scan(context.Background(), cursor, searchPattern, 1000).Result()
+	// Use SCAN instead of KEYS to avoid blocking Redis.
+	//
+	// SCAN is a "keyless" command, so in cluster mode go-redis cannot route it by hash slot: it
+	// picks one shard per call (round-robin by default) and each shard only knows about its own
+	// keyspace/cursor. Scanning through a single ClusterClient.Scan call would therefore silently
+	// miss queues living on other shards (and could even hand a shard's cursor to a different
+	// shard). We fan out with ForEachMaster and scan every master node's keyspace independently.
+	var data []string
+	if cache.clusterMode {
+		clusterClient, ok := cache.Client.(*redis.ClusterClient)
+		if !ok {
+			return nil, errors.New("cluster mode enabled but redis client is not a *redis.ClusterClient")
+		}
+
+		var mu sync.Mutex
+		data = make([]string, 0)
+
+		err = clusterClient.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+			keys, scanErr := scanKeys(ctx, master, searchPattern)
+			if scanErr != nil {
+				return scanErr
+			}
+
+			mu.Lock()
+			data = append(data, keys...)
+			mu.Unlock()
+
+			return nil
+		})
+
+		if err != nil {
+			return nil, fmt.Errorf("error listing cache queues across cluster shards: %w", err)
+		}
+	} else {
+		data, err = scanKeys(ctx, cache.Client, searchPattern)
 
 		if err != nil {
 			return nil, fmt.Errorf("error listing cache queues: %w", err)
-		}
-
-		data = append(data, keys...)
-
-		if cursor == 0 {
-			break
 		}
 	}
 
@@ -234,20 +432,125 @@ func (cache *RedisCache) ListQueues(ctx context.Context, pattern string, poolTyp
 	}
 
 	for i, queue := range data {
-		queue = strings.Replace(queue, POOL_PREFIX, "", 1)
-
-		if regex != nil {
-			queue = regex.ReplaceAllString(queue, "$1")
-		}
-
-		data[i] = queue
+		data[i] = cache.parseQueueKey(queue, regex)
 	}
 
 	if pool.PRIMARY_POOL == poolType {
-		return filterQueueSuffix(data), nil
+		return filterQueueSuffix(uniqStrings(data)), nil
 	}
 
-	return data, nil
+	return uniqStrings(data), nil
+}
+
+// scanKeys iterates the full SCAN cursor sequence against a single node/client and returns all
+// matching keys. Must be called once per shard in cluster mode (see ListQueues) since SCAN cursors
+// are only valid against the node that issued them.
+func scanKeys(ctx context.Context, client redis.Cmdable, pattern string) ([]string, error) {
+	keys := make([]string, 0)
+	cursor := uint64(0)
+
+	for {
+		var batch []string
+		var err error
+
+		batch, cursor, err = client.Scan(ctx, cursor, pattern, 1000).Result()
+
+		if err != nil {
+			return nil, err
+		}
+
+		keys = append(keys, batch...)
+
+		if cursor == 0 {
+			break
+		}
+	}
+
+	return keys, nil
+}
+
+func deleteByPattern(ctx context.Context, client redis.Cmdable, pattern string) error {
+	keysToDelete := make([]string, 0)
+	cursor := uint64(0)
+
+	for {
+		keys, nextCursor, err := client.Scan(ctx, cursor, pattern, 1000).Result()
+		if err != nil {
+			return err
+		}
+
+		keysToDelete = append(keysToDelete, keys...)
+
+		if nextCursor == 0 {
+			break
+		}
+
+		cursor = nextCursor
+	}
+
+	keysToDelete = uniqStrings(keysToDelete)
+
+	for index := range gopart.Partition(len(keysToDelete), 1000) {
+		partition := keysToDelete[index.Low:index.High]
+
+		if err := client.Del(ctx, partition...).Err(); err != nil {
+			if !strings.Contains(err.Error(), "CROSSSLOT") {
+				return err
+			}
+
+			for i := range partition {
+				if delErr := client.Del(ctx, partition[i]).Err(); delErr != nil {
+					return delErr
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func uniqStrings(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	result := make([]string, 0, len(values))
+
+	for i := range values {
+		if _, ok := seen[values[i]]; ok {
+			continue
+		}
+
+		seen[values[i]] = struct{}{}
+		result = append(result, values[i])
+	}
+
+	return result
+}
+
+// parseQueueKey converts a raw Redis key (as returned by SCAN) back into a plain
+// queue name by removing the pool prefix, any pool-type suffix matched by regex,
+// and, in cluster mode, the hash tag braces ("{" and "}") added by
+// activePool/processingPool/lockPool/lockPoolScore to keep a queue's keys in the
+// same hash slot. Those braces are an internal key-naming detail and must not
+// leak to callers.
+func (cache *RedisCache) parseQueueKey(key string, suffixRegex *regexp.Regexp) string {
+	queue := strings.TrimPrefix(key, cache.poolPrefix())
+
+	if suffixRegex != nil {
+		queue = suffixRegex.ReplaceAllString(queue, "$1")
+	}
+
+	if cache.clusterMode {
+		queue = unwrapClusterHashTag(queue)
+	}
+
+	return queue
+}
+
+func unwrapClusterHashTag(queue string) string {
+	if len(queue) < 2 || !strings.HasPrefix(queue, "{") || !strings.HasSuffix(queue, "}") {
+		return queue
+	}
+
+	return queue[1 : len(queue)-1]
 }
 
 func filterQueueSuffix(data []string) []string {
@@ -285,6 +588,10 @@ func (cache *RedisCache) MakeAvailable(ctx context.Context, message *message.Mes
 		return false, errors.New("invalid message queue")
 	}
 
+	if err := cache.validateQueueName(message.Queue); err != nil {
+		return false, err
+	}
+
 	execStart := dtime.Now()
 	defer func() {
 		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), metric.WithAttributes(attribute.String("op", "make_available")))
@@ -308,6 +615,10 @@ func (cache *RedisCache) MakeAvailable(ctx context.Context, message *message.Mes
 func (cache *RedisCache) LockMessage(ctx context.Context, message *message.Message, lockType LockType) (bool, error) {
 	if message.Queue == "" {
 		return false, errors.New("invalid queue to lock")
+	}
+
+	if err := cache.validateQueueName(message.Queue); err != nil {
+		return false, err
 	}
 
 	if message.LockMs <= 0 {
@@ -338,6 +649,10 @@ func (cache *RedisCache) LockMessage(ctx context.Context, message *message.Messa
 }
 
 func (cache *RedisCache) UnlockMessages(ctx context.Context, queue string, lockType LockType) ([]string, error) {
+	if err := cache.validateQueueName(queue); err != nil {
+		return nil, err
+	}
+
 	defaultScore := score.Min
 
 	if lockType == LOCK_ACK {
@@ -360,6 +675,10 @@ func (cache *RedisCache) UnlockMessages(ctx context.Context, queue string, lockT
 }
 
 func (cache *RedisCache) PullMessages(ctx context.Context, queue string, n int64, minScore *float64, maxScore *float64, ackDeadlineMs int64) (ids []string, err error) {
+	if err := cache.validateQueueName(queue); err != nil {
+		return nil, err
+	}
+
 	var cmd *redis.Cmd
 
 	now := dtime.Now()
@@ -434,6 +753,10 @@ func resultToIds(result interface{}) []string {
 }
 
 func (cache *RedisCache) TimeoutMessages(ctx context.Context, queue string) ([]string, error) {
+	if err := cache.validateQueueName(queue); err != nil {
+		return nil, err
+	}
+
 	now := dtime.Now()
 	timeoutTime := dtime.TimeToMs(&now)
 
@@ -452,6 +775,10 @@ func (cache *RedisCache) TimeoutMessages(ctx context.Context, queue string) ([]s
 }
 
 func (cache *RedisCache) Insert(ctx context.Context, queue string, messages ...*message.Message) ([]string, error) {
+	if err := cache.validateQueueName(queue); err != nil {
+		return nil, err
+	}
+
 	for i := range messages {
 		if messages[i].Queue != queue {
 			return nil, errors.New("invalid queue to insert data")
@@ -500,6 +827,10 @@ func (cache *RedisCache) Insert(ctx context.Context, queue string, messages ...*
 }
 
 func (cache *RedisCache) IsProcessing(ctx context.Context, queue string, id string) (bool, error) {
+	if err := cache.validateQueueName(queue); err != nil {
+		return false, err
+	}
+
 	execStart := dtime.Now()
 	defer func() {
 		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), metric.WithAttributes(attribute.String("op", "is_processing")))
@@ -528,7 +859,7 @@ func (cache *RedisCache) Get(ctx context.Context, key string) (string, error) {
 		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), metric.WithAttributes(attribute.String("op", "get")))
 	}()
 
-	cmd := cache.Client.Get(context.Background(), fmt.Sprint("deckard:", key))
+	cmd := cache.Client.Get(ctx, cache.generalCacheKey(key))
 	value, err := cmd.Result()
 
 	if err == redis.Nil {
@@ -548,7 +879,7 @@ func (cache *RedisCache) Set(ctx context.Context, key string, value string) erro
 		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), metric.WithAttributes(attribute.String("op", "set")))
 	}()
 
-	cmd := cache.Client.Set(context.Background(), fmt.Sprint("deckard:", key), value, 0)
+	cmd := cache.Client.Set(ctx, cache.generalCacheKey(key), value, 0)
 
 	if cmd.Err() != nil {
 		return fmt.Errorf("error setting cache element: %w", cmd.Err())
@@ -561,24 +892,79 @@ func (cache *RedisCache) Close(ctx context.Context) error {
 	return cache.Client.Close()
 }
 
+func (cache *RedisCache) generalCacheKey(key string) string {
+	if cache.clusterMode {
+		return fmt.Sprint(cache.fullPrefix(), ":{", key, "}")
+	}
+
+	return fmt.Sprint(cache.fullPrefix(), ":", key)
+}
+
+func (cache *RedisCache) validateQueueName(queue string) error {
+	// Braces are reserved even in standalone mode so existing queues remain
+	// migratable to Redis Cluster without ambiguous hash-tag parsing.
+	if strings.ContainsAny(queue, "{}") {
+		return errQueueNameContainsClusterHashTag
+	}
+
+	return nil
+}
+
 // activePool returns the name of the active pool of messages.
 func (cache *RedisCache) activePool(queue string) string {
-	return POOL_PREFIX + queue
+	if cache.clusterMode {
+		return cache.poolPrefix() + "{" + queue + "}"
+	}
+	return cache.poolPrefix() + queue
 }
 
 // processingPool returns the name of the processing pool of messages.
 func (cache *RedisCache) processingPool(queue string) string {
-	return POOL_PREFIX + queue + PROCESSING_POOL_SUFFIX
+	if cache.clusterMode {
+		return cache.poolPrefix() + "{" + queue + "}" + PROCESSING_POOL_SUFFIX
+	}
+	return cache.poolPrefix() + queue + PROCESSING_POOL_SUFFIX
 }
 
 // lockPool returns the name of the lock pool of messages.
 func (cache *RedisCache) lockPool(queue string, lockType LockType) string {
-	return POOL_PREFIX + queue + ":" + string(lockType)
+	if cache.clusterMode {
+		return cache.poolPrefix() + "{" + queue + "}" + ":" + string(lockType)
+	}
+	return cache.poolPrefix() + queue + ":" + string(lockType)
 }
 
-// lockPool returns the name of the lock pool scores of messages.
+// lockPoolScore returns the name of the lock pool scores of messages.
 //
 // used to unlock messages with a predefined score.
 func (cache *RedisCache) lockPoolScore(queue string, lockType LockType) string {
-	return POOL_PREFIX + queue + ":" + string(lockType) + ":score"
+	if cache.clusterMode {
+		return cache.poolPrefix() + "{" + queue + "}" + ":" + string(lockType) + SCORE_SUFFIX
+	}
+	return cache.poolPrefix() + queue + ":" + string(lockType) + SCORE_SUFFIX
+}
+
+func resolveConfiguredPrefix() string {
+	prefix := strings.TrimSpace(config.CachePrefix.Get())
+	if prefix == "" {
+		return "deckard_v1"
+	}
+
+	return strings.Trim(prefix, ":")
+}
+
+func (cache *RedisCache) configuredPrefix() string {
+	if cache.keyPrefix == "" {
+		return "deckard_v1"
+	}
+
+	return cache.keyPrefix
+}
+
+func (cache *RedisCache) fullPrefix() string {
+	return cache.configuredPrefix()
+}
+
+func (cache *RedisCache) poolPrefix() string {
+	return cache.configuredPrefix() + POOL_SUFFIX
 }

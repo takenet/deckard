@@ -36,9 +36,9 @@ func TestEnvReplacerShouldConsiderDotAsUnderline(t *testing.T) {
 
 	require.Equal(t, false, AuditEnabled.GetBool())
 
-	os.Setenv("DECKARD_AUDIT_ENABLED", "true")
+	_ = os.Setenv("DECKARD_AUDIT_ENABLED", "true")
 
-	defer os.Unsetenv("DECKARD_AUDIT_ENABLED")
+	defer func() { _ = os.Unsetenv("DECKARD_AUDIT_ENABLED") }()
 
 	require.Equal(t, true, AuditEnabled.GetBool())
 }
@@ -48,7 +48,7 @@ func TestEnvWithoutPrefixShouldReturnDefaultValue(t *testing.T) {
 
 	require.Equal(t, false, AuditEnabled.GetBool())
 
-	os.Setenv("AUDIT_ENABLED", "true")
+	_ = os.Setenv("AUDIT_ENABLED", "true")
 
 	require.Equal(t, false, AuditEnabled.GetBool())
 }
@@ -65,9 +65,10 @@ func TestDefaultValues(t *testing.T) {
 	require.Equal(t, 8081, GrpcPort.GetInt())
 
 	// Redis configurations
-	require.Equal(t, "localhost", RedisAddress.Get())
-	require.Equal(t, 6379, RedisPort.GetInt())
-	require.Equal(t, 0, RedisDB.GetInt())
+	// Connection details (address, credentials, db) are provided via CacheUri (DECKARD_CACHE_URI);
+	// only the cluster topology switch has its own default here.
+	require.Equal(t, "deckard_v1", CachePrefix.Get())
+	require.Equal(t, false, RedisClusterMode.GetBool())
 
 	// Audit
 	require.Equal(t, false, AuditEnabled.GetBool())
@@ -76,11 +77,11 @@ func TestDefaultValues(t *testing.T) {
 	require.Equal(t, "http://localhost:9200/", ElasticAddress.Get())
 
 	// MongoDB
-	require.Equal(t, "localhost:27017", MongoAddresses.Get())
+	// Connection details are provided via StorageUri (DECKARD_STORAGE_URI); only schema
+	// configuration (database/collection names) has its own defaults here.
 	require.Equal(t, project.Name, MongoDatabase.Get())
 	require.Equal(t, "queue", MongoCollection.Get())
 	require.Equal(t, "queue_configuration", MongoQueueConfigurationCollection.Get())
-	require.Equal(t, false, MongoSsl.GetBool())
 
 	// Environment
 	require.Equal(t, false, DebugEnabled.GetBool())
