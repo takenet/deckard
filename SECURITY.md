@@ -6,13 +6,15 @@ This project has been used in the production environment for the past two years,
 
 However, in order to open source the project and make it available to a wider audience, we had to make some changes.
 
-We are releasing it with a `0.1.x` version as a stepping stone towards the full open-sourced version `1.0.0`, which we will be releasing soon.
+Deckard is currently in the `1.0.0` release-candidate phase.
 
-For now all `0.1.x` versions are supported and will keep getting security updates.
+We are maintaining the release-candidate line while we finalize hardening for high-scale workloads, especially Redis Cluster operation and housekeeper resilience, before the final `1.0.0` release.
+
+For now, all `1.0.0-rc.x` versions are supported and will keep getting security updates.
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.1.x   | :white_check_mark: |
+| 1.0.0-rc.x | :white_check_mark: |
 
 ## Reporting a Vulnerability
 
