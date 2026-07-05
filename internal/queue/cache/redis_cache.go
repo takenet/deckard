@@ -39,6 +39,7 @@ type RedisCache struct {
 	Client      RedisClient
 	scripts     map[string]*redis.Script
 	clusterMode bool
+	keyPrefix   string
 }
 
 var _ Cache = &RedisCache{}
@@ -53,7 +54,7 @@ const (
 	moveFilteredElements = "move_primary_pool"
 	unlockElements       = "unlock_elements"
 
-	POOL_PREFIX            = "deckard:queue:"
+	POOL_SUFFIX            = ":queue:"
 	PROCESSING_POOL_SUFFIX = ":tmp"
 	LOCK_ACK_SUFFIX        = ":" + string(LOCK_ACK)
 	LOCK_NACK_SUFFIX       = ":" + string(LOCK_NACK)
@@ -85,6 +86,7 @@ func NewRedisCache(ctx context.Context) (*RedisCache, error) {
 	return &RedisCache{
 		Client:      client,
 		clusterMode: clusterMode,
+		keyPrefix:   resolveConfiguredPrefix(),
 		scripts: map[string]*redis.Script{
 			removeElement:        redis.NewScript(removeElementScript),
 			pullElement:          redis.NewScript(pullElementsScript),
@@ -279,9 +281,11 @@ func (cache *RedisCache) Flush(ctx context.Context) {
 		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(now), metric.WithAttributes(attribute.String("op", "flush")))
 	}()
 
-	// FLUSHDB is a keyless command: just like SCAN, a single ClusterClient.FlushDB call only
-	// reaches one (round-robin-picked) master shard, silently leaving every other shard's data
-	// in place. Fan out via ForEachMaster so Flush actually clears the whole cluster.
+	pattern := cache.fullPrefix() + ":*"
+
+	// Delete only this Deckard instance namespace. Never call FLUSHDB, since users may share
+	// the same Redis with other applications (or another Deckard with a different prefix).
+	// In cluster mode, fan out across masters to ensure every shard is cleaned.
 	if cache.clusterMode {
 		clusterClient, ok := cache.Client.(*redis.ClusterClient)
 		if !ok {
@@ -290,18 +294,18 @@ func (cache *RedisCache) Flush(ctx context.Context) {
 		}
 
 		err := clusterClient.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
-			return master.FlushDB(ctx).Err()
+			return deleteByPattern(ctx, master, pattern)
 		})
 
 		if err != nil {
-			logger.S(ctx).Errorf("error flushing redis cluster: %v", err)
+			logger.S(ctx).Errorf("error flushing redis cluster by prefix: %v", err)
 		}
 
 		return
 	}
 
-	if err := cache.Client.FlushDB(ctx).Err(); err != nil {
-		logger.S(ctx).Errorf("error flushing redis: %v", err)
+	if err := deleteByPattern(ctx, cache.Client, pattern); err != nil {
+		logger.S(ctx).Errorf("error flushing redis by prefix: %v", err)
 	}
 }
 
@@ -432,10 +436,10 @@ func (cache *RedisCache) ListQueues(ctx context.Context, pattern string, poolTyp
 	}
 
 	if pool.PRIMARY_POOL == poolType {
-		return filterQueueSuffix(data), nil
+		return filterQueueSuffix(uniqStrings(data)), nil
 	}
 
-	return data, nil
+	return uniqStrings(data), nil
 }
 
 // scanKeys iterates the full SCAN cursor sequence against a single node/client and returns all
@@ -465,6 +469,47 @@ func scanKeys(ctx context.Context, client redis.Cmdable, pattern string) ([]stri
 	return keys, nil
 }
 
+func deleteByPattern(ctx context.Context, client redis.Cmdable, pattern string) error {
+	cursor := uint64(0)
+
+	for {
+		keys, nextCursor, err := client.Scan(ctx, cursor, pattern, 1000).Result()
+		if err != nil {
+			return err
+		}
+
+		if len(keys) > 0 {
+			if err := client.Del(ctx, keys...).Err(); err != nil {
+				return err
+			}
+		}
+
+		if nextCursor == 0 {
+			break
+		}
+
+		cursor = nextCursor
+	}
+
+	return nil
+}
+
+func uniqStrings(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	result := make([]string, 0, len(values))
+
+	for i := range values {
+		if _, ok := seen[values[i]]; ok {
+			continue
+		}
+
+		seen[values[i]] = struct{}{}
+		result = append(result, values[i])
+	}
+
+	return result
+}
+
 // parseQueueKey converts a raw Redis key (as returned by SCAN) back into a plain
 // queue name by removing the pool prefix, any pool-type suffix matched by regex,
 // and, in cluster mode, the hash tag braces ("{" and "}") added by
@@ -472,7 +517,7 @@ func scanKeys(ctx context.Context, client redis.Cmdable, pattern string) ([]stri
 // same hash slot. Those braces are an internal key-naming detail and must not
 // leak to callers.
 func (cache *RedisCache) parseQueueKey(key string, suffixRegex *regexp.Regexp) string {
-	queue := strings.Replace(key, POOL_PREFIX, "", 1)
+	queue := strings.TrimPrefix(key, cache.poolPrefix())
 
 	if suffixRegex != nil {
 		queue = suffixRegex.ReplaceAllString(queue, "$1")
@@ -834,10 +879,10 @@ func (cache *RedisCache) Close(ctx context.Context) error {
 
 func (cache *RedisCache) generalCacheKey(key string) string {
 	if cache.clusterMode {
-		return fmt.Sprint("deckard:{", key, "}")
+		return fmt.Sprint(cache.fullPrefix(), ":{", key, "}")
 	}
 
-	return fmt.Sprint("deckard:", key)
+	return fmt.Sprint(cache.fullPrefix(), ":", key)
 }
 
 func (cache *RedisCache) validateQueueName(queue string) error {
@@ -853,25 +898,25 @@ func (cache *RedisCache) validateQueueName(queue string) error {
 // activePool returns the name of the active pool of messages.
 func (cache *RedisCache) activePool(queue string) string {
 	if cache.clusterMode {
-		return POOL_PREFIX + "{" + queue + "}"
+		return cache.poolPrefix() + "{" + queue + "}"
 	}
-	return POOL_PREFIX + queue
+	return cache.poolPrefix() + queue
 }
 
 // processingPool returns the name of the processing pool of messages.
 func (cache *RedisCache) processingPool(queue string) string {
 	if cache.clusterMode {
-		return POOL_PREFIX + "{" + queue + "}" + PROCESSING_POOL_SUFFIX
+		return cache.poolPrefix() + "{" + queue + "}" + PROCESSING_POOL_SUFFIX
 	}
-	return POOL_PREFIX + queue + PROCESSING_POOL_SUFFIX
+	return cache.poolPrefix() + queue + PROCESSING_POOL_SUFFIX
 }
 
 // lockPool returns the name of the lock pool of messages.
 func (cache *RedisCache) lockPool(queue string, lockType LockType) string {
 	if cache.clusterMode {
-		return POOL_PREFIX + "{" + queue + "}" + ":" + string(lockType)
+		return cache.poolPrefix() + "{" + queue + "}" + ":" + string(lockType)
 	}
-	return POOL_PREFIX + queue + ":" + string(lockType)
+	return cache.poolPrefix() + queue + ":" + string(lockType)
 }
 
 // lockPoolScore returns the name of the lock pool scores of messages.
@@ -879,7 +924,32 @@ func (cache *RedisCache) lockPool(queue string, lockType LockType) string {
 // used to unlock messages with a predefined score.
 func (cache *RedisCache) lockPoolScore(queue string, lockType LockType) string {
 	if cache.clusterMode {
-		return POOL_PREFIX + "{" + queue + "}" + ":" + string(lockType) + SCORE_SUFFIX
+		return cache.poolPrefix() + "{" + queue + "}" + ":" + string(lockType) + SCORE_SUFFIX
 	}
-	return POOL_PREFIX + queue + ":" + string(lockType) + SCORE_SUFFIX
+	return cache.poolPrefix() + queue + ":" + string(lockType) + SCORE_SUFFIX
+}
+
+func resolveConfiguredPrefix() string {
+	prefix := strings.TrimSpace(config.CachePrefix.Get())
+	if prefix == "" {
+		return "deckard"
+	}
+
+	return strings.Trim(prefix, ":")
+}
+
+func (cache *RedisCache) configuredPrefix() string {
+	if cache.keyPrefix == "" {
+		return "deckard"
+	}
+
+	return cache.keyPrefix
+}
+
+func (cache *RedisCache) fullPrefix() string {
+	return cache.configuredPrefix()
+}
+
+func (cache *RedisCache) poolPrefix() string {
+	return cache.configuredPrefix() + POOL_SUFFIX
 }

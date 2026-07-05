@@ -272,7 +272,7 @@ func TestRedisClusterConfigurationValidation(t *testing.T) {
 func TestRedisClusterKeyGeneration(t *testing.T) {
 	t.Parallel()
 
-	cache := &RedisCache{clusterMode: true}
+	cache := &RedisCache{clusterMode: true, keyPrefix: "deckard"}
 
 	// Test cluster mode key generation with hash tags
 	queueName := "test-queue-with-special-chars_123"
@@ -288,7 +288,7 @@ func TestRedisClusterKeyGeneration(t *testing.T) {
 func TestSingleNodeKeyGeneration(t *testing.T) {
 	t.Parallel()
 
-	cache := &RedisCache{clusterMode: false}
+	cache := &RedisCache{clusterMode: false, keyPrefix: "deckard"}
 
 	// Test single node mode key generation without hash tags
 	queueName := "test-queue"
@@ -304,7 +304,7 @@ func TestSingleNodeKeyGeneration(t *testing.T) {
 func TestParseQueueKeyStripsClusterHashTag(t *testing.T) {
 	t.Parallel()
 
-	cache := &RedisCache{clusterMode: true}
+	cache := &RedisCache{clusterMode: true, keyPrefix: "deckard"}
 
 	require.Equal(t, "test-queue", cache.parseQueueKey("deckard:queue:{test-queue}", nil))
 	require.Equal(t, "test-queue", cache.parseQueueKey("deckard:queue:{test-queue}:tmp", PROCESSING_POOL_REGEX))
@@ -317,16 +317,25 @@ func TestParseQueueKeyStripsClusterHashTag(t *testing.T) {
 func TestParseQueueKeyWithoutClusterMode(t *testing.T) {
 	t.Parallel()
 
-	cache := &RedisCache{clusterMode: false}
+	cache := &RedisCache{clusterMode: false, keyPrefix: "deckard"}
 
 	require.Equal(t, "test-queue", cache.parseQueueKey("deckard:queue:test-queue", nil))
 	require.Equal(t, "test-queue", cache.parseQueueKey("deckard:queue:test-queue:tmp", PROCESSING_POOL_REGEX))
 }
 
+func TestCustomPrefixKeyGeneration(t *testing.T) {
+	t.Parallel()
+
+	cache := &RedisCache{clusterMode: true, keyPrefix: "deckard-v2"}
+
+	require.Equal(t, "deckard-v2:queue:{test-queue}", cache.activePool("test-queue"))
+	require.Equal(t, "deckard-v2:{recover}", cache.generalCacheKey("recover"))
+}
+
 func TestValidateQueueNameRejectsClusterHashTagCharsInClusterMode(t *testing.T) {
 	t.Parallel()
 
-	cache := &RedisCache{clusterMode: true}
+	cache := &RedisCache{clusterMode: true, keyPrefix: "deckard"}
 
 	require.ErrorIs(t, cache.validateQueueName("bad{queue"), errQueueNameContainsClusterHashTag)
 	require.ErrorIs(t, cache.validateQueueName("bad}queue"), errQueueNameContainsClusterHashTag)
@@ -336,7 +345,7 @@ func TestValidateQueueNameRejectsClusterHashTagCharsInClusterMode(t *testing.T) 
 func TestValidateQueueNameRejectsClusterHashTagCharsOutsideClusterMode(t *testing.T) {
 	t.Parallel()
 
-	cache := &RedisCache{clusterMode: false}
+	cache := &RedisCache{clusterMode: false, keyPrefix: "deckard"}
 
 	require.ErrorIs(t, cache.validateQueueName("bad{queue"), errQueueNameContainsClusterHashTag)
 	require.ErrorIs(t, cache.validateQueueName("bad}queue"), errQueueNameContainsClusterHashTag)
@@ -346,7 +355,7 @@ func TestValidateQueueNameRejectsClusterHashTagCharsOutsideClusterMode(t *testin
 func TestInsertRejectsQueueNamesContainingClusterHashTagCharsInClusterMode(t *testing.T) {
 	t.Parallel()
 
-	cache := &RedisCache{clusterMode: true}
+	cache := &RedisCache{clusterMode: true, keyPrefix: "deckard"}
 
 	_, err := cache.Insert(ctx, "bad{queue}")
 	require.ErrorIs(t, err, errQueueNameContainsClusterHashTag)

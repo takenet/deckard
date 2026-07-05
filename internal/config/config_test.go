@@ -67,6 +67,7 @@ func TestDefaultValues(t *testing.T) {
 	// Redis configurations
 	// Connection details (address, credentials, db) are provided via CacheUri (DECKARD_CACHE_URI);
 	// only the cluster topology switch has its own default here.
+	require.Equal(t, "deckard", CachePrefix.Get())
 	require.Equal(t, false, RedisClusterMode.GetBool())
 
 	// Audit

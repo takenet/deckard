@@ -46,6 +46,8 @@ spec:
               value: {{ quote .Values.housekeeper.service.port }}
             - name: DECKARD_CACHE_TYPE
               value: {{ .Values.cache.type }}
+            - name: DECKARD_CACHE_PREFIX
+              value: {{ quote .Values.cache.prefix }}
             - name: DECKARD_STORAGE_TYPE
               value: {{ .Values.storage.type }}
             - name: DECKARD_AUDIT_ENABLED

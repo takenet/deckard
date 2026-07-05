@@ -144,6 +144,7 @@ etc.) are configured through `DECKARD_CACHE_URI`. The URI is parsed by
 |------------------------------|---------|-------------|
 | `DECKARD_CACHE_TYPE` | `MEMORY` | The cache implementation to use. Available: MEMORY, REDIS |
 | `DECKARD_CACHE_URI` | | **Required when `DECKARD_CACHE_TYPE=REDIS`.** The Redis connection URI (`redis://` or `rediss://`). In cluster mode (see below) this uses go-redis's cluster URL format instead of the plain standalone one. |
+| `DECKARD_CACHE_PREFIX` | `deckard` | Prefix for Deckard Redis keys (e.g. `deckard:<key>`). Change it to run multiple Deckard instances in the same Redis without key collisions. |
 | `DECKARD_REDIS_CLUSTER_MODE` | `false` | Enables Redis Cluster mode. When `true`, `DECKARD_CACHE_URI` is parsed as a cluster URL (see below) instead of a plain standalone URI. |
 
 Standalone examples (parsed by [`redis.ParseURL`](https://pkg.go.dev/github.com/redis/go-redis/v9#ParseURL)):
@@ -162,6 +163,7 @@ Two Redis Cluster limitations worth knowing about:
 - Redis Cluster does not support `SELECT`, so there's no database number to configure - it always operates on database 0 regardless of what's in the URI.
 - `skip_verify` is only recognized by the standalone parser; it is **not** a valid parameter on a cluster URL (go-redis rejects it there), so insecure TLS is not available in cluster mode.
 
+Deckard cache flush behavior is namespace-scoped: only keys under `DECKARD_CACHE_PREFIX` are deleted. Deckard does **not** run Redis `FLUSHDB`, so it is safe to share Redis with other applications (or multiple Deckard prefixes).
 
 ### Storage Configuration
 

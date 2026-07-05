@@ -99,6 +99,10 @@ cache:
   # Available options: REDIS, MEMORY
   # Remember to set the redis.enabled to false if you want to use a self-deployed Redis or a Memory storage
   type: REDIS
+  # Deckard's DECKARD_CACHE_PREFIX environment variable.
+  # Defines the Redis key namespace prefix used by Deckard (e.g. "deckard").
+  # Change it to run multiple Deckard instances in the same Redis.
+  prefix: deckard
   connectionSecret:
     # Use an existing Secret for the cache connection instead of having the chart generate one.
     # The Secret value holds the Redis connection details (address, credentials, db, TLS, timeouts,
