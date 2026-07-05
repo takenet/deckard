@@ -30,6 +30,11 @@ services:
     command: redis-server --port 7000 --bind 0.0.0.0 --protected-mode no --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7000 --cluster-announce-bus-port 17000 --appendonly yes
     volumes:
       - redis-cluster-0-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "7000", "ping"]
+      interval: 1s
+      timeout: 2s
+      retries: 30
 
   redis-cluster-node-1:
     image: "redis:7.0"
@@ -39,6 +44,11 @@ services:
     command: redis-server --port 7001 --bind 0.0.0.0 --protected-mode no --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7001 --cluster-announce-bus-port 17001 --appendonly yes
     volumes:
       - redis-cluster-1-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "7001", "ping"]
+      interval: 1s
+      timeout: 2s
+      retries: 30
 
   redis-cluster-node-2:
     image: "redis:7.0"
@@ -48,6 +58,11 @@ services:
     command: redis-server --port 7002 --bind 0.0.0.0 --protected-mode no --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7002 --cluster-announce-bus-port 17002 --appendonly yes
     volumes:
       - redis-cluster-2-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "7002", "ping"]
+      interval: 1s
+      timeout: 2s
+      retries: 30
 
   redis-cluster-node-3:
     image: "redis:7.0"
@@ -57,6 +72,11 @@ services:
     command: redis-server --port 7003 --bind 0.0.0.0 --protected-mode no --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7003 --cluster-announce-bus-port 17003 --appendonly yes
     volumes:
       - redis-cluster-3-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "7003", "ping"]
+      interval: 1s
+      timeout: 2s
+      retries: 30
 
   redis-cluster-node-4:
     image: "redis:7.0"
@@ -66,6 +86,11 @@ services:
     command: redis-server --port 7004 --bind 0.0.0.0 --protected-mode no --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7004 --cluster-announce-bus-port 17004 --appendonly yes
     volumes:
       - redis-cluster-4-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "7004", "ping"]
+      interval: 1s
+      timeout: 2s
+      retries: 30
 
   redis-cluster-node-5:
     image: "redis:7.0"
@@ -75,23 +100,36 @@ services:
     command: redis-server --port 7005 --bind 0.0.0.0 --protected-mode no --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7005 --cluster-announce-bus-port 17005 --appendonly yes
     volumes:
       - redis-cluster-5-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "7005", "ping"]
+      interval: 1s
+      timeout: 2s
+      retries: 30
 
-  # Helper service to initialize the cluster
+  # Helper service to initialize the cluster. Waits on each node's healthcheck (redis-cli ping)
+  # instead of a fixed sleep, so it starts as soon as the nodes are actually ready to accept
+  # connections - no more, no less.
   redis-cluster-init:
     image: "redis:7.0"
     network_mode: host
     depends_on:
-      - redis-cluster-node-0
-      - redis-cluster-node-1
-      - redis-cluster-node-2
-      - redis-cluster-node-3
-      - redis-cluster-node-4
-      - redis-cluster-node-5
+      redis-cluster-node-0:
+        condition: service_healthy
+      redis-cluster-node-1:
+        condition: service_healthy
+      redis-cluster-node-2:
+        condition: service_healthy
+      redis-cluster-node-3:
+        condition: service_healthy
+      redis-cluster-node-4:
+        condition: service_healthy
+      redis-cluster-node-5:
+        condition: service_healthy
     command:
       - sh
       - -c
       - |
-        sleep 5 && redis-cli --cluster create \
+        redis-cli --cluster create \
           127.0.0.1:7000 \
           127.0.0.1:7001 \
           127.0.0.1:7002 \
