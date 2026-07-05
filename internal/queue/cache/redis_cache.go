@@ -470,6 +470,7 @@ func scanKeys(ctx context.Context, client redis.Cmdable, pattern string) ([]stri
 }
 
 func deleteByPattern(ctx context.Context, client redis.Cmdable, pattern string) error {
+	keysToDelete := make([]string, 0)
 	cursor := uint64(0)
 
 	for {
@@ -478,17 +479,31 @@ func deleteByPattern(ctx context.Context, client redis.Cmdable, pattern string) 
 			return err
 		}
 
-		if len(keys) > 0 {
-			if err := client.Del(ctx, keys...).Err(); err != nil {
-				return err
-			}
-		}
+		keysToDelete = append(keysToDelete, keys...)
 
 		if nextCursor == 0 {
 			break
 		}
 
 		cursor = nextCursor
+	}
+
+	keysToDelete = uniqStrings(keysToDelete)
+
+	for index := range gopart.Partition(len(keysToDelete), 1000) {
+		partition := keysToDelete[index.Low:index.High]
+
+		if err := client.Del(ctx, partition...).Err(); err != nil {
+			if !strings.Contains(err.Error(), "CROSSSLOT") {
+				return err
+			}
+
+			for i := range partition {
+				if delErr := client.Del(ctx, partition[i]).Err(); delErr != nil {
+					return delErr
+				}
+			}
+		}
 	}
 
 	return nil
