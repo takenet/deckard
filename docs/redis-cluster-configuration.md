@@ -41,11 +41,10 @@ cache:
 redis:
   cluster:
     mode: true
-    addresses:
-      - redis-node-1:6379
-      - redis-node-2:6379
-      - redis-node-3:6379
+    addresses: redis-node-1:6379,redis-node-2:6379,redis-node-3:6379
 ```
+
+Note: `redis.cluster.addresses` is parsed as a comma-separated string (same format used by `DECKARD_REDIS_CLUSTER_ADDRESSES`).
 
 Environment variables:
 ```bash
@@ -59,17 +58,17 @@ DECKARD_REDIS_PASSWORD=mypassword  # optional, if cluster requires auth
 
 ### Single Node Redis
 Keys are named without hash tags:
-- `deckard:queue:myqueue`
-- `deckard:queue:myqueue:tmp`
-- `deckard:queue:myqueue:lock_ack`
+- `deckard:queue:clusterhash`
+- `deckard:queue:clusterhash:tmp`
+- `deckard:queue:clusterhash:lock_ack`
 
 ### Redis Cluster  
 Keys use hash tags to ensure co-location:
-- `deckard:queue:{myqueue}`
-- `deckard:queue:{myqueue}:tmp`
-- `deckard:queue:{myqueue}:lock_ack`
+- `deckard:queue:{clusterhash}`
+- `deckard:queue:{clusterhash}:tmp`
+- `deckard:queue:{clusterhash}:lock_ack`
 
-The `{myqueue}` hash tag ensures all keys for the same queue hash to the same cluster slot.
+The `{clusterhash}` hash tag ensures all keys for the same queue hash to the same cluster slot.
 
 ## Migration from Single Node to Cluster
 

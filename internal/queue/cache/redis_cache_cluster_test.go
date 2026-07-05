@@ -37,7 +37,10 @@ func TestRedisCacheClusterIntegration(t *testing.T) {
 	})
 }
 
-func TestRedisCacheClusterKeyNamingIntegration(t *testing.T) {
+// TestNewClusterCacheWithoutServerShouldErrorIntegration exercises the cluster-mode connection
+// path (createClusterClient/waitForClusterClient), which has its own retry/error handling separate
+// from the single-node client and would otherwise have no failure-path coverage at all.
+func TestNewClusterCacheWithoutServerShouldErrorIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
 	}
@@ -48,32 +51,13 @@ func TestRedisCacheClusterKeyNamingIntegration(t *testing.T) {
 	}
 
 	config.Configure(true)
+	config.CacheConnectionRetryEnabled.Set(false)
 	config.RedisClusterMode.Set(true)
-	config.RedisClusterAddresses.Set("localhost:7000,localhost:7001,localhost:7002")
+	config.RedisClusterAddresses.Set("localhost:19999")
 
-	cache, err := NewRedisCache(ctx)
-	require.NoError(t, err)
+	_, err := NewRedisCache(ctx)
 
-	cache.Flush(ctx)
-
-	// Test that hash tags are used for key naming in cluster mode
-	queueName := "test-queue"
-
-	expectedActivePool := "deckard:queue:{test-queue}"
-	expectedProcessingPool := "deckard:queue:{test-queue}:tmp"
-	expectedLockAckPool := "deckard:queue:{test-queue}:lock_ack"
-	expectedLockNackPool := "deckard:queue:{test-queue}:lock_nack"
-	expectedLockAckScorePool := "deckard:queue:{test-queue}:lock_ack:score"
-	expectedLockNackScorePool := "deckard:queue:{test-queue}:lock_nack:score"
-
-	require.Equal(t, expectedActivePool, cache.activePool(queueName))
-	require.Equal(t, expectedProcessingPool, cache.processingPool(queueName))
-	require.Equal(t, expectedLockAckPool, cache.lockPool(queueName, LOCK_ACK))
-	require.Equal(t, expectedLockNackPool, cache.lockPool(queueName, LOCK_NACK))
-	require.Equal(t, expectedLockAckScorePool, cache.lockPoolScore(queueName, LOCK_ACK))
-	require.Equal(t, expectedLockNackScorePool, cache.lockPoolScore(queueName, LOCK_NACK))
-
-	cache.Flush(ctx)
+	require.Error(t, err)
 }
 
 // TestRedisCacheClusterListQueuesIntegration verifies that ListQueues strips the
@@ -238,9 +222,44 @@ func TestRedisCacheClusterLuaScriptsIntegration(t *testing.T) {
 	cache.Flush(ctx)
 }
 
-func TestRedisClusterConfigurationValidation(t *testing.T) {
-	t.Parallel()
+// TestInsertShouldInsertWithCorrectScoreClusterIntegration is the cluster-mode counterpart of
+// TestInsertShouldInsertWithCorrectScoreIntegration (redis_cache_test.go), reusing the same
+// assertQueueScoreIntegration helper so the raw-score assertion logic isn't duplicated per mode.
+func TestInsertShouldInsertWithCorrectScoreClusterIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
 
+	if os.Getenv("REDIS_CLUSTER_TEST") == "" {
+		t.Skip("REDIS_CLUSTER_TEST environment variable not set, skipping cluster tests")
+	}
+
+	config.Configure(true)
+	config.RedisClusterMode.Set(true)
+	config.RedisClusterAddresses.Set("localhost:7000,localhost:7001,localhost:7002")
+
+	cache, err := NewRedisCache(ctx)
+	require.NoError(t, err)
+
+	cache.Flush(ctx)
+
+	queueName := "insert-score-test-queue"
+
+	inserts, opErr := cache.Insert(ctx, queueName, &message.Message{
+		ID:          "123",
+		Description: "desc",
+		Queue:       queueName,
+		Score:       654231,
+	})
+	require.NoError(t, opErr)
+	require.Equal(t, []string{"123"}, inserts)
+
+	assertQueueScoreIntegration(t, cache, queueName, "123", 654231)
+
+	cache.Flush(ctx)
+}
+
+func TestRedisClusterConfigurationValidation(t *testing.T) {
 	config.Configure(true)
 	config.RedisClusterMode.Set(true)
 	config.RedisClusterAddresses.Set("") // Empty addresses should cause error
@@ -250,6 +269,9 @@ func TestRedisClusterConfigurationValidation(t *testing.T) {
 	require.Contains(t, err.Error(), "redis.cluster.addresses must be specified")
 }
 
+// TestRedisClusterKeyGeneration is a pure unit test (no live Redis needed) covering the same
+// hash-tag key naming that TestRedisCacheClusterKeyNamingIntegration used to check against a live
+// cluster - key generation is plain string logic, so it doesn't need a real connection to verify.
 func TestRedisClusterKeyGeneration(t *testing.T) {
 	t.Parallel()
 
@@ -258,14 +280,12 @@ func TestRedisClusterKeyGeneration(t *testing.T) {
 	// Test cluster mode key generation with hash tags
 	queueName := "test-queue-with-special-chars_123"
 
-	activePool := cache.activePool(queueName)
-	require.Equal(t, "deckard:queue:{test-queue-with-special-chars_123}", activePool)
-
-	processingPool := cache.processingPool(queueName)
-	require.Equal(t, "deckard:queue:{test-queue-with-special-chars_123}:tmp", processingPool)
-
-	lockPool := cache.lockPool(queueName, LOCK_ACK)
-	require.Equal(t, "deckard:queue:{test-queue-with-special-chars_123}:lock_ack", lockPool)
+	require.Equal(t, "deckard:queue:{test-queue-with-special-chars_123}", cache.activePool(queueName))
+	require.Equal(t, "deckard:queue:{test-queue-with-special-chars_123}:tmp", cache.processingPool(queueName))
+	require.Equal(t, "deckard:queue:{test-queue-with-special-chars_123}:lock_ack", cache.lockPool(queueName, LOCK_ACK))
+	require.Equal(t, "deckard:queue:{test-queue-with-special-chars_123}:lock_nack", cache.lockPool(queueName, LOCK_NACK))
+	require.Equal(t, "deckard:queue:{test-queue-with-special-chars_123}:lock_ack:score", cache.lockPoolScore(queueName, LOCK_ACK))
+	require.Equal(t, "deckard:queue:{test-queue-with-special-chars_123}:lock_nack:score", cache.lockPoolScore(queueName, LOCK_NACK))
 }
 
 func TestSingleNodeKeyGeneration(t *testing.T) {
@@ -276,14 +296,12 @@ func TestSingleNodeKeyGeneration(t *testing.T) {
 	// Test single node mode key generation without hash tags
 	queueName := "test-queue"
 
-	activePool := cache.activePool(queueName)
-	require.Equal(t, "deckard:queue:test-queue", activePool)
-
-	processingPool := cache.processingPool(queueName)
-	require.Equal(t, "deckard:queue:test-queue:tmp", processingPool)
-
-	lockPool := cache.lockPool(queueName, LOCK_ACK)
-	require.Equal(t, "deckard:queue:test-queue:lock_ack", lockPool)
+	require.Equal(t, "deckard:queue:test-queue", cache.activePool(queueName))
+	require.Equal(t, "deckard:queue:test-queue:tmp", cache.processingPool(queueName))
+	require.Equal(t, "deckard:queue:test-queue:lock_ack", cache.lockPool(queueName, LOCK_ACK))
+	require.Equal(t, "deckard:queue:test-queue:lock_nack", cache.lockPool(queueName, LOCK_NACK))
+	require.Equal(t, "deckard:queue:test-queue:lock_ack:score", cache.lockPoolScore(queueName, LOCK_ACK))
+	require.Equal(t, "deckard:queue:test-queue:lock_nack:score", cache.lockPoolScore(queueName, LOCK_NACK))
 }
 
 func TestParseQueueKeyStripsClusterHashTag(t *testing.T) {

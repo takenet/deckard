@@ -19,6 +19,7 @@ import (
 	"github.com/takenet/deckard/internal/queue/message"
 	"github.com/takenet/deckard/internal/queue/pool"
 	"github.com/takenet/deckard/internal/queue/score"
+	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -53,8 +54,9 @@ const (
 	PROCESSING_POOL_SUFFIX = ":tmp"
 	LOCK_ACK_SUFFIX        = ":" + string(LOCK_ACK)
 	LOCK_NACK_SUFFIX       = ":" + string(LOCK_NACK)
-	LOCK_ACK_SCORE_SUFFIX  = ":" + string(LOCK_ACK) + ":score"
-	LOCK_NACK_SCORE_SUFFIX = ":" + string(LOCK_NACK) + ":score"
+	SCORE_SUFFIX           = ":score"
+	LOCK_ACK_SCORE_SUFFIX  = ":" + string(LOCK_ACK) + SCORE_SUFFIX
+	LOCK_NACK_SCORE_SUFFIX = ":" + string(LOCK_NACK) + SCORE_SUFFIX
 )
 
 var PROCESSING_POOL_REGEX = regexp.MustCompile("(.+)" + PROCESSING_POOL_SUFFIX + "$")
@@ -129,15 +131,9 @@ func createSingleNodeClient(ctx context.Context) (RedisClient, error) {
 }
 
 func createClusterClient(ctx context.Context) (RedisClient, error) {
-	clusterAddresses := config.RedisClusterAddresses.Get()
-	if clusterAddresses == "" {
+	addresses := clusterAddressesFromConfig()
+	if len(addresses) == 0 {
 		return nil, errors.New("redis.cluster.addresses must be specified when cluster mode is enabled")
-	}
-
-	// Parse cluster addresses - could be comma-separated or array in config
-	addresses := strings.Split(clusterAddresses, ",")
-	for i, addr := range addresses {
-		addresses[i] = strings.TrimSpace(addr)
 	}
 
 	options := &redis.ClusterOptions{
@@ -157,6 +153,37 @@ func createClusterClient(ctx context.Context) (RedisClient, error) {
 	logger.S(ctx).Debug("Connected to Redis cluster in ", time.Since(start))
 
 	return clusterClient, nil
+}
+
+func clusterAddressesFromConfig() []string {
+	addresses := viper.GetStringSlice(config.RedisClusterAddresses.GetKey())
+	if len(addresses) > 0 {
+		return sanitizeAddresses(addresses)
+	}
+
+	for _, alias := range config.RedisClusterAddresses.GetAliases() {
+		addresses = viper.GetStringSlice(alias)
+		if len(addresses) > 0 {
+			return sanitizeAddresses(addresses)
+		}
+	}
+
+	return sanitizeAddresses(strings.Split(config.RedisClusterAddresses.Get(), ","))
+}
+
+func sanitizeAddresses(addresses []string) []string {
+	sanitized := make([]string, 0, len(addresses))
+
+	for _, address := range addresses {
+		trimmed := strings.TrimSpace(address)
+		if trimmed == "" {
+			continue
+		}
+
+		sanitized = append(sanitized, trimmed)
+	}
+
+	return sanitized
 }
 
 func waitForSingleNodeClient(options *redis.Options) (*redis.Client, error) {
@@ -270,7 +297,7 @@ func (cache *RedisCache) Remove(ctx context.Context, queue string, ids ...string
 	return total, nil
 }
 
-// TODO: We should list queues using storage with iterator, and not redis. Rethink this usage
+// Queue listing currently scans Redis keys directly.
 func (cache *RedisCache) ListQueues(ctx context.Context, pattern string, poolType pool.PoolType) (queues []string, err error) {
 	execStart := dtime.Now()
 	defer func() {
@@ -398,11 +425,25 @@ func (cache *RedisCache) parseQueueKey(key string, suffixRegex *regexp.Regexp) s
 	}
 
 	if cache.clusterMode {
-		queue = strings.Replace(queue, "{", "", 1)
-		queue = strings.Replace(queue, "}", "", 1)
+		queue = unwrapClusterHashTag(queue)
 	}
 
 	return queue
+}
+
+func unwrapClusterHashTag(queue string) string {
+	if !strings.HasPrefix(queue, "{") {
+		return queue
+	}
+
+	closingIndex := strings.Index(queue[1:], "}")
+	if closingIndex < 0 {
+		return queue
+	}
+
+	closingIndex++
+
+	return queue[1:closingIndex] + queue[closingIndex+1:]
 }
 
 func filterQueueSuffix(data []string) []string {
@@ -683,14 +724,7 @@ func (cache *RedisCache) Get(ctx context.Context, key string) (string, error) {
 		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), metric.WithAttributes(attribute.String("op", "get")))
 	}()
 
-	var redisKey string
-	if cache.clusterMode {
-		redisKey = fmt.Sprint("deckard:{", key, "}")
-	} else {
-		redisKey = fmt.Sprint("deckard:", key)
-	}
-
-	cmd := cache.Client.Get(context.Background(), redisKey)
+	cmd := cache.Client.Get(context.Background(), cache.generalCacheKey(key))
 	value, err := cmd.Result()
 
 	if err == redis.Nil {
@@ -710,14 +744,7 @@ func (cache *RedisCache) Set(ctx context.Context, key string, value string) erro
 		metrics.CacheLatency.Record(ctx, dtime.ElapsedTime(execStart), metric.WithAttributes(attribute.String("op", "set")))
 	}()
 
-	var redisKey string
-	if cache.clusterMode {
-		redisKey = fmt.Sprint("deckard:{", key, "}")
-	} else {
-		redisKey = fmt.Sprint("deckard:", key)
-	}
-
-	cmd := cache.Client.Set(context.Background(), redisKey, value, 0)
+	cmd := cache.Client.Set(context.Background(), cache.generalCacheKey(key), value, 0)
 
 	if cmd.Err() != nil {
 		return fmt.Errorf("error setting cache element: %w", cmd.Err())
@@ -728,6 +755,14 @@ func (cache *RedisCache) Set(ctx context.Context, key string, value string) erro
 
 func (cache *RedisCache) Close(ctx context.Context) error {
 	return cache.Client.Close()
+}
+
+func (cache *RedisCache) generalCacheKey(key string) string {
+	if cache.clusterMode {
+		return fmt.Sprint("deckard:{", key, "}")
+	}
+
+	return fmt.Sprint("deckard:", key)
 }
 
 // activePool returns the name of the active pool of messages.
@@ -759,7 +794,7 @@ func (cache *RedisCache) lockPool(queue string, lockType LockType) string {
 // used to unlock messages with a predefined score.
 func (cache *RedisCache) lockPoolScore(queue string, lockType LockType) string {
 	if cache.clusterMode {
-		return POOL_PREFIX + "{" + queue + "}" + ":" + string(lockType) + ":score"
+		return POOL_PREFIX + "{" + queue + "}" + ":" + string(lockType) + SCORE_SUFFIX
 	}
-	return POOL_PREFIX + queue + ":" + string(lockType) + ":score"
+	return POOL_PREFIX + queue + ":" + string(lockType) + SCORE_SUFFIX
 }

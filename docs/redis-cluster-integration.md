@@ -13,10 +13,10 @@ Deckard currently uses Lua scripts for atomic operations on Redis, but these scr
 For a queue named `myqueue`, Deckard creates these keys:
 - `deckard:queue:myqueue` (active pool)
 - `deckard:queue:myqueue:tmp` (processing pool)
-- `deckard:queue:myqueue:ack` (ack lock pool)  
-- `deckard:queue:myqueue:nack` (nack lock pool)
-- `deckard:queue:myqueue:ack:score` (ack score pool)
-- `deckard:queue:myqueue:nack:score` (nack score pool)
+- `deckard:queue:myqueue:lock_ack` (ack lock pool)  
+- `deckard:queue:myqueue:lock_nack` (nack lock pool)
+- `deckard:queue:myqueue:lock_ack:score` (ack score pool)
+- `deckard:queue:myqueue:lock_nack:score` (nack score pool)
 
 ## Redis Cluster Constraints
 
@@ -32,10 +32,10 @@ Modify key naming to use Redis hash tags, ensuring all queue-related keys hash t
 ### New Key Naming Pattern (Cluster-Compatible)
 - `deckard:queue:{myqueue}` (active pool)
 - `deckard:queue:{myqueue}:tmp` (processing pool) 
-- `deckard:queue:{myqueue}:ack` (ack lock pool)
-- `deckard:queue:{myqueue}:nack` (nack lock pool)
-- `deckard:queue:{myqueue}:ack:score` (ack score pool)
-- `deckard:queue:{myqueue}:nack:score` (nack score pool)
+- `deckard:queue:{myqueue}:lock_ack` (ack lock pool)
+- `deckard:queue:{myqueue}:lock_nack` (nack lock pool)
+- `deckard:queue:{myqueue}:lock_ack:score` (ack score pool)
+- `deckard:queue:{myqueue}:lock_nack:score` (nack score pool)
 
 The `{myqueue}` hash tag ensures all keys for the same queue land on the same Redis Cluster slot.
 
@@ -92,23 +92,18 @@ The implementation will:
 
 ### Single Node (Legacy - Default)
 ```yaml
-cache:
-  type: REDIS
-  redis_cluster_mode: false
-redis:
-  address: localhost
-  port: 6379
+redis.cluster.mode: false
+redis.address: localhost
+redis.port: 6379
 ```
 
 ### Redis Cluster
 ```yaml  
-cache:
-  type: REDIS
-  redis_cluster_mode: true
-  redis_cluster_addresses:
-    - redis-node-1:6379
-    - redis-node-2:6379  
-    - redis-node-3:6379
+redis.cluster.mode: true
+redis.cluster.addresses:
+  - redis-node-1:6379
+  - redis-node-2:6379
+  - redis-node-3:6379
 ```
 
 ## Success Criteria

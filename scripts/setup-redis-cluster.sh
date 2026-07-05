@@ -34,7 +34,7 @@ echo "Waiting for cluster to stabilize..."
 sleep 5
 
 echo "Verifying cluster status..."
-docker exec -it docker_redis-cluster-node-1_1 redis-cli --cluster info localhost:7000 || echo "Cluster info command failed, but this might be expected"
+docker-compose exec -T redis-cluster-node-1 redis-cli --cluster info redis-cluster-node-1:7000 || echo "Cluster info command failed, but this might be expected"
 
 echo "Redis Cluster is ready for testing!"
 echo ""
