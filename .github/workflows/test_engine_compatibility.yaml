@@ -78,27 +78,27 @@ jobs:
         run: make integration-test
 
       - name: Stop Redis Cluster
-        if: always()
+        if: ${{ !cancelled() }}
         continue-on-error: true
         run: docker compose -f docker/docker-compose.yml down -v
 
       - name: Publish test results
         uses: actions/upload-artifact@v7
-        if: always()
+        if: ${{ !cancelled() }}
         with:
           name: gotest.out
           path: gotest.out
 
       - name: Publish JUnit report
         uses: actions/upload-artifact@v7
-        if: always()
+        if: ${{ !cancelled() }}
         with:
           name: junit.xml
           path: junit.xml
 
       - name: JUnit report action
         uses: mikepenz/action-junit-report@v6
-        if: always()
+        if: ${{ !cancelled() }}
         with:
           report_paths: junit.xml
           job_name: test-compatibility
