@@ -139,19 +139,26 @@ services:
           --cluster-replicas 1 \
           --cluster-yes
 
+  # RedisInsight, preconfigured to connect to the cluster started above.
+  #
+  # Uses network_mode: host (like the cluster nodes) instead of the bridge network + container
+  # hostname approach, since our nodes announce 127.0.0.1 (see the note above) - RI_REDIS_HOST
+  # must be an address RedisInsight can actually reach, and "redis-cluster-node-0" only resolves
+  # from other containers on the same bridge network, not from a host-networked container. With
+  # host networking, RedisInsight reaches the seed node directly at 127.0.0.1:7000 and, since it's
+  # cluster-enabled, discovers the other 5 nodes on its own.
   redisinsight:
     image: redis/redisinsight:latest
-    ports:
-      - "5540:5540"
+    network_mode: host
+    environment:
+      RI_ACCEPT_TERMS_AND_CONDITIONS: "true"
+      RI_REDIS_HOST: "127.0.0.1"
+      RI_REDIS_PORT: "7000"
+      RI_REDIS_ALIAS: "deckard-redis-cluster"
+      RI_REDIS_TLS: "false"
     depends_on:
-      - redis-cluster-node-0
-      - redis-cluster-node-1
-      - redis-cluster-node-2
-      - redis-cluster-node-3
-      - redis-cluster-node-4
-      - redis-cluster-node-5
-    networks:
-      - default
+      redis-cluster-init:
+        condition: service_completed_successfully
 
 volumes:
   redis-cluster-0-data:
