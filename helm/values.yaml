@@ -101,9 +101,9 @@ cache:
   type: REDIS
   connectionSecret:
     # Use an existing Secret for the cache connection instead of having the chart generate one.
-    # The Secret value is the sole source of Redis connection details (address, credentials, db, TLS,
-    # timeouts, pool size, etc.): a redis:// or rediss:// URI for standalone, or go-redis's cluster
-    # URL format for Redis Cluster (base URI + repeated addr=host:port query params), e.g.
+    # The Secret value holds the Redis connection details (address, credentials, db, TLS, timeouts,
+    # pool size, etc.): a redis:// or rediss:// URI for standalone, or go-redis's cluster URL format
+    # for Redis Cluster (base URI + repeated addr=host:port query params), e.g.
     # "redis://node-1:6379?addr=node-2:6379&addr=node-3:6379".
     existingSecret: ""
     key: cache-uri

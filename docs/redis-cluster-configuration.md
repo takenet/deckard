@@ -8,9 +8,8 @@ Deckard supports both single-node Redis and Redis Cluster deployments. When Redi
 
 ## Configuration
 
-Redis connection details (address, credentials, database, TLS) are configured exclusively
-through `DECKARD_CACHE_URI`. There is no fallback to discrete address/port/password/db
-parameters.
+Redis connection details (address, credentials, database, TLS) are configured through
+`DECKARD_CACHE_URI`.
 
 ### Single Node Redis (Default)
 

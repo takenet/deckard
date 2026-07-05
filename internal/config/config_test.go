@@ -65,7 +65,7 @@ func TestDefaultValues(t *testing.T) {
 	require.Equal(t, 8081, GrpcPort.GetInt())
 
 	// Redis configurations
-	// Connection details (address, credentials, db) are URI-only via CacheUri (DECKARD_CACHE_URI);
+	// Connection details (address, credentials, db) are provided via CacheUri (DECKARD_CACHE_URI);
 	// only the cluster topology switch has its own default here.
 	require.Equal(t, false, RedisClusterMode.GetBool())
 
@@ -76,7 +76,7 @@ func TestDefaultValues(t *testing.T) {
 	require.Equal(t, "http://localhost:9200/", ElasticAddress.Get())
 
 	// MongoDB
-	// Connection details are URI-only via StorageUri (DECKARD_STORAGE_URI); only schema
+	// Connection details are provided via StorageUri (DECKARD_STORAGE_URI); only schema
 	// configuration (database/collection names) has its own defaults here.
 	require.Equal(t, project.Name, MongoDatabase.Get())
 	require.Equal(t, "queue", MongoCollection.Get())

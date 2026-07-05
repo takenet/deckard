@@ -128,7 +128,7 @@ Check the [values.yaml](https://github.com/takenet/deckard/blob/main/helm/values
 | `cache.type`                    | Deckard cache type (REDIS, MEMORY)                                          | `REDIS` |
 | `cache.redis.cluster.mode`      | Enable Deckard Redis Cluster mode (`DECKARD_REDIS_CLUSTER_MODE`)            | `false` |
 
-Redis connection details (address, credentials, database, TLS, timeouts, pool size, etc.) are configured exclusively through the `cache.connectionSecret` value used as `DECKARD_CACHE_URI`.
+Redis connection details (address, credentials, database, TLS, timeouts, pool size, etc.) are configured through the `cache.connectionSecret` value used as `DECKARD_CACHE_URI`.
 
 - Standalone URI example: `redis://user:pass@redis.example:6379/0`
 - Standalone TLS URI example: `rediss://user:pass@redis.example:6380/0`

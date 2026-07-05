@@ -29,8 +29,8 @@ var CacheConnectionRetryDelay = Create(&ViperConfigKey{
 // Redis Configurations
 //
 // Connection details (address, credentials, database, TLS, timeouts, pool size, etc.) are
-// configured exclusively through CacheUri (DECKARD_CACHE_URI): a standalone redis:// or rediss://
-// URI for single-node mode, or go-redis's cluster URL format for cluster mode - see
+// configured through CacheUri (DECKARD_CACHE_URI): a standalone redis:// or rediss:// URI for
+// single-node mode, or go-redis's cluster URL format for cluster mode - see
 // redis.ParseClusterURL and clusterOptionsFromConfig.
 
 // Redis Cluster Configurations

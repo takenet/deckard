@@ -31,10 +31,10 @@ var StorageConnectionRetryDelay = Create(&ViperConfigKey{
 // MongoDB Configurations
 //
 // Connection details (hosts, credentials, auth source, TLS, pool size, timeouts, etc.) are
-// configured exclusively through StorageUri (DECKARD_STORAGE_URI), applied via the driver's own
-// ApplyURI connection-string parsing. MongoDatabase/MongoCollection/MongoQueueConfigurationCollection
-// below are schema configuration (which database/collections Deckard uses), not connection
-// parameters, so they remain independent of the URI.
+// configured through StorageUri (DECKARD_STORAGE_URI), applied via the driver's own ApplyURI
+// connection-string parsing. MongoDatabase/MongoCollection/MongoQueueConfigurationCollection below
+// are schema configuration (which database/collections Deckard uses), not connection parameters,
+// so they remain independent of the URI.
 
 var MongoDatabase = Create(&ViperConfigKey{
 	Key:     "mongo.database",

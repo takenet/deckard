@@ -134,8 +134,7 @@ The default values depends on the server implementation. For more information ch
 ### Cache Configuration
 
 Redis connection details (address, credentials, database, TLS, timeouts, pool size, retries,
-etc.) are configured exclusively through `DECKARD_CACHE_URI`. There is no fallback to discrete
-address/port/password/db environment variables. The URI is parsed by
+etc.) are configured through `DECKARD_CACHE_URI`. The URI is parsed by
 [go-redis](https://github.com/redis/go-redis), so any query parameter it supports can be used:
 `dial_timeout`, `read_timeout`, `write_timeout`, `pool_size`, `min_idle_conns`, `max_retries`,
 `max_retry_backoff`, `conn_max_idle_time`, `conn_max_lifetime`, `client_name`, `protocol`, etc.
@@ -167,7 +166,7 @@ Two Redis Cluster limitations worth knowing about:
 ### Storage Configuration
 
 MongoDB connection details (hosts, credentials, auth source, TLS, pool size, etc.) are configured
-exclusively through `DECKARD_STORAGE_URI`, applied via the MongoDB driver's own connection-string
+through `DECKARD_STORAGE_URI`, applied via the MongoDB driver's own connection-string
 parsing (so any [MongoDB connection string option](https://www.mongodb.com/docs/manual/reference/connection-string/#connection-string-options) is available, e.g. `authSource`, `tls`, `maxPoolSize`, `replicaSet`).
 
 | Environment Variable         | Default | Description |
