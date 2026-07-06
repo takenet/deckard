@@ -93,3 +93,27 @@ func TestLeaseElectorStopWithoutStartIsNoop(t *testing.T) {
 	elector.Stop(context.Background())
 	require.False(t, elector.IsLeader())
 }
+
+func TestLeaseElectorLosesLeadershipWhenRenewalFailsIntegration(t *testing.T) {
+	t.Parallel()
+
+	store := cache.NewMemoryCache()
+	locker := lock.NewLocker(store, "instance-1")
+
+	ctx := context.Background()
+	ttl := 60 * time.Millisecond
+
+	elector := NewLeaseElector(locker, ttl, "instance-1")
+	elector.Start(ctx)
+	defer elector.Stop(ctx)
+
+	require.Eventually(t, elector.IsLeader, 2*time.Second, 5*time.Millisecond)
+
+	// Simulate the lease being lost externally (e.g. natural TTL expiration
+	// followed by another instance racing to acquire it) without going through
+	// Stop(), forcing the next renewal attempt to fail.
+	require.NoError(t, store.Del(ctx, leaderKey))
+
+	require.Eventually(t, func() bool { return !elector.IsLeader() }, 2*time.Second, 5*time.Millisecond,
+		"elector must demote itself once it can no longer renew the lease")
+}

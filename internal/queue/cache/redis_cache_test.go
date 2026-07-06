@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"context"
 	"os"
 	"testing"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/takenet/deckard/internal/config"
+	"github.com/takenet/deckard/internal/lock"
 	"github.com/takenet/deckard/internal/queue/message"
 )
 
@@ -241,4 +243,176 @@ func TestCompareAndExpireIntegration(t *testing.T) {
 	ttl := cache.Client.TTL(ctx, cache.generalCacheKey(key))
 	require.NoError(t, ttl.Err())
 	require.Greater(t, ttl.Val(), time.Duration(0))
+}
+
+// TestSetNXIntegration tests that SetNX only succeeds when the key does not
+// already exist, mirroring the lock.Store contract used by internal/lock.
+func TestSetNXIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
+	config.Configure(true)
+	config.CacheUri.Set("redis://localhost:6379/0")
+
+	cache, err := NewRedisCache(ctx)
+	require.NoError(t, err)
+
+	key := "setnx_test_key"
+	defer func() { _ = cache.Del(ctx, key) }()
+
+	acquired, err := cache.SetNX(ctx, key, "owner-1", time.Minute)
+	require.NoError(t, err)
+	require.True(t, acquired)
+
+	acquired, err = cache.SetNX(ctx, key, "owner-2", time.Minute)
+	require.NoError(t, err)
+	require.False(t, acquired, "SetNX must fail when the key already exists")
+
+	value, err := cache.Get(ctx, key)
+	require.NoError(t, err)
+	require.Equal(t, "owner-1", value)
+}
+
+// TestExpireIntegration tests that Expire refreshes the TTL of an existing key.
+func TestExpireIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
+	config.Configure(true)
+	config.CacheUri.Set("redis://localhost:6379/0")
+
+	cache, err := NewRedisCache(ctx)
+	require.NoError(t, err)
+
+	key := "expire_test_key"
+	defer func() { _ = cache.Del(ctx, key) }()
+
+	require.NoError(t, cache.Set(ctx, key, "value"))
+
+	err = cache.Expire(ctx, key, time.Minute)
+	require.NoError(t, err)
+
+	ttl := cache.Client.TTL(ctx, cache.generalCacheKey(key))
+	require.NoError(t, ttl.Err())
+	require.Greater(t, ttl.Val(), time.Duration(0))
+}
+
+// TestCloseIntegration tests that Close releases the underlying Redis client
+// connection without error.
+func TestCloseIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
+	config.Configure(true)
+	config.CacheUri.Set("redis://localhost:6379/0")
+
+	cache, err := NewRedisCache(ctx)
+	require.NoError(t, err)
+
+	require.NoError(t, cache.Close(ctx))
+}
+
+// TestLockStoreMethodsWithCanceledContextShouldReturnErrorIntegration exercises
+// the error branches of SetNX/Del/Expire/CompareAndDelete/CompareAndExpire by
+// passing an already-canceled context, which go-redis genuinely rejects - a
+// real error path, not a mocked one.
+func TestLockStoreMethodsWithCanceledContextShouldReturnErrorIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
+	config.Configure(true)
+	config.CacheUri.Set("redis://localhost:6379/0")
+
+	cache, err := NewRedisCache(ctx)
+	require.NoError(t, err)
+
+	canceledCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	key := "canceled_ctx_test_key"
+
+	_, err = cache.SetNX(canceledCtx, key, "value", time.Minute)
+	require.Error(t, err)
+
+	err = cache.Del(canceledCtx, key)
+	require.Error(t, err)
+
+	err = cache.Expire(canceledCtx, key, time.Minute)
+	require.Error(t, err)
+
+	_, err = cache.CompareAndDelete(canceledCtx, key, "value")
+	require.Error(t, err)
+
+	_, err = cache.CompareAndExpire(canceledCtx, key, "value", time.Minute)
+	require.Error(t, err)
+}
+
+// TestRedisLockThroughRealRedisCacheIntegration exercises internal/lock.Locker's
+// TryAcquire/Release/Renew against a real RedisCache-backed Store (rather than
+// the MemoryCache used elsewhere), covering the actual production Store
+// implementation end-to-end.
+func TestRedisLockThroughRealRedisCacheIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
+	config.Configure(true)
+	config.CacheUri.Set("redis://localhost:6379/0")
+
+	redisCache, err := NewRedisCache(ctx)
+	require.NoError(t, err)
+
+	name := "lock_through_real_redis_cache_test"
+	defer func() { _ = redisCache.Del(ctx, name) }()
+
+	locker := lock.NewLocker(redisCache, "owner-1")
+
+	acquired, err := locker.TryAcquire(ctx, name, time.Minute)
+	require.NoError(t, err)
+	require.True(t, acquired)
+
+	err = locker.Renew(ctx, name, time.Minute)
+	require.NoError(t, err)
+
+	err = locker.Release(ctx, name)
+	require.NoError(t, err)
+
+	value, err := redisCache.Get(ctx, name)
+	require.NoError(t, err)
+	require.Empty(t, value)
+}
+
+// TestRedisLockErrorPropagationWithCanceledContextIntegration exercises the
+// err != nil branches of storeLocker's TryAcquire/Release/Renew (internal/lock)
+// by routing a genuinely-canceled context through a real RedisCache-backed
+// Store - a real error path, not a mocked one.
+func TestRedisLockErrorPropagationWithCanceledContextIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
+	config.Configure(true)
+	config.CacheUri.Set("redis://localhost:6379/0")
+
+	redisCache, err := NewRedisCache(ctx)
+	require.NoError(t, err)
+
+	locker := lock.NewLocker(redisCache, "owner-1")
+	name := "lock_canceled_ctx_test"
+
+	canceledCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err = locker.TryAcquire(canceledCtx, name, time.Minute)
+	require.Error(t, err)
+
+	err = locker.Release(canceledCtx, name)
+	require.Error(t, err)
+
+	err = locker.Renew(canceledCtx, name, time.Minute)
+	require.Error(t, err)
 }

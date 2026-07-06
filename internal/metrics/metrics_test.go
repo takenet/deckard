@@ -134,3 +134,55 @@ func TestListenAndServe(t *testing.T) {
 	require.Contains(t, string(body), "target_info")
 
 }
+
+// scrapeMetrics starts (or reuses, if already started by another test in this
+// package) the real Prometheus HTTP handler and returns the scraped body.
+func scrapeMetrics(t *testing.T) string {
+	t.Helper()
+
+	go ListenAndServe()
+
+	var err error
+	var resp *http.Response
+	var body []byte
+
+	for i := 0; i < 10; i++ {
+		<-time.After(5 * time.Millisecond)
+
+		resp, err = http.Get(fmt.Sprintf("http://localhost:%d%s", config.MetricsPort.GetInt(), config.MetricsPath.Get()))
+		if err != nil {
+			continue
+		}
+		defer func() { _ = resp.Body.Close() }()
+
+		if resp.StatusCode != http.StatusOK {
+			continue
+		}
+
+		body, _ = ioutil.ReadAll(resp.Body)
+
+		break
+	}
+
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	return string(body)
+}
+
+// TestSetLeaderStatusFuncShouldExposeHousekeeperLeaderGaugeIntegration exercises
+// SetLeaderStatusFunc and metrifyLeaderStatus end-to-end through the real
+// Prometheus registry/exporter, scraping the actual deckard_housekeeper_leader
+// gauge value rather than calling the observer callback directly.
+func TestSetLeaderStatusFuncShouldExposeHousekeeperLeaderGaugeIntegration(t *testing.T) {
+	SetLeaderStatusFunc(func() bool { return true })
+
+	body := scrapeMetrics(t)
+	require.Contains(t, body, "deckard_housekeeper_leader{")
+	require.Regexp(t, `deckard_housekeeper_leader\{[^}]*\}\s+1`, body)
+
+	SetLeaderStatusFunc(func() bool { return false })
+
+	body = scrapeMetrics(t)
+	require.Regexp(t, `deckard_housekeeper_leader\{[^}]*\}\s+0`, body)
+}

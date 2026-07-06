@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/takenet/deckard/internal/config"
 	"github.com/takenet/deckard/internal/queue/cache"
 )
 
@@ -138,4 +139,37 @@ func TestRedisLockRenewShouldExtendLockPastOriginalTTL(t *testing.T) {
 	acquired, err = owner2.TryAcquire(ctx, name, ttl)
 	require.NoError(t, err)
 	require.False(t, acquired, "owner1's renewed lock must still be held past the original TTL window")
+}
+
+// TestRedisLockErrorBranchesWithCanceledContextIntegration exercises the
+// err != nil branches of TryAcquire/Release/Renew using a real Redis-backed
+// Store (queue/cache.RedisCache) and a genuinely-canceled context, which
+// go-redis rejects with a real error - not a mocked one. MemoryCache (used by
+// the other tests in this file) never returns errors from its Store methods,
+// so these branches can only be exercised against a real backend.
+func TestRedisLockErrorBranchesWithCanceledContextIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
+	config.Configure(true)
+	config.CacheUri.Set("redis://localhost:6379/0")
+
+	store, err := cache.NewRedisCache(context.Background())
+	require.NoError(t, err)
+
+	owner := NewLocker(store, "owner-1")
+	name := "test-lock-canceled-ctx"
+
+	canceledCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err = owner.TryAcquire(canceledCtx, name, time.Minute)
+	require.Error(t, err)
+
+	err = owner.Release(canceledCtx, name)
+	require.Error(t, err)
+
+	err = owner.Renew(canceledCtx, name, time.Minute)
+	require.Error(t, err)
 }
