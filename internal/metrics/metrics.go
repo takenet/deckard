@@ -71,7 +71,7 @@ var (
 	// kept as a plain func hook (instead of importing internal/election) to avoid
 	// coupling this package to the election module.
 	leaderStatusFuncMu sync.RWMutex
-	leaderStatusFunc func() bool
+	leaderStatusFunc   func() bool
 )
 
 // SetLeaderStatusFunc registers the function used to report the current

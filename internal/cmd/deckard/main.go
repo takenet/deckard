@@ -29,12 +29,12 @@ import (
 )
 
 const (
-	TIMEOUT      = "timeout"
-	UNLOCK       = "unlock"
-	RECOVERY     = "recovery"
-	TTL          = "ttl"
-	MAX_ELEMENTS = "max_elements"
-	METRICS      = "metrics"
+	TIMEOUT           = "timeout"
+	UNLOCK            = "unlock"
+	RECOVERY          = "recovery"
+	TTL               = "ttl"
+	MAX_ELEMENTS      = "max_elements"
+	METRICS           = "metrics"
 	stoppingLogPrefix = "Stopping "
 	stoppingLogSuffix = " scheduler."
 )
