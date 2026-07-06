@@ -38,17 +38,29 @@ component_management:
       paths:
         - internal/config/**
 
+    # Command entry point
+    - component_id: cmd
+      name: Command
+      paths:
+        - internal/cmd/**
+
     # Metrics
     - component_id: metrics
       name: Metrics
       paths:
         - internal/metrics/**
 
+    # Cache layer
+    - component_id: cache
+      name: Cache
+      paths:
+        - internal/**/cache/**
+
     # Storage layer
     - component_id: storage
       name: Storage
       paths:
-        - internal/*/storage/**
+        - internal/**/storage/**
 
     # Helper utilities
     - component_id: helpers
@@ -57,3 +69,5 @@ component_management:
         - internal/dtime/**
         - internal/logger/**
         - internal/project/**
+        - internal/trace/**
+        - internal/shutdown/**
