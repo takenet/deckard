@@ -17,8 +17,8 @@ on:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages.
 # 'contents: write' is required so this workflow can persist the published chart state
-# (packages + index.yaml) to the 'helm-repo-state' branch, which subsequent runs read from
-# directly via git instead of the public (CDN-cached) GitHub Pages URL. See the "Prepare
+# (packages + index.yaml) to the 'chore/helm-repo-state' branch, which subsequent runs read
+# from directly via git instead of the public (CDN-cached) GitHub Pages URL. See the "Prepare
 # release directory" step below for why the public URL can't be trusted as a source of truth.
 permissions:
   contents: write
@@ -61,12 +61,16 @@ jobs:
       - name: Fetch previously published chart packages
         run: |
           # See the comment in "Prepare release directory" below for why this reads from a git
-          # branch instead of the public GitHub Pages URL.
-          if git ls-remote --exit-code --heads origin helm-repo-state >/dev/null 2>&1; then
-            git fetch --quiet --depth 1 origin helm-repo-state
+          # branch instead of the public GitHub Pages URL. The branch is named
+          # 'chore/helm-repo-state' (rather than plain 'helm-repo-state') because this repo's
+          # branch protection rules require branch names to match a conventional-commit-style
+          # prefix pattern (e.g. chore/*, feat/*); a plain 'helm-repo-state' name is rejected on
+          # push with "GH013: Repository rule violations".
+          if git ls-remote --exit-code --heads origin chore/helm-repo-state >/dev/null 2>&1; then
+            git fetch --quiet --depth 1 origin chore/helm-repo-state
             git worktree add --quiet --detach /tmp/helm-repo-state FETCH_HEAD
           else
-            echo "No 'helm-repo-state' branch yet; this will be the first publish."
+            echo "No 'chore/helm-repo-state' branch yet; this will be the first publish."
           fi
       - name: Prepare release directory
         run: |
@@ -83,9 +87,10 @@ jobs:
           # this deploy, then rebuild the index from the full (old + new) set of packages
           # actually present on disk.
           #
-          # IMPORTANT: previously published packages are read from the 'helm-repo-state' branch
-          # (git, via the step above), NOT from the public https://takenet.github.io/deckard/
-          # URL. That URL is served through a Fastly CDN with a 10-minute cache
+          # IMPORTANT: previously published packages are read from the 'chore/helm-repo-state'
+          # branch (git, via the step above), NOT from the public
+          # https://takenet.github.io/deckard/ URL. That URL is served through a Fastly CDN with
+          # a 10-minute cache
           # (Cache-Control: max-age=600), and a cache-busting query string does not reliably
           # bypass it (verified: repeated requests kept returning cache HITs regardless). When
           # releases are published back-to-back (e.g. while replaying release history), fetching
@@ -116,13 +121,13 @@ jobs:
       - name: Persist published state
         working-directory: helm-release
         run: |
-          # Record the exact set of packages + index.yaml just deployed to the 'helm-repo-state'
-          # branch, so the next run of this workflow can read it back via git (always
-          # consistent) instead of the CDN-cached public URL. History isn't meaningful for this
-          # branch since it's fully derived from git tags, so each run force-pushes a fresh
-          # single commit rather than accumulating commit history.
+          # Record the exact set of packages + index.yaml just deployed to the
+          # 'chore/helm-repo-state' branch, so the next run of this workflow can read it back
+          # via git (always consistent) instead of the CDN-cached public URL. History isn't
+          # meaningful for this branch since it's fully derived from git tags, so each run
+          # force-pushes a fresh single commit rather than accumulating commit history.
           git init -q
-          git checkout -q -B helm-repo-state
+          git checkout -q -B chore/helm-repo-state
           git add -A
           git -c user.name="github-actions[bot]" \
               -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
@@ -133,4 +138,4 @@ jobs:
           # silently rejected (401) and git fell back to an interactive username prompt, which
           # fails non-interactively with "could not read Username ... No such device or address".
           git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
-          git push -f origin HEAD:refs/heads/helm-repo-state
+          git push -f origin HEAD:refs/heads/chore/helm-repo-state
