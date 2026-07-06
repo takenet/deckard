@@ -15,9 +15,13 @@ on:
         required: false
         type: string
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages.
+# 'contents: write' is required so this workflow can persist the published chart state
+# (packages + index.yaml) to the 'helm-repo-state' branch, which subsequent runs read from
+# directly via git instead of the public (CDN-cached) GitHub Pages URL. See the "Prepare
+# release directory" step below for why the public URL can't be trusted as a source of truth.
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -54,6 +58,16 @@ jobs:
       - name: Package chart
         working-directory: helm
         run: helm package .
+      - name: Fetch previously published chart packages
+        run: |
+          # See the comment in "Prepare release directory" below for why this reads from a git
+          # branch instead of the public GitHub Pages URL.
+          if git ls-remote --exit-code --heads origin helm-repo-state >/dev/null 2>&1; then
+            git fetch --quiet --depth 1 origin helm-repo-state
+            git worktree add --quiet --detach /tmp/helm-repo-state FETCH_HEAD
+          else
+            echo "No 'helm-repo-state' branch yet; this will be the first publish."
+          fi
       - name: Prepare release directory
         run: |
           mkdir -p helm-release
@@ -65,18 +79,21 @@ jobs:
           # published version disappears from https://takenet.github.io/deckard/ as soon as this
           # workflow runs again, breaking any consumer still pinned to an older chart version.
           #
-          # To keep releases additive, fetch whatever is live today and carry every package we
-          # don't already have forward into this deploy, then rebuild the index from the full
-          # (old + new) set of packages actually present on disk.
-          if curl -fsSL -o /tmp/live-index.yaml https://takenet.github.io/deckard/index.yaml; then
-            for url in $(yq '.entries.deckard[].urls[]' /tmp/live-index.yaml); do
-              filename="helm-release/$(basename "$url")"
-              if [[ ! -f "$filename" ]]; then
-                curl -fsSL -o "$filename" "$url"
-              fi
-            done
-          else
-            echo "::warning::Could not fetch the existing index.yaml from https://takenet.github.io/deckard/index.yaml; publishing only the chart version built in this run."
+          # To keep releases additive, carry every previously published package forward into
+          # this deploy, then rebuild the index from the full (old + new) set of packages
+          # actually present on disk.
+          #
+          # IMPORTANT: previously published packages are read from the 'helm-repo-state' branch
+          # (git, via the step above), NOT from the public https://takenet.github.io/deckard/
+          # URL. That URL is served through a Fastly CDN with a 10-minute cache
+          # (Cache-Control: max-age=600), and a cache-busting query string does not reliably
+          # bypass it (verified: repeated requests kept returning cache HITs regardless). When
+          # releases are published back-to-back (e.g. while replaying release history), fetching
+          # the public URL can return a stale copy that doesn't yet include the version
+          # published moments earlier by this very workflow, silently dropping it from every
+          # subsequent deploy. Reading from git avoids that entirely.
+          if [[ -d /tmp/helm-repo-state ]]; then
+            find /tmp/helm-repo-state -maxdepth 1 -name '*.tgz' -exec cp -n {} helm-release/ \;
           fi
 
           helm repo index helm-release --url https://takenet.github.io/deckard/
@@ -96,3 +113,20 @@ jobs:
         uses: actions/deploy-pages@v5
         with:
           artifact_name: github-pages-${{ github.run_attempt }}
+      - name: Persist published state
+        working-directory: helm-release
+        run: |
+          # Record the exact set of packages + index.yaml just deployed to the 'helm-repo-state'
+          # branch, so the next run of this workflow can read it back via git (always
+          # consistent) instead of the CDN-cached public URL. History isn't meaningful for this
+          # branch since it's fully derived from git tags, so each run force-pushes a fresh
+          # single commit rather than accumulating commit history.
+          git init -q
+          git checkout -q -B helm-repo-state
+          git add -A
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "chore: sync published helm chart state" --allow-empty
+          git remote add origin "https://github.com/${{ github.repository }}.git"
+          git -c http.extraheader="AUTHORIZATION: bearer ${{ secrets.GITHUB_TOKEN }}" \
+              push -f origin HEAD:refs/heads/helm-repo-state
