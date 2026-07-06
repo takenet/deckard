@@ -30,9 +30,6 @@ Both modules are backend-agnostic: they only depend on a small `Store` interface
 ### Environment Variables
 
 ```bash
-# Enable distributed execution (locks + leader election)
-DECKARD_HOUSEKEEPER_DISTRIBUTED_EXECUTION_ENABLED=true
-
 # Set unique instance ID (optional - defaults to hostname, which is the pod
 # name in Kubernetes, already unique across deployments)
 DECKARD_HOUSEKEEPER_DISTRIBUTED_EXECUTION_INSTANCE_ID=housekeeper-pod-1
@@ -54,7 +51,6 @@ DECKARD_HOUSEKEEPER_UNLOCK_PARALLELISM=10
 ```yaml
 housekeeper:
   distributed_execution:
-    enabled: true
     instance_id: "housekeeper-pod-1"  # Optional
     lock_ttl: "30s"
   election:
@@ -111,8 +107,6 @@ spec:
         env:
         - name: DECKARD_HOUSEKEEPER_ENABLED
           value: "true"
-        - name: DECKARD_HOUSEKEEPER_DISTRIBUTED_EXECUTION_ENABLED
-          value: "true"
         - name: DECKARD_HOUSEKEEPER_DISTRIBUTED_EXECUTION_INSTANCE_ID
           valueFrom:
             fieldRef:
@@ -137,7 +131,6 @@ services:
     image: deckard:latest
     environment:
       - DECKARD_HOUSEKEEPER_ENABLED=true
-      - DECKARD_HOUSEKEEPER_DISTRIBUTED_EXECUTION_ENABLED=true
       - DECKARD_HOUSEKEEPER_DISTRIBUTED_EXECUTION_INSTANCE_ID=hk-1
       - DECKARD_CACHE_TYPE=REDIS
       - DECKARD_CACHE_URI=redis://redis:6379/0
@@ -148,7 +141,6 @@ services:
     image: deckard:latest
     environment:
       - DECKARD_HOUSEKEEPER_ENABLED=true
-      - DECKARD_HOUSEKEEPER_DISTRIBUTED_EXECUTION_ENABLED=true
       - DECKARD_HOUSEKEEPER_DISTRIBUTED_EXECUTION_INSTANCE_ID=hk-2
       - DECKARD_CACHE_TYPE=REDIS
       - DECKARD_CACHE_URI=redis://redis:6379/0
@@ -194,14 +186,13 @@ Performance benefits:
 - Better resource utilization
 - Reduced lock time precision impact
 
-## Backward Compatibility
+## Execution Model
 
-When distributed execution is disabled (default):
-- Uses `lock.NewNoopLocker()` (always succeeds) for atomic tasks
-- Uses `election.NewStaticElector()` (always leader) for leader tasks
-- Maintains original single-instance behavior
-- No performance impact, no Redis calls for locking/election
-- All existing functionality preserved
+Distributed execution is always enabled.
+
+- Single-instance deployments remain supported: the only instance acquires leadership and executes all tasks normally.
+- Multi-instance deployments coordinate automatically using the same lock/election keys.
+- Housekeeper execution now always depends on lock/election storage availability.
 
 ## Troubleshooting
 
@@ -217,7 +208,7 @@ When distributed execution is disabled (default):
 
 3. **No leader elected / metrics missing**
    - Check `deckard_housekeeper_leader` across instances - exactly one should report `1`
-   - Verify `DECKARD_HOUSEKEEPER_DISTRIBUTED_EXECUTION_ENABLED=true` on all instances sharing the same Redis
+  - Verify all instances sharing the same Redis use consistent `DECKARD_HOUSEKEEPER_DISTRIBUTED_EXECUTION_INSTANCE_ID` semantics (unique per instance)
    - Increase `DECKARD_HOUSEKEEPER_ELECTION_LEASE_TTL` if leadership flaps under Redis latency spikes
 
 ### Debugging

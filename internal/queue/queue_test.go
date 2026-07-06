@@ -1194,7 +1194,7 @@ func TestNackWithLockShouldLock(t *testing.T) {
 	testTime := time.UnixMilli(1688060713537)
 	defer dtime.SetNowProviderValues(testTime)()
 
-	now := time.Now()
+	now := testTime
 
 	lockedUntil := testTime.Add(10 * time.Millisecond)
 
@@ -1275,8 +1275,6 @@ func TestNackWithLockErrorShouldResultError(t *testing.T) {
 }
 
 func TestNackWithStorageErrorShouldResultError(t *testing.T) {
-	t.Parallel()
-
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 

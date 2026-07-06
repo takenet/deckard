@@ -41,11 +41,6 @@ var HousekeeperTaskMetricsDelay = Create(&ViperConfigKey{
 	Default: "60s",
 })
 
-var HousekeeperDistributedExecutionEnabled = Create(&ViperConfigKey{
-	Key:     "housekeeper.distributed_execution.enabled",
-	Default: false,
-})
-
 var HousekeeperDistributedExecutionInstanceID = Create(&ViperConfigKey{
 	Key:     "housekeeper.distributed_execution.instance_id",
 	Default: "",

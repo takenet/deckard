@@ -146,17 +146,8 @@ func startGrpcServer(queue *queue.Queue, queueService queue.QueueConfigurationSe
 //     also require holding housekeeper leadership.
 func startHouseKeeperJobs(pool *queue.Queue) election.Elector {
 	instanceID := config.GetHousekeeperInstanceID()
-
-	var locker lock.Locker
-	var elector election.Elector
-
-	if config.HousekeeperDistributedExecutionEnabled.GetBool() {
-		locker = lock.NewLocker(pool.GetCache(), instanceID)
-		elector = election.NewLeaseElector(locker, config.HousekeeperElectionLeaseTTL.GetDuration(), instanceID)
-	} else {
-		locker = lock.NewNoopLocker()
-		elector = election.NewStaticElector(instanceID)
-	}
+	locker := lock.NewLocker(pool.GetCache(), instanceID)
+	elector := election.NewLeaseElector(locker, config.HousekeeperElectionLeaseTTL.GetDuration(), instanceID)
 
 	elector.Start(ctx)
 	metrics.SetLeaderStatusFunc(elector.IsLeader)
