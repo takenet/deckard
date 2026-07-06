@@ -100,6 +100,15 @@ jobs:
           job_name: test
           check_name: JUnit Test Report
 
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./junit.xml
+          report_type: test_results
+          fail_ci_if_error: false
+
       - name: Coverage Report
         uses: codecov/codecov-action@v7
         if: ${{ !cancelled() }}
