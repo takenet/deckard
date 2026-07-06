@@ -332,6 +332,7 @@ func (storage *MemoryStorage) Ack(_ context.Context, msg *message.Message) (modi
 	value.LastScoreSubtract = msg.LastScoreSubtract
 	value.Score = msg.Score
 	value.LockMs = msg.LockMs
+	value.LockedUntil = msg.LockedUntil
 	value.Breakpoint = msg.Breakpoint
 
 	setDiagnosticsStruct(value)
@@ -357,6 +358,7 @@ func (storage *MemoryStorage) Nack(_ context.Context, msg *message.Message) (mod
 	storage.lock.Lock()
 	value.Score = msg.Score
 	value.LockMs = msg.LockMs
+	value.LockedUntil = msg.LockedUntil
 
 	setDiagnosticsStruct(value)
 

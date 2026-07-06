@@ -1,5 +1,11 @@
 package config
 
+import (
+	"fmt"
+	"os"
+	"time"
+)
+
 var HousekeeperEnabled = Create(&ViperConfigKey{
 	Key:     "housekeeper.enabled",
 	Default: true,
@@ -34,3 +40,42 @@ var HousekeeperTaskMetricsDelay = Create(&ViperConfigKey{
 	Key:     "housekeeper.task.metrics.delay",
 	Default: "60s",
 })
+
+var HousekeeperDistributedExecutionInstanceID = Create(&ViperConfigKey{
+	Key:     "housekeeper.distributed_execution.instance_id",
+	Default: "",
+})
+
+var HousekeeperDistributedExecutionLockTTL = Create(&ViperConfigKey{
+	Key:     "housekeeper.distributed_execution.lock_ttl",
+	Default: "30s",
+})
+
+// HousekeeperElectionLeaseTTL controls the lease duration for the leader
+// election used to gate leader-only tasks (e.g. metrics, recovery). The
+// election's background renewal loop runs at ttl/3 intervals.
+var HousekeeperElectionLeaseTTL = Create(&ViperConfigKey{
+	Key:     "housekeeper.election.lease_ttl",
+	Default: "15s",
+})
+
+var HousekeeperUnlockParallelism = Create(&ViperConfigKey{
+	Key:     "housekeeper.unlock.parallelism",
+	Default: 5,
+})
+
+// GetHousekeeperInstanceID returns the instance ID for distributed execution
+// If not provided in config, generates one based on hostname and timestamp
+func GetHousekeeperInstanceID() string {
+	configuredID := HousekeeperDistributedExecutionInstanceID.Get()
+	if configuredID != "" {
+		return configuredID
+	}
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = "unknown"
+	}
+
+	return fmt.Sprintf("%s-%d", hostname, time.Now().UnixNano())
+}

@@ -41,6 +41,13 @@ type Message struct {
 	// Time in milliseconds that this message will be locked before returning to the message pool.
 	LockMs int64 `json:"lock_ms" bson:"lock_ms"`
 
+	// LockedUntil is the timestamp until which this message is expected to remain locked
+	// (i.e. now + LockMs at the time of the last Ack/Nack that locked it). It is nil when the
+	// message is not currently locked. This is persisted purely to let the housekeeper's
+	// recovery task avoid immediately redelivering a message that may still be locked/in-flight
+	// when the cache has been fully flushed and lock state was lost - see RecoveryMessagesPool.
+	LockedUntil *time.Time `json:"locked_until,omitempty" bson:"locked_until,omitempty"`
+
 	// Internal Fields
 	// Internal fields are managed by the Deckard itself and should not manually inserted on storage.
 

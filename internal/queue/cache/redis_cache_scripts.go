@@ -216,3 +216,35 @@ end
 redis.call('ZREM', KEYS[1], unpack(elements))
 return elements
 `
+
+// Deletes a key only if its current value equals the given value. This is used to safely
+// release a distributed lock without deleting a lock that may have expired and been
+// re-acquired by another instance in the meantime.
+//
+// KEYS[1] -> key to delete
+//
+// ARGV[1] -> expected current value
+const compareAndDeleteScript = `
+if redis.call('GET', KEYS[1]) == ARGV[1] then
+	return redis.call('DEL', KEYS[1])
+end
+
+return 0
+`
+
+// Sets a TTL on a key only if its current value equals the given value. This is used to safely
+// refresh a distributed lock's TTL without extending a lock that may have expired and been
+// re-acquired by another instance in the meantime.
+//
+// KEYS[1] -> key to expire
+//
+// ARGV[1] -> expected current value
+//
+// ARGV[2] -> TTL in milliseconds
+const compareAndExpireScript = `
+if redis.call('GET', KEYS[1]) == ARGV[1] then
+	return redis.call('PEXPIRE', KEYS[1], ARGV[2])
+end
+
+return 0
+`

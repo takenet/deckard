@@ -95,8 +95,26 @@ of truth for message content), the supported migration path is:
 2. Deploy Deckard pointed at it with `redis.cluster.mode: true`.
 3. Let the housekeeper's existing recovery task (`RecoveryMessagesPool`) rebuild the active, lock,
    and processing pools directly from `storage` - no manual key migration needed.
-4. Note: any message that was mid-flight (locked, awaiting ack/nack) at cutover time loses its lock state and becomes immediately deliverable again, consistent with Deckard's at-least-once semantics. Plan the cutover during a quiet window if duplicate delivery during the switch is a concern.
+4. Note: any message that was mid-flight (locked, awaiting ack/nack) at cutover time loses its exact lock/processing pool state. If it was locked (`lock_ms > 0`), the recovery task delays its redelivery until the originally persisted `locked_until` timestamp elapses (see [Memory & Eviction Policy](#memory--eviction-policy)); otherwise it becomes immediately deliverable again, consistent with Deckard's at-least-once semantics. Plan the cutover during a quiet window if duplicate delivery during the switch is still a concern.
 5. Decommission the old single-node Redis once queue sizes are verified against `storage`.
+
+## Memory & Eviction Policy
+
+Deckard's Redis cache is a rebuildable index over the durable `storage` backend, not the source of
+truth for message content - but it *is* the source of truth for a queue's current active/lock/processing
+state at any given moment. If Redis is configured with an eviction policy other than `noeviction`
+(e.g. `allkeys-lru`, `volatile-lru`, `allkeys-random`) and approaches `maxmemory`, Redis will silently
+evict queue keys under memory pressure. Deckard has no way to distinguish an evicted key from one
+that simply never existed, so evicted messages disappear from queues until an operator notices and
+manually triggers a full recovery (deleting the `recovery_storage_breakpoint` cache key - see
+[issue #30](https://github.com/takenet/deckard/issues/30)); there is currently no automatic
+detection or periodic self-healing for this.
+
+**Recommendation**: configure the Redis instance(s) backing Deckard with `maxmemory-policy noeviction`
+and size `maxmemory` (or the managed Redis offering's memory tier) generously enough for your queue
+volume. With `noeviction`, Redis returns write errors instead of silently dropping data once memory
+is exhausted, which is safer for Deckard's correctness model and surfaces the problem loudly (via
+write errors/alerts) instead of silently.
 
 ## Docker Compose Example
 
@@ -158,6 +176,12 @@ go test -v ./internal/queue/cache/ -run Cluster
 - Ensure all cluster nodes are accessible from Deckard
 - Check network connectivity and firewall rules
 - Verify cluster is properly initialized
+
+**4. Messages disappearing from queues under memory pressure**
+
+- Check Redis `maxmemory-policy`; anything other than `noeviction` can silently drop queue keys once `maxmemory` is reached
+- See [Memory & Eviction Policy](#memory--eviction-policy) above
+- Recover by deleting the `recovery_storage_breakpoint` cache key to force a full recovery pass from `storage`
 
 **4. Redis nodes data is corrupted, inconsistent or lost**
 

@@ -2,10 +2,12 @@ package queue
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/elliotchance/orderedmap/v2"
 	"github.com/takenet/deckard/internal/audit"
+	"github.com/takenet/deckard/internal/config"
 	"github.com/takenet/deckard/internal/dtime"
 	"github.com/takenet/deckard/internal/logger"
 	"github.com/takenet/deckard/internal/metrics"
@@ -82,7 +84,7 @@ func ProcessLockPool(ctx context.Context, queue *Queue) {
 		return
 	}
 
-	unlockMessages(ctx, queue, lockAckQueues, cache.LOCK_ACK)
+	unlockMessagesParallel(ctx, queue, lockAckQueues, cache.LOCK_ACK)
 
 	if shutdown.Ongoing() {
 		logger.S(ctx).Info("Shutdown started. Stopping unlock process.")
@@ -97,36 +99,72 @@ func ProcessLockPool(ctx context.Context, queue *Queue) {
 		return
 	}
 
-	unlockMessages(ctx, queue, lockNackQueues, cache.LOCK_NACK)
+	unlockMessagesParallel(ctx, queue, lockNackQueues, cache.LOCK_NACK)
 }
 
-func unlockMessages(ctx context.Context, pool *Queue, queues []string, lockType cache.LockType) {
+func unlockMessagesParallel(ctx context.Context, pool *Queue, queues []string, lockType cache.LockType) {
+	if len(queues) == 0 {
+		return
+	}
+
+	parallelism := config.HousekeeperUnlockParallelism.GetInt()
+	if parallelism <= 0 {
+		parallelism = 5 // Default fallback
+	}
+
+	// Fixed-size worker pool consuming from a jobs channel, so the number of
+	// goroutines is capped at parallelism regardless of how many queues have
+	// locked messages.
+	jobs := make(chan string)
+	var wg sync.WaitGroup
+
+	for i := 0; i < parallelism; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for queueName := range jobs {
+				unlockSingleQueue(ctx, pool, queueName, lockType)
+			}
+		}()
+	}
+
+feed:
 	for i := range queues {
 		if shutdown.Ongoing() {
 			logger.S(ctx).Info("Shutdown started. Stopping unlock process.")
-
-			break
+			break feed
 		}
 
-		ids, err := pool.cache.UnlockMessages(ctx, queues[i], lockType)
-
-		if err != nil {
-			logger.S(ctx).Errorf("Error processing locks for queue '%s': %v", queues[i], err.Error())
-
-			continue
-		}
-
-		for index := range ids {
-			pool.auditor.Store(ctx, audit.Entry{
-				ID:     ids[index],
-				Queue:  queues[i],
-				Signal: audit.UNLOCK,
-				Reason: string(lockType),
-			})
-		}
-
-		metrics.HousekeeperUnlock.Add(ctx, int64(len(ids)), metric.WithAttributes(attribute.String("queue", message.GetQueuePrefix(queues[i])), attribute.String("lock_type", string(lockType))))
+		jobs <- queues[i]
 	}
+
+	close(jobs)
+	wg.Wait()
+}
+
+func unlockSingleQueue(ctx context.Context, pool *Queue, queueName string, lockType cache.LockType) {
+	if shutdown.Ongoing() {
+		return
+	}
+
+	ids, err := pool.cache.UnlockMessages(ctx, queueName, lockType)
+
+	if err != nil {
+		logger.S(ctx).Errorf("Error processing locks for queue '%s': %v", queueName, err.Error())
+		return
+	}
+
+	for index := range ids {
+		pool.auditor.Store(ctx, audit.Entry{
+			ID:     ids[index],
+			Queue:  queueName,
+			Signal: audit.UNLOCK,
+			Reason: string(lockType),
+		})
+	}
+
+	metrics.HousekeeperUnlock.Add(ctx, int64(len(ids)), metric.WithAttributes(attribute.String("queue", message.GetQueuePrefix(queueName)), attribute.String("lock_type", string(lockType))))
 }
 
 func isRecovering(ctx context.Context, pool *Queue) (bool, error) {
@@ -183,12 +221,13 @@ func RecoveryMessagesPool(ctx context.Context, pool *Queue) (metrify bool) {
 				InternalIdBreakpointLte: recoveryBreakpoint,
 			},
 			Projection: &map[string]int{
-				"id":         1,
-				"score":      1,
-				"queue":      1,
-				"last_score": 1,
-				"last_usage": 1,
-				"lock_ms":    1,
+				"id":           1,
+				"score":        1,
+				"queue":        1,
+				"last_score":   1,
+				"last_usage":   1,
+				"lock_ms":      1,
+				"locked_until": 1,
 			},
 			Sort:  sort,
 			Limit: int64(4000),
@@ -200,12 +239,21 @@ func RecoveryMessagesPool(ctx context.Context, pool *Queue) (metrify bool) {
 	}
 
 	if len(messages) > 0 {
+		now := dtime.Now()
+
 		addMessages := make([]*message.Message, len(messages))
 		for i := range messages {
 			addMessages[i] = &messages[i]
 
-			// TODO:
-			if messages[i].Score < score.Min {
+			// If the message may still be locked/in-flight (its persisted LockedUntil is in the
+			// future), avoid immediately redelivering it at the highest priority: instead, delay
+			// its availability until the original lock would have naturally expired. This can't
+			// guarantee correctness (we don't know for certain it's still being processed), but
+			// meaningfully reduces duplicate-processing risk compared to unconditionally
+			// clamping to score.Min, which is what happens for every other recovered message.
+			if messages[i].LockedUntil != nil && messages[i].LockedUntil.After(now) {
+				messages[i].Score = score.GetScoreFromTime(messages[i].LockedUntil)
+			} else if messages[i].Score < score.Min {
 				messages[i].Score = score.Min
 			} else if messages[i].Score > score.Max {
 				messages[i].Score = score.Max
