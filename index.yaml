@@ -1,0 +1,2161 @@
+apiVersion: v1
+entries:
+  deckard:
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 1.0.0-rc2
+    created: "2026-07-06T15:03:35.28293348Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 19.1.16
+    - condition: redis.enabled
+      name: redis
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 27.0.13
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: 986eb4ded7875be799422cf35b15f4f133511a71231bf9ec625bdff081b7fe13
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-1.0.0-rc2.tgz
+    version: 1.0.0-rc2
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 1.0.0-rc1
+    created: "2026-07-06T15:03:35.268001545Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 19.1.16
+    - condition: redis.enabled
+      name: redis
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 27.0.13
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: 214c98fc5e401cff057747c8a6c53de1707bd411f01a9667b277639e328a7e7f
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-1.0.0-rc1.tgz
+    version: 1.0.0-rc1
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.1.8
+    created: "2026-07-06T15:03:35.252910706Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 19.1.16
+    - condition: redis.enabled
+      name: redis
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 27.0.13
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: d1df1de270fb65e6a49305e35ec2b43cb5f8f6e64a809a0c8e755598bb8a129c
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.1.8.tgz
+    version: 0.1.8
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.1.7
+    created: "2026-07-06T15:03:35.239264321Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 19.1.16
+    - condition: redis.enabled
+      name: redis
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 27.0.13
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: d9036fbc3a2db2ce2ba53e834ef7e526008efd42a0fc4988ba37dadc2cf2effb
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.1.7.tgz
+    version: 0.1.7
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.1.6
+    created: "2026-07-06T15:03:35.223721835Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 19.1.16
+    - condition: redis.enabled
+      name: redis
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 27.0.13
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: a49adfa861e2c6b79394fd63d2e4d206117421028af8622346ec39520bb83168
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.1.6.tgz
+    version: 0.1.6
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.1.5
+    created: "2026-07-06T15:03:35.209189856Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 19.1.16
+    - condition: redis.enabled
+      name: redis
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 27.0.13
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: c0817f17c6f3a67f6ef867c7cfc12ed346326f39760079d1520ca13689dc5b79
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.1.5.tgz
+    version: 0.1.5
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.1.4
+    created: "2026-07-06T15:03:35.193850683Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 19.1.16
+    - condition: redis.enabled
+      name: redis
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 27.0.13
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: c0ae8569802ea097cd73640cfbe9975a21a125e999639b8ecafaa7f2ebe3d2b4
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.1.4.tgz
+    version: 0.1.4
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.1.3
+    created: "2026-07-06T15:03:35.178154963Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 19.1.16
+    - condition: redis.enabled
+      name: redis
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 27.0.13
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: f0e3ef8b328e41c18539d8c011cde567470fc68558b155b8dd7cbf2e14d1ba61
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.1.3.tgz
+    version: 0.1.3
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.1.2
+    created: "2026-07-06T15:03:35.160263593Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 19.1.16
+    - condition: redis.enabled
+      name: redis
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 27.0.13
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: 839e0a3abf46608cdde30208906bf27c2f462c691aacb7df83fea0e5b8dd94b4
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.1.2.tgz
+    version: 0.1.2
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.1.1
+    created: "2026-07-06T15:03:35.143593885Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 19.1.16
+    - condition: redis.enabled
+      name: redis
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 27.0.13
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: 1241a269425b6ba79ed9063468d5db17f00640b9dcfbdf68e28d07da2d42129d
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.1.1.tgz
+    version: 0.1.1
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.1.0
+    created: "2026-07-06T15:03:35.128791081Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 19.1.16
+    - condition: redis.enabled
+      name: redis
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 27.0.13
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: 795f1c60338b5bbcb882f9ca02f614e448f597c2789ba5eb6f402ff2d7fe21c4
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.1.0.tgz
+    version: 0.1.0
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.43
+    created: "2026-07-06T15:03:35.113830135Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: 157172aa7cc5437e4c793d9709c10894105384d4da87522261d0b7e17083393f
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.43.tgz
+    version: 0.0.43
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.42
+    created: "2026-07-06T15:03:35.104321732Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: 2ff1129e6b1f57edaa75ec5513fa9d441c43773345a1f9643d78012f599dd296
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.42.tgz
+    version: 0.0.42
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.41
+    created: "2026-07-06T15:03:35.094843009Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: c91fb321be3642bef7e7a8de51f6b0d47491560969eee4ac441e74c516eb2412
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.41.tgz
+    version: 0.0.41
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.40
+    created: "2026-07-06T15:03:35.085261847Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: 60c49751ee4ce5c833654fa305c3c87e75863ab3205ab1144c0d0bd1645ec8af
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.40.tgz
+    version: 0.0.40
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.39
+    created: "2026-07-06T15:03:35.075578394Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: 001933643541bb64655752c572b19360dbad6b6f1457183853f19cb5b08aa4f1
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.39.tgz
+    version: 0.0.39
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.38
+    created: "2026-07-06T15:03:35.065774654Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: deb327faee3af81fc87a014907d80f81d7452c47488a488ff5d3b36c98e99a0a
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.38.tgz
+    version: 0.0.38
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.37
+    created: "2026-07-06T15:03:35.055125468Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: a0e9a10f8fe948ca6d63e8cd72a61eab6cf967038250da487e3a7400f20a378b
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.37.tgz
+    version: 0.0.37
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.36
+    created: "2026-07-06T15:03:35.045778886Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: 346277cd017a8810ba419c29d94bdf1f0dc1d56727b5bf696e734635747ea03d
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.36.tgz
+    version: 0.0.36
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.35
+    created: "2026-07-06T15:03:35.036480975Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: 621057683906039b07c3b0c6da97bde6915e149e3a42ed5d1e80ed53f8632fd8
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.35.tgz
+    version: 0.0.35
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.33
+    created: "2026-07-06T15:03:35.027184087Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: 5f4a6b5fd4957c6de2ee4515506a28f1395f6975cb6ff6aacecc98958ac7ed03
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.33.tgz
+    version: 0.0.33
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.32
+    created: "2026-07-06T15:03:35.017379706Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: 345082809f23b8c643fa5932acf1c11ea7e2f7623f20c6ce4214421d2bccb008
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.32.tgz
+    version: 0.0.32
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.31
+    created: "2026-07-06T15:03:35.007958955Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: d74fd2ca9f80387bcc21838bbfae3c34c563846218aff77eb5ccfd4c6473a251
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.31.tgz
+    version: 0.0.31
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.30
+    created: "2026-07-06T15:03:34.998347306Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: 40dd5655e6ec88310eee39426bf8c26192fb8f3197ed718a19e89334a45a92d9
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.30.tgz
+    version: 0.0.30
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.29
+    created: "2026-07-06T15:03:34.988340072Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: b0ebb4c11ea051f7d55feb579227fa62035284be86f29782a463577167d7f981
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.29.tgz
+    version: 0.0.29
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.28
+    created: "2026-07-06T15:03:34.978114085Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: 0b45a557b2037a6a0ac5de950bcdf924b3e66b2f93a1a75cb0969cb71abb6681
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.28.tgz
+    version: 0.0.28
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.27
+    created: "2026-07-06T15:03:34.968685366Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: b57a9b5c32c6db8e764ebdc24b5db1eeb6aed1ca7fa43bfd7e416bea544bccea
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.27.tgz
+    version: 0.0.27
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.26
+    created: "2026-07-06T15:03:34.958970702Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: a0071368c6324a4e1c6042969accf195fdcc08bda842f466d2fee96cf13c571f
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.26.tgz
+    version: 0.0.26
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.25
+    created: "2026-07-06T15:03:34.948814171Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: 415abd247c5ea8e9bd6cf03e5b6b79468a14f3e4137e42fb1b162c7163c62327
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.25.tgz
+    version: 0.0.25
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.24
+    created: "2026-07-06T15:03:34.938466822Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: 5aad27d34ce89df88991334e4da2997252a5616f81f31480a73a43fa535b9538
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.24.tgz
+    version: 0.0.24
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.23
+    created: "2026-07-06T15:03:34.928427264Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: 28b2a46a9909c4b0c7b2f5184dc2d1c34fd93a30fcb6ed9f7833ba4213b65958
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.23.tgz
+    version: 0.0.23
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.22
+    created: "2026-07-06T15:03:34.91855319Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: 0953077e0fd62510430ede95d8d7e90535b222966b5d6bac2f5947fb943cc6f0
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.22.tgz
+    version: 0.0.22
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.21
+    created: "2026-07-06T15:03:34.906974922Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: 984c68439e5f5dee41a4e3f8e4cd4221c08c3c0f063005be1b0cf49d268981d0
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.21.tgz
+    version: 0.0.21
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.20
+    created: "2026-07-06T15:03:34.892626851Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: d9d85e59b9a40e6449bf3b82f708a841c9b8ebb741ae0b53eb6390be7e49d18d
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.20.tgz
+    version: 0.0.20
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.19
+    created: "2026-07-06T15:03:34.882851901Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: 9e6c74de09244b9f07074fc692eed1dccc8ab95a964dfe812a5a093393f2ce54
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.19.tgz
+    version: 0.0.19
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.18
+    created: "2026-07-06T15:03:34.872898365Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: 07db402e9a6893bed1087b201059fe4ebe9a58f75ac15b2aa200a1b809cdff55
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.18.tgz
+    version: 0.0.18
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.17
+    created: "2026-07-06T15:03:34.862346739Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: 0d6f0091fdbe39f7d66d53047833986f8bbaf3ec54c0b1e5e5749393ff1b22cd
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.17.tgz
+    version: 0.0.17
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.16
+    created: "2026-07-06T15:03:34.852910359Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: 816ac9e96f3d3d22df68940d1253557415910289af2a2051cbfc0efe73a47c67
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.16.tgz
+    version: 0.0.16
+  - annotations:
+      artifacthub.io/category: streaming-messaging
+      artifacthub.io/images: |
+        - name: deckard
+          image: blipai/deckard:latest
+          platforms:
+            - linux/amd64
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm/deckard
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      artifacthub.io/maintainers: |
+        - name: Lucas Soares
+          email: lucas.soares@blip.ai
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.15
+    created: "2026-07-06T15:03:34.84356536Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: d7446c9dc1a131d38a6aec0d55fbf1a338a5d4dd482ee3f8dd3ed7210f85f0b2
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm/deckard
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.15.tgz
+    version: 0.0.15
+  - annotations:
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm/deckard
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.14
+    created: "2026-07-06T15:03:34.833604796Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: 390ece729dda950490793933169ed769fb1c77fae6c400fa05dd5257d1ee5883
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm/deckard
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.14.tgz
+    version: 0.0.14
+  - annotations:
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm/deckard
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.13
+    created: "2026-07-06T15:03:34.822717935Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: dc2136bc1fa1afca442677b185dcee1a4a12ddd541e8893cea7537f7912c86a4
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm/deckard
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.13.tgz
+    version: 0.0.13
+  - annotations:
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: helm chart
+          url: https://github.com/takenet/deckard/tree/main/helm/deckard
+        - name: source code
+          url: https://github.com/takenet/deckard
+        - name: Blip company
+          url: https://www.blip.ai/
+      category: Queue
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.0.11-SNAPSHOT
+    created: "2026-07-06T15:03:34.813324453Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.15.3
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.11.6
+    description: A Helm chart for Deckard, a Highly Scalable Cyclic Priority Queue
+    digest: 338674b5239171d18c119c8451493af66e7a72d8ce9acdf8094f4965635edb4a
+    home: https://www.blip.ai/
+    keywords:
+    - deckard
+    - queue
+    - messaging
+    - priority
+    maintainers:
+    - name: Blip
+      url: https://github.com/takenet
+    - name: lucasoares
+      url: https://github.com/lucasoares
+    name: deckard
+    sources:
+    - https://github.com/takenet/deckard/tree/main/helm/deckard
+    type: application
+    urls:
+    - https://takenet.github.io/deckard/deckard-0.0.11-SNAPSHOT.tgz
+    version: 0.0.11-SNAPSHOT
+generated: "2026-07-06T15:03:34.803539363Z"
