@@ -107,6 +107,11 @@ func TestLoadRedisAndMongoDBDeckardShouldLoadSuccessfullyIntegration(t *testing.
 	}
 
 	defer shutdown.PerformShutdown(ctx, cancel, server)
+	defer func() {
+		if housekeeperElector != nil {
+			housekeeperElector.Stop(ctx)
+		}
+	}()
 
 	// Set up a connection to the server.
 	conn, err := dial()
@@ -167,6 +172,9 @@ func TestStopDeckardShouldStopReceivingRequestIntegration(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 
+	if housekeeperElector != nil {
+		housekeeperElector.Stop(ctx)
+	}
 	shutdown.PerformShutdown(ctx, cancel, server)
 
 	// Set up a connection to the server.
@@ -223,10 +231,15 @@ func TestStartHouseKeeperJobsDistributedModeShouldElectLeaderAndRunTasksIntegrat
 
 	q := newTestQueue(t)
 
+	// Guard against leftover election/lock keys from other tests sharing the
+	// same Redis instance and cache prefix (e.g. a prior test's leadership
+	// lease that hasn't naturally expired yet).
+	q.GetCache().Flush(ctx)
+
 	elector := startHouseKeeperJobs(q)
 	require.NotNil(t, elector, "distributed mode (REDIS cache) must return a real elector")
 
-	require.Eventually(t, elector.IsLeader, time.Second, 5*time.Millisecond, "instance should elect itself leader")
+	require.Eventually(t, elector.IsLeader, 3*time.Second, 5*time.Millisecond, "instance should elect itself leader")
 
 	// Let atomic and leader tasks cycle at least once, including at least one
 	// lock renewal tick (lockTTL/3 = 20ms).
