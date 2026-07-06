@@ -239,6 +239,8 @@ message AddMessage {
     Suggestion: to better observability, provide the name of the application using colon as the separator. Example: <application_name>:<queue_name>
 
     You may also add a queue prefix to the queue name using two colons as the separator. Example: <application_name>:<queue_prefix>::<queue_name>
+
+    When the queue name contains two colons, Deckard uses the part before the separator as the queue prefix in metrics, audit records, and internal queue grouping. For example, messages in application_x:customers:id::123 and application_x:customers:id::456 are stored in separate queues, but their observability data is grouped under application_x:customers:id.
   */
   string queue = 4;
 
