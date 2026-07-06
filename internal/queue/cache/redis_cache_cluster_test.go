@@ -329,39 +329,41 @@ func TestRedisClusterConfigurationValidation(t *testing.T) {
 	require.ErrorIs(t, err, errCacheUriRequired)
 }
 
-// TestRedisClusterKeyGeneration is a pure unit test (no live Redis needed) covering the same
-// hash-tag key naming that TestRedisCacheClusterKeyNamingIntegration used to check against a live
-// cluster - key generation is plain string logic, so it doesn't need a real connection to verify.
-func TestRedisClusterKeyGeneration(t *testing.T) {
+// TestRedisKeyGeneration is a pure unit test (no live Redis needed) verifying that hash tags are
+// always applied to queue keys regardless of cluster mode — this keeps keys cluster-slot-stable
+// in both standalone and cluster deployments, allowing zero-key-rename migration between modes.
+func TestRedisKeyGeneration(t *testing.T) {
 	t.Parallel()
 
-	cache := &RedisCache{clusterMode: true, keyPrefix: "deckard"}
-
-	// Test cluster mode key generation with hash tags
 	queueName := "test-queue-with-special-chars_123"
 
-	require.Equal(t, "deckard:queue:{test-queue-with-special-chars_123}", cache.activePool(queueName))
-	require.Equal(t, "deckard:queue:{test-queue-with-special-chars_123}:tmp", cache.processingPool(queueName))
-	require.Equal(t, "deckard:queue:{test-queue-with-special-chars_123}:lock_ack", cache.lockPool(queueName, LOCK_ACK))
-	require.Equal(t, "deckard:queue:{test-queue-with-special-chars_123}:lock_nack", cache.lockPool(queueName, LOCK_NACK))
-	require.Equal(t, "deckard:queue:{test-queue-with-special-chars_123}:lock_ack:score", cache.lockPoolScore(queueName, LOCK_ACK))
-	require.Equal(t, "deckard:queue:{test-queue-with-special-chars_123}:lock_nack:score", cache.lockPoolScore(queueName, LOCK_NACK))
+	for _, clusterMode := range []bool{false, true} {
+		cache := &RedisCache{clusterMode: clusterMode, keyPrefix: "deckard"}
+
+		require.Equal(t, "deckard:queue:{test-queue-with-special-chars_123}", cache.activePool(queueName))
+		require.Equal(t, "deckard:queue:{test-queue-with-special-chars_123}:tmp", cache.processingPool(queueName))
+		require.Equal(t, "deckard:queue:{test-queue-with-special-chars_123}:lock_ack", cache.lockPool(queueName, LOCK_ACK))
+		require.Equal(t, "deckard:queue:{test-queue-with-special-chars_123}:lock_nack", cache.lockPool(queueName, LOCK_NACK))
+		require.Equal(t, "deckard:queue:{test-queue-with-special-chars_123}:lock_ack:score", cache.lockPoolScore(queueName, LOCK_ACK))
+		require.Equal(t, "deckard:queue:{test-queue-with-special-chars_123}:lock_nack:score", cache.lockPoolScore(queueName, LOCK_NACK))
+	}
 }
 
-func TestSingleNodeKeyGeneration(t *testing.T) {
+func TestSingleNodeKeyGenerationAlsoUsesHashTags(t *testing.T) {
 	t.Parallel()
 
 	cache := &RedisCache{clusterMode: false, keyPrefix: "deckard"}
 
-	// Test single node mode key generation without hash tags
+	// Hash tags are always applied (even in standalone mode) so that migrating
+	// to Redis Cluster requires no key rename.
 	queueName := "test-queue"
 
-	require.Equal(t, "deckard:queue:test-queue", cache.activePool(queueName))
-	require.Equal(t, "deckard:queue:test-queue:tmp", cache.processingPool(queueName))
-	require.Equal(t, "deckard:queue:test-queue:lock_ack", cache.lockPool(queueName, LOCK_ACK))
-	require.Equal(t, "deckard:queue:test-queue:lock_nack", cache.lockPool(queueName, LOCK_NACK))
-	require.Equal(t, "deckard:queue:test-queue:lock_ack:score", cache.lockPoolScore(queueName, LOCK_ACK))
-	require.Equal(t, "deckard:queue:test-queue:lock_nack:score", cache.lockPoolScore(queueName, LOCK_NACK))
+	require.Equal(t, "deckard:queue:{test-queue}", cache.activePool(queueName))
+	require.Equal(t, "deckard:queue:{test-queue}:tmp", cache.processingPool(queueName))
+	require.Equal(t, "deckard:queue:{test-queue}:lock_ack", cache.lockPool(queueName, LOCK_ACK))
+	require.Equal(t, "deckard:queue:{test-queue}:lock_nack", cache.lockPool(queueName, LOCK_NACK))
+	require.Equal(t, "deckard:queue:{test-queue}:lock_ack:score", cache.lockPoolScore(queueName, LOCK_ACK))
+	require.Equal(t, "deckard:queue:{test-queue}:lock_nack:score", cache.lockPoolScore(queueName, LOCK_NACK))
 }
 
 func TestParseQueueKeyStripsClusterHashTag(t *testing.T) {
@@ -377,13 +379,14 @@ func TestParseQueueKeyStripsClusterHashTag(t *testing.T) {
 	require.Equal(t, "queue{name}", cache.parseQueueKey("deckard:queue:{queue{name}}", nil))
 }
 
-func TestParseQueueKeyWithoutClusterMode(t *testing.T) {
+func TestParseQueueKeyWithoutClusterModeAlsoStripsHashTag(t *testing.T) {
 	t.Parallel()
 
 	cache := &RedisCache{clusterMode: false, keyPrefix: "deckard"}
 
-	require.Equal(t, "test-queue", cache.parseQueueKey("deckard:queue:test-queue", nil))
-	require.Equal(t, "test-queue", cache.parseQueueKey("deckard:queue:test-queue:tmp", PROCESSING_POOL_REGEX))
+	// Keys are now always written with hash tags, so parseQueueKey must always strip them.
+	require.Equal(t, "test-queue", cache.parseQueueKey("deckard:queue:{test-queue}", nil))
+	require.Equal(t, "test-queue", cache.parseQueueKey("deckard:queue:{test-queue}:tmp", PROCESSING_POOL_REGEX))
 }
 
 func TestCustomPrefixKeyGeneration(t *testing.T) {
@@ -393,6 +396,11 @@ func TestCustomPrefixKeyGeneration(t *testing.T) {
 
 	require.Equal(t, "deckard-v2:queue:{test-queue}", cache.activePool("test-queue"))
 	require.Equal(t, "deckard-v2:{recover}", cache.generalCacheKey("recover"))
+
+	// Same keys regardless of cluster mode.
+	cacheStandalone := &RedisCache{clusterMode: false, keyPrefix: "deckard-v2"}
+	require.Equal(t, "deckard-v2:queue:{test-queue}", cacheStandalone.activePool("test-queue"))
+	require.Equal(t, "deckard-v2:{recover}", cacheStandalone.generalCacheKey("recover"))
 }
 
 func TestValidateQueueNameRejectsClusterHashTagCharsInClusterMode(t *testing.T) {
