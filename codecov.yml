@@ -1,6 +1,73 @@
 comment:
-  layout: "reach, diff, flags, files"
+  layout: 'header, reach, diff, flags, components, files, footer'
   behavior: default
   require_changes: false
-  require_base: no 
-  require_head: yes
+  require_base: false
+  require_head: true
+
+component_management:
+  default_rules:
+    statuses:
+      - type: project
+        target: auto
+      - type: patch
+        target: auto
+
+  individual_components:
+    # Core service logic
+    - component_id: service
+      name: Service
+      paths:
+        - internal/service/**
+
+    # Queue management
+    - component_id: queue
+      name: Queue
+      paths:
+        - internal/queue/**
+
+    # Audit & logging
+    - component_id: audit
+      name: Audit
+      paths:
+        - internal/audit/**
+
+    # Configuration
+    - component_id: config
+      name: Config
+      paths:
+        - internal/config/**
+
+    # Command entry point
+    - component_id: cmd
+      name: Command
+      paths:
+        - internal/cmd/**
+
+    # Metrics
+    - component_id: metrics
+      name: Metrics
+      paths:
+        - internal/metrics/**
+
+    # Cache layer
+    - component_id: cache
+      name: Cache
+      paths:
+        - internal/**/cache/**
+
+    # Storage layer
+    - component_id: storage
+      name: Storage
+      paths:
+        - internal/**/storage/**
+
+    # Helper utilities
+    - component_id: helpers
+      name: Helpers
+      paths:
+        - internal/dtime/**
+        - internal/logger/**
+        - internal/project/**
+        - internal/trace/**
+        - internal/shutdown/**
