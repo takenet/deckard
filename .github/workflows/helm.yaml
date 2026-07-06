@@ -8,6 +8,12 @@ on:
       # ignores pre-release chart versions by default unless --devel is explicitly passed.
       # See: https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#release
       - published
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git tag to (re)publish (e.g. v0.0.43). Leave empty to use the default branch. Use this to restore a previously published chart version that is missing from the live repo (e.g. https://takenet.github.io/deckard/).'
+        required: false
+        type: string
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
@@ -31,6 +37,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
       - name: Setup Pages
         uses: actions/configure-pages@v6
       - name: Setup Helm
@@ -50,6 +58,27 @@ jobs:
         run: |
           mkdir -p helm-release
           cp helm/deckard-*.tgz helm-release/
+
+          # actions/deploy-pages replaces the ENTIRE site on every run (it's a one-shot artifact
+          # upload, not an incremental commit to a gh-pages branch). If we only ever put the
+          # chart version being released right now into helm-release/, every previously
+          # published version disappears from https://takenet.github.io/deckard/ as soon as this
+          # workflow runs again, breaking any consumer still pinned to an older chart version.
+          #
+          # To keep releases additive, fetch whatever is live today and carry every package we
+          # don't already have forward into this deploy, then rebuild the index from the full
+          # (old + new) set of packages actually present on disk.
+          if curl -fsSL -o /tmp/live-index.yaml https://takenet.github.io/deckard/index.yaml; then
+            for url in $(yq '.entries.deckard[].urls[]' /tmp/live-index.yaml); do
+              filename="helm-release/$(basename "$url")"
+              if [[ ! -f "$filename" ]]; then
+                curl -fsSL -o "$filename" "$url"
+              fi
+            done
+          else
+            echo "::warning::Could not fetch the existing index.yaml from https://takenet.github.io/deckard/index.yaml; publishing only the chart version built in this run."
+          fi
+
           helm repo index helm-release --url https://takenet.github.io/deckard/
           touch helm-release/.nojekyll
       - name: Upload artifact
