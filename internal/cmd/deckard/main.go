@@ -35,6 +35,8 @@ const (
 	TTL          = "ttl"
 	MAX_ELEMENTS = "max_elements"
 	METRICS      = "metrics"
+	stoppingLogPrefix = "Stopping "
+	stoppingLogSuffix = " scheduler."
 )
 
 // Global context
@@ -120,6 +122,10 @@ func isMemoryInstance() bool {
 	return config.CacheType.Get() == string(cache.MEMORY) && config.StorageType.Get() == string(storage.MEMORY)
 }
 
+func isDistributedHousekeeperSupported() bool {
+	return config.CacheType.Get() == string(cache.REDIS)
+}
+
 func startGrpcServer(queue *queue.Queue, queueService queue.QueueConfigurationService) *grpc.Server {
 	deckard := service.NewDeckardInstance(queue, queueService, isMemoryInstance())
 
@@ -147,86 +153,185 @@ func startGrpcServer(queue *queue.Queue, queueService queue.QueueConfigurationSe
 func startHouseKeeperJobs(pool *queue.Queue) election.Elector {
 	instanceID := config.GetHousekeeperInstanceID()
 	locker := lock.NewLocker(pool.GetCache(), instanceID)
-	elector := election.NewLeaseElector(locker, config.HousekeeperElectionLeaseTTL.GetDuration(), instanceID)
+	distributedExecutionEnabled := isDistributedHousekeeperSupported()
 
-	elector.Start(ctx)
-	metrics.SetLeaderStatusFunc(elector.IsLeader)
+	var elector election.Elector
+	if distributedExecutionEnabled {
+		elector = election.NewLeaseElector(locker, config.HousekeeperElectionLeaseTTL.GetDuration(), instanceID)
+		elector.Start(ctx)
+		metrics.SetLeaderStatusFunc(elector.IsLeader)
+	} else {
+		logger.S(ctx).Warnf("Housekeeper distributed execution requires cache type REDIS; running local housekeeper mode with cache type %s", config.CacheType.Get())
+		metrics.SetLeaderStatusFunc(func() bool { return true })
+	}
 
-	go scheduleAtomicTask(
-		UNLOCK,
-		locker,
-		shutdown.WaitGroup,
-		config.HousekeeperTaskUnlockDelay.GetDuration(),
-		func() bool {
-			queue.ProcessLockPool(ctx, pool)
+	if distributedExecutionEnabled {
+		go scheduleAtomicTask(
+			UNLOCK,
+			locker,
+			shutdown.WaitGroup,
+			config.HousekeeperTaskUnlockDelay.GetDuration(),
+			func() bool {
+				queue.ProcessLockPool(ctx, pool)
 
-			return true
-		},
-	)
+				return true
+			},
+		)
+	} else {
+		go scheduleLocalTask(
+			UNLOCK,
+			shutdown.WaitGroup,
+			config.HousekeeperTaskUnlockDelay.GetDuration(),
+			func() bool {
+				queue.ProcessLockPool(ctx, pool)
 
-	go scheduleAtomicTask(
-		TIMEOUT,
-		locker,
-		shutdown.WaitGroup,
-		config.HousekeeperTaskTimeoutDelay.GetDuration(),
-		func() bool {
-			_ = queue.ProcessTimeoutMessages(ctx, pool)
+				return true
+			},
+		)
+	}
 
-			return true
-		},
-	)
+	if distributedExecutionEnabled {
+		go scheduleAtomicTask(
+			TIMEOUT,
+			locker,
+			shutdown.WaitGroup,
+			config.HousekeeperTaskTimeoutDelay.GetDuration(),
+			func() bool {
+				_ = queue.ProcessTimeoutMessages(ctx, pool)
 
-	go scheduleAtomicTask(
-		TTL,
-		locker,
-		shutdown.WaitGroup,
-		config.HousekeeperTaskTTLDelay.GetDuration(),
-		func() bool {
-			now := dtime.Now()
+				return true
+			},
+		)
+	} else {
+		go scheduleLocalTask(
+			TIMEOUT,
+			shutdown.WaitGroup,
+			config.HousekeeperTaskTimeoutDelay.GetDuration(),
+			func() bool {
+				_ = queue.ProcessTimeoutMessages(ctx, pool)
 
-			metrify, _ := queue.RemoveTTLMessages(ctx, pool, &now)
+				return true
+			},
+		)
+	}
 
-			return metrify
-		},
-	)
+	if distributedExecutionEnabled {
+		go scheduleAtomicTask(
+			TTL,
+			locker,
+			shutdown.WaitGroup,
+			config.HousekeeperTaskTTLDelay.GetDuration(),
+			func() bool {
+				now := dtime.Now()
 
-	go scheduleAtomicTask(
-		MAX_ELEMENTS,
-		locker,
-		shutdown.WaitGroup,
-		config.HousekeeperTaskMaxElementsDelay.GetDuration(),
-		func() bool {
-			metrify, _ := queue.RemoveExceedingMessages(ctx, pool)
+				metrify, _ := queue.RemoveTTLMessages(ctx, pool, &now)
 
-			return metrify
-		},
-	)
+				return metrify
+			},
+		)
+	} else {
+		go scheduleLocalTask(
+			TTL,
+			shutdown.WaitGroup,
+			config.HousekeeperTaskTTLDelay.GetDuration(),
+			func() bool {
+				now := dtime.Now()
 
-	go scheduleLeaderTask(
-		METRICS,
-		elector,
-		locker,
-		shutdown.WaitGroup,
-		config.HousekeeperTaskMetricsDelay.GetDuration(),
-		func() bool {
-			queue.ComputeMetrics(ctx, pool)
+				metrify, _ := queue.RemoveTTLMessages(ctx, pool, &now)
 
-			return true
-		},
-	)
+				return metrify
+			},
+		)
+	}
 
-	go scheduleLeaderTask(
-		RECOVERY,
-		elector,
-		locker,
-		shutdown.CriticalWaitGroup,
-		config.HousekeeperTaskUpdateDelay.GetDuration(),
-		func() bool {
-			return queue.RecoveryMessagesPool(ctx, pool)
-		},
-	)
+	if distributedExecutionEnabled {
+		go scheduleAtomicTask(
+			MAX_ELEMENTS,
+			locker,
+			shutdown.WaitGroup,
+			config.HousekeeperTaskMaxElementsDelay.GetDuration(),
+			func() bool {
+				metrify, _ := queue.RemoveExceedingMessages(ctx, pool)
+
+				return metrify
+			},
+		)
+	} else {
+		go scheduleLocalTask(
+			MAX_ELEMENTS,
+			shutdown.WaitGroup,
+			config.HousekeeperTaskMaxElementsDelay.GetDuration(),
+			func() bool {
+				metrify, _ := queue.RemoveExceedingMessages(ctx, pool)
+
+				return metrify
+			},
+		)
+	}
+
+	if distributedExecutionEnabled {
+		go scheduleLeaderTask(
+			METRICS,
+			elector,
+			locker,
+			shutdown.WaitGroup,
+			config.HousekeeperTaskMetricsDelay.GetDuration(),
+			func() bool {
+				queue.ComputeMetrics(ctx, pool)
+
+				return true
+			},
+		)
+	} else {
+		go scheduleLocalTask(
+			METRICS,
+			shutdown.WaitGroup,
+			config.HousekeeperTaskMetricsDelay.GetDuration(),
+			func() bool {
+				queue.ComputeMetrics(ctx, pool)
+
+				return true
+			},
+		)
+	}
+
+	if distributedExecutionEnabled {
+		go scheduleLeaderTask(
+			RECOVERY,
+			elector,
+			locker,
+			shutdown.CriticalWaitGroup,
+			config.HousekeeperTaskUpdateDelay.GetDuration(),
+			func() bool {
+				return queue.RecoveryMessagesPool(ctx, pool)
+			},
+		)
+	} else {
+		go scheduleLocalTask(
+			RECOVERY,
+			shutdown.CriticalWaitGroup,
+			config.HousekeeperTaskUpdateDelay.GetDuration(),
+			func() bool {
+				return queue.RecoveryMessagesPool(ctx, pool)
+			},
+		)
+	}
 
 	return elector
+}
+
+func scheduleLocalTask(taskName string, taskWaitGroup *sync.WaitGroup, duration time.Duration, fn func() bool) {
+	for {
+		select {
+		case <-time.After(duration):
+			taskWaitGroup.Add(1)
+			executeTask(taskName, fn)
+			taskWaitGroup.Done()
+		case <-shutdown.Started:
+			logger.S(ctx).Debug(stoppingLogPrefix, taskName, stoppingLogSuffix)
+			return
+		}
+	}
 }
 
 // scheduleAtomicTask runs fn periodically, allowing any instance sharing
@@ -243,7 +348,7 @@ func scheduleAtomicTask(taskName string, locker lock.Locker, taskWaitGroup *sync
 			runAtomicTask(taskName, lockName, locker, lockTTL, fn)
 			taskWaitGroup.Done()
 		case <-shutdown.Started:
-			logger.S(ctx).Debug("Stopping ", taskName, " scheduler.")
+			logger.S(ctx).Debug(stoppingLogPrefix, taskName, stoppingLogSuffix)
 			return
 		}
 	}
@@ -267,7 +372,37 @@ func runAtomicTask(taskName string, lockName string, locker lock.Locker, lockTTL
 		}
 	}()
 
+	done := make(chan struct{})
+	defer close(done)
+	go renewTaskLock(taskName, lockName, locker, lockTTL, done)
+
 	executeTask(taskName, fn)
+}
+
+func renewTaskLock(taskName string, lockName string, locker lock.Locker, lockTTL time.Duration, done <-chan struct{}) {
+	if lockTTL <= 0 {
+		return
+	}
+
+	renewEvery := lockTTL / 3
+	if renewEvery <= 0 {
+		renewEvery = time.Second
+	}
+
+	ticker := time.NewTicker(renewEvery)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-done:
+			return
+		case <-ticker.C:
+			if err := locker.Renew(ctx, lockName, lockTTL); err != nil {
+				logger.S(ctx).Errorf("Error renewing lock for task %s: %v", taskName, err)
+				return
+			}
+		}
+	}
 }
 
 // scheduleLeaderTask runs fn periodically, but only on the instance currently
@@ -291,7 +426,7 @@ func scheduleLeaderTask(taskName string, elector election.Elector, locker lock.L
 			runAtomicTask(taskName, lockName, locker, lockTTL, fn)
 			taskWaitGroup.Done()
 		case <-shutdown.Started:
-			logger.S(ctx).Debug("Stopping ", taskName, " scheduler.")
+			logger.S(ctx).Debug(stoppingLogPrefix, taskName, stoppingLogSuffix)
 			return
 		}
 	}

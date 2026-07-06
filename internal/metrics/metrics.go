@@ -70,12 +70,16 @@ var (
 	// leadership. Set via SetLeaderStatusFunc once an election.Elector is created,
 	// kept as a plain func hook (instead of importing internal/election) to avoid
 	// coupling this package to the election module.
+	leaderStatusFuncMu sync.RWMutex
 	leaderStatusFunc func() bool
 )
 
 // SetLeaderStatusFunc registers the function used to report the current
 // housekeeper leadership status via the deckard_housekeeper_leader gauge.
 func SetLeaderStatusFunc(f func() bool) {
+	leaderStatusFuncMu.Lock()
+	defer leaderStatusFuncMu.Unlock()
+
 	leaderStatusFunc = f
 }
 
@@ -343,12 +347,16 @@ func metrifyTotalElements(obs metric.Int64Observer) error {
 }
 
 func metrifyLeaderStatus(obs metric.Int64Observer) error {
-	if leaderStatusFunc == nil {
+	leaderStatusFuncMu.RLock()
+	statusFunc := leaderStatusFunc
+	leaderStatusFuncMu.RUnlock()
+
+	if statusFunc == nil {
 		return nil
 	}
 
 	var value int64
-	if leaderStatusFunc() {
+	if statusFunc() {
 		value = 1
 	}
 

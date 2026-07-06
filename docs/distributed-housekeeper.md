@@ -30,8 +30,8 @@ Both modules are backend-agnostic: they only depend on a small `Store` interface
 ### Environment Variables
 
 ```bash
-# Set unique instance ID (optional - defaults to hostname, which is the pod
-# name in Kubernetes, already unique across deployments)
+# Set unique instance ID (optional - defaults to <hostname>-<unix_timestamp>;
+# in Kubernetes hostname is the pod name, so the resulting value is unique)
 DECKARD_HOUSEKEEPER_DISTRIBUTED_EXECUTION_INSTANCE_ID=housekeeper-pod-1
 
 # TTL for the per-task atomic locks (UNLOCK, TIMEOUT, TTL, MAX_ELEMENTS, and the
@@ -63,13 +63,13 @@ housekeeper:
 
 ### Task Coordination (`internal/lock`)
 
-`internal/lock` defines a generic `Locker` interface (`TryAcquire`/`Release`/`Renew`) with a Redis-backed implementation and a no-op implementation for single-instance mode. Every atomic task acquires a named lock (`housekeeper:lock:{task_name}`) before executing and releases it right after, so at most one instance runs a given task at a time.
+`internal/lock` defines a generic `Locker` interface (`TryAcquire`/`Release`/`Renew`). The package exposes `NewLocker(store, ownerID)`, implemented as a store-backed locker (`storeLocker`) over a generic `Store` (`SetNX`/`CompareAndDelete`/`CompareAndExpire`). Every atomic task acquires a named lock (`housekeeper:lock:{task_name}`) before executing and releases it right after, so at most one instance runs a given task at a time.
 
 ### Leader Election (`internal/election`)
 
-`internal/election` defines a generic `Elector` interface (`Start`/`Stop`/`IsLeader`/`ID`) with two implementations:
-- `LeaseElector`: campaigns for a single well-known lock (`housekeeper:election:leader`) in a background goroutine, independent of any task's own schedule. While follower, it periodically tries to acquire the lease; while leader, it periodically renews it. If renewal fails (e.g. the process was slow or partitioned from Redis long enough for the lease to expire and be taken over), it demotes itself to follower.
-- `StaticElector`: always reports itself as leader, used when distributed execution is disabled (single-instance mode).
+`internal/election` defines a generic `Elector` interface (`Start`/`Stop`/`IsLeader`/`ID`) and this PR provides `LeaseElector`: it campaigns for a single well-known lock (`housekeeper:election:leader`) in a background goroutine, independent of any task's own schedule. While follower, it periodically tries to acquire the lease; while leader, it periodically renews it. If renewal fails (e.g. the process was slow or partitioned from Redis long enough for the lease to expire and be taken over), it demotes itself to follower.
+
+Single-instance mode does not use a separate static elector type: the lone instance participates in the same lease election and remains leader in practice.
 
 The election loop runs on its own ticker (`lease_ttl/3`), decoupled from the metrics or recovery task delays, so changing those delays doesn't affect leadership stability. On graceful shutdown, the elector releases leadership immediately instead of waiting for the lease to expire, so failover to another instance is fast.
 
@@ -78,7 +78,7 @@ The election loop runs on its own ticker (`lease_ttl/3`), decoupled from the met
 - Per-task atomic lock: logical name `housekeeper:lock:{task_name}` (e.g. `housekeeper:lock:unlock`)
 - Leader election lock: logical name `housekeeper:election:leader`
 - These logical names are the raw keys `internal/lock`/`internal/election` pass to the backing `cache.Cache`. In production (Redis), `RedisCache.generalCacheKey` wraps every such key with the deployment's configured cache prefix and a hash-tag: `<prefix>:{<logical_name>}`. With the default prefix (`deckard_v1`), the lock for the `timeout` task is actually stored as `deckard_v1:{housekeeper:lock:timeout}`, and the leader election lock as `deckard_v1:{housekeeper:election:leader}`.
-- **Instance Identification**: Each instance has a unique ID (defaults to hostname)
+- **Instance Identification**: Each instance has a unique ID (defaults to `<hostname>-<unix_timestamp>`)
 - **TTL Management**: Locks and the election lease auto-expire to prevent deadlocks
 - **Error Handling**: Failed lock/election acquisitions are logged and retried on the next cycle
 

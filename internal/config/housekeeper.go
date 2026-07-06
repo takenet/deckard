@@ -77,5 +77,5 @@ func GetHousekeeperInstanceID() string {
 		hostname = "unknown"
 	}
 
-	return fmt.Sprintf("%s-%d", hostname, time.Now().Unix())
+	return fmt.Sprintf("%s-%d", hostname, time.Now().UnixNano())
 }

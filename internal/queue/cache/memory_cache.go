@@ -24,6 +24,7 @@ type MemoryCache struct {
 	lockNackQueues   map[string]*list.List
 	lock             *sync.Mutex
 	keys             map[string]string
+	keyExpiresAt     map[string]time.Time
 }
 
 type MemoryMessageEntry struct {
@@ -42,6 +43,7 @@ func NewMemoryCache() *MemoryCache {
 		lockAckQueues:    make(map[string]*list.List),
 		lockNackQueues:   make(map[string]*list.List),
 		keys:             make(map[string]string),
+		keyExpiresAt:     make(map[string]time.Time),
 		lock:             &sync.Mutex{},
 	}
 }
@@ -53,6 +55,7 @@ func (cache *MemoryCache) Flush(_ context.Context) {
 	cache.lockAckQueues = make(map[string]*list.List)
 	cache.lockNackQueues = make(map[string]*list.List)
 	cache.keys = make(map[string]string)
+	cache.keyExpiresAt = make(map[string]time.Time)
 	cache.lock.Unlock()
 }
 
@@ -450,7 +453,8 @@ func (cache *MemoryCache) isPresentOnPool(_ context.Context, pool *map[string]*l
 func (cache *MemoryCache) Get(_ context.Context, key string) (value string, err error) {
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
-	return cache.keys[key], nil
+	value, _ = cache.getKeyLocked(key)
+	return value, nil
 }
 
 func (cache *MemoryCache) Set(_ context.Context, key string, value string) error {
@@ -458,6 +462,7 @@ func (cache *MemoryCache) Set(_ context.Context, key string, value string) error
 	defer cache.lock.Unlock()
 
 	cache.keys[key] = value
+	delete(cache.keyExpiresAt, key)
 
 	return nil
 }
@@ -472,13 +477,15 @@ func (cache *MemoryCache) SetNX(ctx context.Context, key string, value string, t
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
 
-	// Check if key already exists
-	if _, exists := cache.keys[key]; exists {
-		return false, nil // Key already exists, SetNX failed
+	if _, exists := cache.getKeyLocked(key); exists {
+		return false, nil
 	}
 
-	// Set the key (ignoring TTL for simplicity in memory cache)
 	cache.keys[key] = value
+	if ttl > 0 {
+		cache.keyExpiresAt[key] = time.Now().Add(ttl)
+	}
+
 	return true, nil
 }
 
@@ -487,11 +494,26 @@ func (cache *MemoryCache) Del(ctx context.Context, key string) error {
 	defer cache.lock.Unlock()
 
 	delete(cache.keys, key)
+	delete(cache.keyExpiresAt, key)
 	return nil
 }
 
 func (cache *MemoryCache) Expire(ctx context.Context, key string, ttl time.Duration) error {
-	// No-op for memory cache - TTL not implemented for simplicity
+	cache.lock.Lock()
+	defer cache.lock.Unlock()
+
+	if _, exists := cache.getKeyLocked(key); !exists {
+		return nil
+	}
+
+	if ttl > 0 {
+		cache.keyExpiresAt[key] = time.Now().Add(ttl)
+		return nil
+	}
+
+	delete(cache.keys, key)
+	delete(cache.keyExpiresAt, key)
+
 	return nil
 }
 
@@ -499,11 +521,13 @@ func (cache *MemoryCache) CompareAndDelete(ctx context.Context, key string, valu
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
 
-	if cache.keys[key] != value {
+	currentValue, exists := cache.getKeyLocked(key)
+	if !exists || currentValue != value {
 		return false, nil
 	}
 
 	delete(cache.keys, key)
+	delete(cache.keyExpiresAt, key)
 
 	return true, nil
 }
@@ -512,6 +536,34 @@ func (cache *MemoryCache) CompareAndExpire(ctx context.Context, key string, valu
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
 
-	// TTL not implemented for simplicity in memory cache, only the value ownership check is enforced
-	return cache.keys[key] == value, nil
+	currentValue, exists := cache.getKeyLocked(key)
+	if !exists || currentValue != value {
+		return false, nil
+	}
+
+	if ttl > 0 {
+		cache.keyExpiresAt[key] = time.Now().Add(ttl)
+		return true, nil
+	}
+
+	delete(cache.keys, key)
+	delete(cache.keyExpiresAt, key)
+
+	return true, nil
+}
+
+func (cache *MemoryCache) getKeyLocked(key string) (string, bool) {
+	value, exists := cache.keys[key]
+	if !exists {
+		return "", false
+	}
+
+	expiresAt, hasExpiration := cache.keyExpiresAt[key]
+	if hasExpiration && !expiresAt.After(time.Now()) {
+		delete(cache.keys, key)
+		delete(cache.keyExpiresAt, key)
+		return "", false
+	}
+
+	return value, true
 }
