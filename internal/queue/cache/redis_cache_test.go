@@ -176,7 +176,7 @@ func TestCompareAndDeleteIntegration(t *testing.T) {
 	}
 
 	config.Configure(true)
-	config.RedisAddress.Set("localhost")
+	config.CacheUri.Set("redis://localhost:6379/0")
 
 	cache, err := NewRedisCache(ctx)
 	require.NoError(t, err)
@@ -218,7 +218,7 @@ func TestCompareAndExpireIntegration(t *testing.T) {
 	}
 
 	config.Configure(true)
-	config.RedisAddress.Set("localhost")
+	config.CacheUri.Set("redis://localhost:6379/0")
 
 	cache, err := NewRedisCache(ctx)
 	require.NoError(t, err)
@@ -238,7 +238,7 @@ func TestCompareAndExpireIntegration(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, refreshed)
 
-	ttl := cache.Client.TTL(ctx, fmt.Sprint("deckard:", key))
+	ttl := cache.Client.TTL(ctx, cache.generalCacheKey(key))
 	require.NoError(t, ttl.Err())
 	require.Greater(t, ttl.Val(), time.Duration(0))
 }

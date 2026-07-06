@@ -98,8 +98,8 @@ func NewRedisCache(ctx context.Context) (*RedisCache, error) {
 			unlockElements:       redis.NewScript(unlockElementsScript),
 			addElements:          redis.NewScript(addElementsScript),
 			containsElement:      redis.NewScript(containsElementScript),
-				compareAndDelete:     redis.NewScript(compareAndDeleteScript),
-				compareAndExpire:     redis.NewScript(compareAndExpireScript),
+			compareAndDelete:     redis.NewScript(compareAndDeleteScript),
+			compareAndExpire:     redis.NewScript(compareAndExpireScript),
 		},
 	}, nil
 }
