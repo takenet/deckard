@@ -25,6 +25,6 @@ func TestProject(t *testing.T) {
 	})
 
 	t.Run("Verify project version is a correct version", func(t *testing.T) {
-		require.Regexp(t, `^\d+\.\d+\.\d+(-SNAPSHOT)?$`, project.Version, "Unexpected project version")
+		require.Regexp(t, `^\d+\.\d+\.\d+(-rc\d+)?(-SNAPSHOT)?$`, project.Version, "Unexpected project version")
 	})
 }

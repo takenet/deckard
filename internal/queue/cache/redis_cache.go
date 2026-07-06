@@ -527,10 +527,9 @@ func uniqStrings(values []string) []string {
 
 // parseQueueKey converts a raw Redis key (as returned by SCAN) back into a plain
 // queue name by removing the pool prefix, any pool-type suffix matched by regex,
-// and, in cluster mode, the hash tag braces ("{" and "}") added by
-// activePool/processingPool/lockPool/lockPoolScore to keep a queue's keys in the
-// same hash slot. Those braces are an internal key-naming detail and must not
-// leak to callers.
+// The hash tag braces ("{" and "}") added by activePool/processingPool/lockPool/lockPoolScore
+// to keep a queue's keys on the same Redis slot are an internal key-naming detail
+// and must not leak to callers.
 func (cache *RedisCache) parseQueueKey(key string, suffixRegex *regexp.Regexp) string {
 	queue := strings.TrimPrefix(key, cache.poolPrefix())
 
@@ -538,9 +537,7 @@ func (cache *RedisCache) parseQueueKey(key string, suffixRegex *regexp.Regexp) s
 		queue = suffixRegex.ReplaceAllString(queue, "$1")
 	}
 
-	if cache.clusterMode {
-		queue = unwrapClusterHashTag(queue)
-	}
+	queue = unwrapClusterHashTag(queue)
 
 	return queue
 }
@@ -893,11 +890,7 @@ func (cache *RedisCache) Close(ctx context.Context) error {
 }
 
 func (cache *RedisCache) generalCacheKey(key string) string {
-	if cache.clusterMode {
-		return fmt.Sprint(cache.fullPrefix(), ":{", key, "}")
-	}
-
-	return fmt.Sprint(cache.fullPrefix(), ":", key)
+	return fmt.Sprint(cache.fullPrefix(), ":{", key, "}")
 }
 
 func (cache *RedisCache) validateQueueName(queue string) error {
@@ -912,36 +905,24 @@ func (cache *RedisCache) validateQueueName(queue string) error {
 
 // activePool returns the name of the active pool of messages.
 func (cache *RedisCache) activePool(queue string) string {
-	if cache.clusterMode {
-		return cache.poolPrefix() + "{" + queue + "}"
-	}
-	return cache.poolPrefix() + queue
+	return cache.poolPrefix() + "{" + queue + "}"
 }
 
 // processingPool returns the name of the processing pool of messages.
 func (cache *RedisCache) processingPool(queue string) string {
-	if cache.clusterMode {
-		return cache.poolPrefix() + "{" + queue + "}" + PROCESSING_POOL_SUFFIX
-	}
-	return cache.poolPrefix() + queue + PROCESSING_POOL_SUFFIX
+	return cache.poolPrefix() + "{" + queue + "}" + PROCESSING_POOL_SUFFIX
 }
 
 // lockPool returns the name of the lock pool of messages.
 func (cache *RedisCache) lockPool(queue string, lockType LockType) string {
-	if cache.clusterMode {
-		return cache.poolPrefix() + "{" + queue + "}" + ":" + string(lockType)
-	}
-	return cache.poolPrefix() + queue + ":" + string(lockType)
+	return cache.poolPrefix() + "{" + queue + "}" + ":" + string(lockType)
 }
 
 // lockPoolScore returns the name of the lock pool scores of messages.
 //
 // used to unlock messages with a predefined score.
 func (cache *RedisCache) lockPoolScore(queue string, lockType LockType) string {
-	if cache.clusterMode {
-		return cache.poolPrefix() + "{" + queue + "}" + ":" + string(lockType) + SCORE_SUFFIX
-	}
-	return cache.poolPrefix() + queue + ":" + string(lockType) + SCORE_SUFFIX
+	return cache.poolPrefix() + "{" + queue + "}" + ":" + string(lockType) + SCORE_SUFFIX
 }
 
 func resolveConfiguredPrefix() string {
