@@ -188,11 +188,13 @@ Performance benefits:
 
 ## Execution Model
 
-Distributed execution is always enabled.
+Distributed execution is enabled only when `cache.type=REDIS`.
 
-- Single-instance deployments remain supported: the only instance acquires leadership and executes all tasks normally.
-- Multi-instance deployments coordinate automatically using the same lock/election keys.
-- Housekeeper execution now always depends on lock/election storage availability.
+- When `cache.type=REDIS`, housekeeper runs in distributed mode:
+  - Single-instance deployments remain supported: the only instance acquires leadership and executes all tasks normally.
+  - Multi-instance deployments coordinate automatically using the same lock/election keys.
+  - Housekeeper execution depends on lock/election storage availability.
+- When `cache.type` is not `REDIS`, housekeeper runs in local mode (no distributed lock or leader election).
 
 ## Troubleshooting
 

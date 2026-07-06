@@ -87,8 +87,6 @@ func TestAckStorageErrorShouldResultError(t *testing.T) {
 }
 
 func TestAckMakeAvailableErrorShouldResultError(t *testing.T) {
-	t.Parallel()
-
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -1055,8 +1053,6 @@ func TestCountStorageErrorShouldResultError(t *testing.T) {
 }
 
 func TestAckWithLockShouldLock(t *testing.T) {
-	t.Parallel()
-
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -1101,8 +1097,6 @@ func TestAckWithLockShouldLock(t *testing.T) {
 }
 
 func TestAckWithLockAndScoreShouldLockWithScore(t *testing.T) {
-	t.Parallel()
-
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -1149,8 +1143,6 @@ func TestAckWithLockAndScoreShouldLockWithScore(t *testing.T) {
 }
 
 func TestAckWithLockErrorShouldResultError(t *testing.T) {
-	t.Parallel()
-
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -1186,8 +1178,6 @@ func TestAckWithLockErrorShouldResultError(t *testing.T) {
 }
 
 func TestNackWithLockShouldLock(t *testing.T) {
-	t.Parallel()
-
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
@@ -1235,8 +1225,6 @@ func TestNackWithLockShouldLock(t *testing.T) {
 }
 
 func TestNackWithLockErrorShouldResultError(t *testing.T) {
-	t.Parallel()
-
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
