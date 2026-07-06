@@ -10,3 +10,133 @@ services:
     image: mongo:8.0
     ports:
       - "$MONGODB_PORT:$MONGODB_PORT"
+
+  # Redis Cluster setup for testing.
+  #
+  # IMPORTANT: these nodes use network_mode: host with --cluster-announce-ip 127.0.0.1 (instead of
+  # plain bridge networking + container hostnames). Redis Cluster clients follow MOVED/ASK
+  # redirects using whatever address each node announces to its peers. With regular bridge
+  # networking, nodes announce their internal container IP/hostname (e.g. 172.18.0.x or
+  # redis-cluster-node-1), which is unreachable from a go test process running directly on the
+  # host (or on a GitHub Actions runner) - connections work initially via the published port, then
+  # every redirect times out. host networking + --cluster-announce-ip 127.0.0.1 makes every node
+  # consistently reachable at localhost:7000-7005 from the host itself. Linux-only, but that's all
+  # we run on locally and in CI. Do not remove this without also updating docs/CI accordingly.
+  redis-cluster-node-0:
+    image: "redis:7.0"
+    network_mode: host
+    ports:
+      - "7000:7000"
+    command: redis-server --port 7000 --bind 0.0.0.0 --protected-mode no --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7000 --cluster-announce-bus-port 17000 --appendonly yes
+    volumes:
+      - redis-cluster-0-data:/data
+
+  redis-cluster-node-1:
+    image: "redis:7.0"
+    network_mode: host
+    ports:
+      - "7001:7001"
+    command: redis-server --port 7001 --bind 0.0.0.0 --protected-mode no --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7001 --cluster-announce-bus-port 17001 --appendonly yes
+    volumes:
+      - redis-cluster-1-data:/data
+
+  redis-cluster-node-2:
+    image: "redis:7.0"
+    network_mode: host
+    ports:
+      - "7002:7002"
+    command: redis-server --port 7002 --bind 0.0.0.0 --protected-mode no --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7002 --cluster-announce-bus-port 17002 --appendonly yes
+    volumes:
+      - redis-cluster-2-data:/data
+
+  redis-cluster-node-3:
+    image: "redis:7.0"
+    network_mode: host
+    ports:
+      - "7003:7003"
+    command: redis-server --port 7003 --bind 0.0.0.0 --protected-mode no --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7003 --cluster-announce-bus-port 17003 --appendonly yes
+    volumes:
+      - redis-cluster-3-data:/data
+
+  redis-cluster-node-4:
+    image: "redis:7.0"
+    network_mode: host
+    ports:
+      - "7004:7004"
+    command: redis-server --port 7004 --bind 0.0.0.0 --protected-mode no --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7004 --cluster-announce-bus-port 17004 --appendonly yes
+    volumes:
+      - redis-cluster-4-data:/data
+
+  redis-cluster-node-5:
+    image: "redis:7.0"
+    network_mode: host
+    ports:
+      - "7005:7005"
+    command: redis-server --port 7005 --bind 0.0.0.0 --protected-mode no --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7005 --cluster-announce-bus-port 17005 --appendonly yes
+    volumes:
+      - redis-cluster-5-data:/data
+
+  # Helper service to initialize the cluster
+  redis-cluster-init:
+    image: "redis:7.0"
+    network_mode: host
+    depends_on:
+      - redis-cluster-node-0
+      - redis-cluster-node-1
+      - redis-cluster-node-2
+      - redis-cluster-node-3
+      - redis-cluster-node-4
+      - redis-cluster-node-5
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        for port in 7000 7001 7002 7003 7004 7005; do
+          retries=30
+          until redis-cli -h 127.0.0.1 -p "$$port" ping >/dev/null 2>&1; do
+            retries=$$((retries - 1))
+            if [ "$$retries" -le 0 ]; then
+              echo "redis node on port $$port did not become ready in time" >&2
+              exit 1
+            fi
+            sleep 1
+          done
+        done
+
+        if redis-cli -h 127.0.0.1 -p 7000 cluster info 2>/dev/null | grep -q "cluster_state:ok"; then
+          echo "redis cluster already initialized"
+          exit 0
+        fi
+
+        redis-cli --cluster create \
+          127.0.0.1:7000 \
+          127.0.0.1:7001 \
+          127.0.0.1:7002 \
+          127.0.0.1:7003 \
+          127.0.0.1:7004 \
+          127.0.0.1:7005 \
+          --cluster-replicas 1 \
+          --cluster-yes
+
+  redisinsight:
+    image: redis/redisinsight:latest
+    ports:
+      - "5540:5540"
+    depends_on:
+      - redis-cluster-node-0
+      - redis-cluster-node-1
+      - redis-cluster-node-2
+      - redis-cluster-node-3
+      - redis-cluster-node-4
+      - redis-cluster-node-5
+    networks:
+      - default
+
+volumes:
+  redis-cluster-0-data:
+  redis-cluster-1-data:
+  redis-cluster-2-data:
+  redis-cluster-3-data:
+  redis-cluster-4-data:
+  redis-cluster-5-data:

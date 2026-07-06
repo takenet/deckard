@@ -75,9 +75,10 @@ mongodb:
   enabled: true
   auth:
     enabled: true
-    # In a production environment prefer setting all passwords and configurations using mongodb's existingSecret chart field
+    # You can use mongodb.auth.existingSecret for better secret management.
+    # Plain text values here are part of bitnami/mongodb config and are allowed.
     rootUser: deckard
-    rootPassword: deckard
+    rootPassword: "deckard"
   service:
     ports:
       mongodb: 27017
@@ -94,18 +95,28 @@ mongodb:
       db.queue.createIndex({ "id": 1, "queue": 1 }, { unique: true });
 
 cache:
-  # Deckard's DECKARD_REDIS_TYPE environment variable
+  # Deckard's DECKARD_CACHE_TYPE environment variable
   # Available options: REDIS, MEMORY
   # Remember to set the redis.enabled to false if you want to use a self-deployed Redis or a Memory storage
   type: REDIS
+  # Deckard's DECKARD_CACHE_PREFIX environment variable.
+  # Defines the Redis key namespace prefix used by Deckard (e.g. "deckard_v1").
+  # Change it to run multiple Deckard instances in the same Redis.
+  prefix: deckard_v1
   connectionSecret:
     # Use an existing Secret for the cache connection instead of having the chart generate one.
-    # Direct cache URI overrides are not exposed through values.yaml; disable redis.enabled and provide the URI with this Secret.
+    # The Secret value holds the Redis connection details (address, credentials, db, TLS, timeouts,
+    # pool size, etc.): a redis:// or rediss:// URI for standalone, or go-redis's cluster URL format
+    # for Redis Cluster (base URI + repeated addr=host:port query params), e.g.
+    # "redis://node-1:6379?addr=node-2:6379&addr=node-3:6379".
     existingSecret: ""
     key: cache-uri
   redis:
-    # Deckard's DECKARD_REDIS_DB environment variable
-    database: 0
+    cluster:
+      # Deckard's DECKARD_REDIS_CLUSTER_MODE environment variable.
+      # Only supported with an external Redis Cluster: set redis.enabled=false and provide
+      # cache.connectionSecret.existingSecret with the cluster URL described above.
+      mode: false
 
 # See available options here: https://github.com/bitnami/charts/tree/main/bitnami/redis
 redis:
@@ -117,8 +128,9 @@ redis:
       redis: 6379
   auth:
     enabled: true
-    # In a production environment prefer setting all passwords using redis's existingSecret chart field
-    password: deckard
+    # You can use redis.auth.existingSecret for better secret management.
+    # Plain text values here are part of bitnami/redis config and are allowed.
+    password: "deckard"
 
 service:
   enabled: true

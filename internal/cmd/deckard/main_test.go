@@ -35,7 +35,7 @@ func TestLoadMemoryDeckardDefaultSettingsShouldLoadSuccessfullyIntegration(t *te
 			conn, err := dial()
 
 			if err == nil {
-				conn.Close()
+				_ = conn.Close()
 				break
 			}
 		}
@@ -49,7 +49,7 @@ func TestLoadMemoryDeckardDefaultSettingsShouldLoadSuccessfullyIntegration(t *te
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	client := deckard.NewDeckardClient(conn)
 
@@ -82,7 +82,9 @@ func TestLoadRedisAndMongoDBDeckardShouldLoadSuccessfullyIntegration(t *testing.
 
 	config.Configure(true)
 	config.CacheType.Set("REDIS")
+	config.CacheUri.Set("redis://localhost:6379/0")
 	config.StorageType.Set("MONGODB")
+	config.StorageUri.Set("mongodb://localhost:27017/deckard")
 	config.GrpcPort.Set(8050)
 
 	go main()
@@ -93,7 +95,7 @@ func TestLoadRedisAndMongoDBDeckardShouldLoadSuccessfullyIntegration(t *testing.
 			conn, err := dial()
 
 			if err == nil {
-				conn.Close()
+				_ = conn.Close()
 				break
 			}
 		}
@@ -107,7 +109,7 @@ func TestLoadRedisAndMongoDBDeckardShouldLoadSuccessfullyIntegration(t *testing.
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	client := deckard.NewDeckardClient(conn)
 
@@ -142,8 +144,8 @@ func TestStopDeckardShouldStopReceivingRequestIntegration(t *testing.T) {
 		return
 	}
 
-	os.Setenv(config.GrpcPort.GetKey(), "8051")
-	defer os.Unsetenv(config.GrpcPort.GetKey())
+	_ = os.Setenv(config.GrpcPort.GetKey(), "8051")
+	defer func() { _ = os.Unsetenv(config.GrpcPort.GetKey()) }()
 
 	shutdown.Reset()
 	go main()
@@ -154,7 +156,7 @@ func TestStopDeckardShouldStopReceivingRequestIntegration(t *testing.T) {
 			conn, err := dial()
 
 			if err == nil {
-				conn.Close()
+				_ = conn.Close()
 				break
 			}
 		}

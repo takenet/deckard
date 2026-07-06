@@ -1240,3 +1240,58 @@ func (suite *CacheIntegrationTestSuite) TestPullMessagesScoreFiltering() {
 func float64Ptr(f float64) *float64 {
 	return &f
 }
+
+// TestListQueuesWithManyCachedQueues tests that ListQueues properly iterates through all queues
+// without missing any, especially with a queue count large enough to force multiple SCAN
+// pagination batches on Redis (batch size is 1000) and, in cluster mode, to spread across every
+// shard - this is what exercises RedisCache.ListQueues' ForEachMaster fan-out end-to-end.
+func (suite *CacheIntegrationTestSuite) TestListQueuesWithManyCachedQueues() {
+	numQueues := 1500
+	for i := 0; i < numQueues; i++ {
+		queueName := fmt.Sprintf("test_queue_%d", i)
+		_, opErr := suite.cache.Insert(ctx, queueName, &message.Message{
+			ID:          "msg1",
+			Description: "desc",
+			Queue:       queueName,
+			Score:       123456,
+		})
+		require.NoError(suite.T(), opErr)
+	}
+
+	result, listErr := suite.cache.ListQueues(ctx, "*", pool.PRIMARY_POOL)
+	require.NoError(suite.T(), listErr)
+	require.Len(suite.T(), result, numQueues)
+
+	queueMap := make(map[string]bool, len(result))
+	for _, queue := range result {
+		queueMap[queue] = true
+	}
+
+	for i := 0; i < numQueues; i++ {
+		expectedQueue := fmt.Sprintf("test_queue_%d", i)
+		require.True(suite.T(), queueMap[expectedQueue], "Queue %s should be in the result", expectedQueue)
+	}
+}
+
+// TestListQueuesWithSpecificPattern tests pattern matching in ListQueues.
+func (suite *CacheIntegrationTestSuite) TestListQueuesWithSpecificPattern() {
+	queues := []string{"prod_queue_1", "prod_queue_2", "dev_queue_1", "test_queue_1"}
+	for _, queueName := range queues {
+		_, opErr := suite.cache.Insert(ctx, queueName, &message.Message{
+			ID:          "msg1",
+			Description: "desc",
+			Queue:       queueName,
+			Score:       123456,
+		})
+		require.NoError(suite.T(), opErr)
+	}
+
+	result, listErr := suite.cache.ListQueues(ctx, "prod*", pool.PRIMARY_POOL)
+	require.NoError(suite.T(), listErr)
+	require.Len(suite.T(), result, 2)
+
+	require.Contains(suite.T(), result, "prod_queue_1")
+	require.Contains(suite.T(), result, "prod_queue_2")
+	require.NotContains(suite.T(), result, "dev_queue_1")
+	require.NotContains(suite.T(), result, "test_queue_1")
+}

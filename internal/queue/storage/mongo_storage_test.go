@@ -109,6 +109,7 @@ func TestMongoStorageIntegration(t *testing.T) {
 	}
 
 	config.Configure(true)
+	config.StorageUri.Set("mongodb://localhost:27017/unit_test")
 	config.MongoDatabase.Set("unit_test")
 
 	storage, err := NewMongoStorage(context.Background())
@@ -125,20 +126,17 @@ func TestMongoConnectionWithURIIntegration(t *testing.T) {
 		t.Skip()
 	}
 
-	os.Setenv("DECKARD_MONGO_URI", "mongodb://localhost:27017")
-	os.Setenv("DECKARD_MONGO_ADDRESSES", "none")
-	os.Setenv("DECKARD_MONGO_PASSWORD", "none")
+	// DECKARD_MONGO_URI resolves to the same config key as DECKARD_STORAGE_URI (StorageUri's alias).
+	_ = os.Setenv("DECKARD_MONGO_URI", "mongodb://localhost:27017")
 
-	defer os.Unsetenv("DECKARD_MONGO_URI")
-	defer os.Unsetenv("DECKARD_MONGO_ADDRESSES")
-	defer os.Unsetenv("DECKARD_MONGO_PASSWORD")
+	defer func() { _ = os.Unsetenv("DECKARD_MONGO_URI") }()
 
 	config.Configure(true)
 
 	storage, err := NewMongoStorage(context.Background())
 	require.NoError(t, err)
 
-	defer storage.Flush(context.Background())
+	defer func() { _, _ = storage.Flush(context.Background()) }()
 
 	insert, updated, err := storage.Insert(context.Background(), &message.Message{
 		ID:    "123",
@@ -162,6 +160,19 @@ func TestNewStorageWithoutServerShouldErrorIntegration(t *testing.T) {
 	_, err := NewMongoStorage(context.Background())
 
 	require.Error(t, err)
+}
+
+func TestNewStorageWithoutURIShouldErrorIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
+	config.Configure(true)
+	config.StorageUri.Set("")
+
+	_, err := NewMongoStorage(context.Background())
+
+	require.ErrorIs(t, err, errStorageUriRequired)
 }
 
 func TestGetNilProjectionShouldReturnEmptyBson(t *testing.T) {

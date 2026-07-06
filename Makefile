@@ -1,5 +1,11 @@
 CURRENT_VERSION := $(shell cat internal/project/project.go | sed -Ee 's/const Version = "(.*)"/\1/' | tail -1)
 
+# Use bash with pipefail so that recipes piping `gotestsum ... | tee gotest.out`
+# fail when the piped command fails, instead of always succeeding because the
+# last command in the pipe (tee) never returns a non-zero exit code.
+SHELL := /bin/bash
+.SHELLFLAGS := -o pipefail -c
+
 build:
 	go build -o exec/deckard internal/cmd/deckard/main.go
 
@@ -13,7 +19,10 @@ build-image:
 	@echo Building imagem. Version: $(CURRENT_VERSION)
 	export SOURCE_DATE_EPOCH=$(shell date +%s);\
 	GO111MODULE=on ko publish -B -t $(CURRENT_VERSION) github.com/takenet/deckard/internal/cmd/deckard
+ifneq ($(SKIP_LATEST_TAG),true)
+	export SOURCE_DATE_EPOCH=$(shell date +%s);\
 	GO111MODULE=on ko publish -B -t latest github.com/takenet/deckard/internal/cmd/deckard
+endif
 
 build-local-image:
 	@echo Building local imagem. Version: $(CURRENT_VERSION)
