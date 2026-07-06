@@ -9,7 +9,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/takenet/deckard"
+	"github.com/takenet/deckard/internal/audit"
 	"github.com/takenet/deckard/internal/config"
+	"github.com/takenet/deckard/internal/queue"
+	"github.com/takenet/deckard/internal/queue/cache"
+	"github.com/takenet/deckard/internal/queue/storage"
 	"github.com/takenet/deckard/internal/shutdown"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -169,6 +173,97 @@ func TestStopDeckardShouldStopReceivingRequestIntegration(t *testing.T) {
 	_, err := dial()
 
 	require.Error(t, err)
+}
+
+// newTestQueue builds a real *queue.Queue (no mocks) backed by the storage/cache
+// implementations currently configured, mirroring the wiring done in main().
+func newTestQueue(t *testing.T) *queue.Queue {
+	t.Helper()
+
+	dataStorage, err := storage.CreateStorage(ctx, storage.Type(config.StorageType.Get()))
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = dataStorage.Close(ctx) })
+
+	dataCache, err := cache.CreateCache(ctx, cache.Type(config.CacheType.Get()))
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = dataCache.Close(ctx) })
+
+	auditor, err := audit.NewAuditor(shutdown.WaitGroup)
+	require.NoError(t, err)
+
+	configurationService := queue.NewQueueConfigurationService(ctx, dataStorage)
+
+	return queue.NewQueue(auditor, dataStorage, configurationService, dataCache)
+}
+
+// TestStartHouseKeeperJobsDistributedModeShouldElectLeaderAndRunTasksIntegration
+// exercises startHouseKeeperJobs end-to-end against a real Redis instance:
+// leader election (campaign/renew), the per-task distributed lock acquire/
+// renew/release cycle, and the atomic vs leader task scheduling branches.
+func TestStartHouseKeeperJobsDistributedModeShouldElectLeaderAndRunTasksIntegration(t *testing.T) {
+	if testing.Short() {
+		return
+	}
+
+	shutdown.Reset()
+	ctx, cancel = context.WithCancel(context.Background())
+
+	config.Configure(true)
+	config.CacheType.Set("REDIS")
+	config.CacheUri.Set("redis://localhost:6379/0")
+	config.StorageType.Set("MEMORY")
+	config.HousekeeperTaskUnlockDelay.Set("10ms")
+	config.HousekeeperTaskTimeoutDelay.Set("10ms")
+	config.HousekeeperTaskTTLDelay.Set("10ms")
+	config.HousekeeperTaskMaxElementsDelay.Set("10ms")
+	config.HousekeeperTaskMetricsDelay.Set("10ms")
+	config.HousekeeperTaskUpdateDelay.Set("10ms")
+	config.HousekeeperDistributedExecutionLockTTL.Set("60ms")
+	config.HousekeeperElectionLeaseTTL.Set("30ms")
+
+	q := newTestQueue(t)
+
+	elector := startHouseKeeperJobs(q)
+	require.NotNil(t, elector, "distributed mode (REDIS cache) must return a real elector")
+
+	require.Eventually(t, elector.IsLeader, time.Second, 5*time.Millisecond, "instance should elect itself leader")
+
+	// Let atomic and leader tasks cycle at least once, including at least one
+	// lock renewal tick (lockTTL/3 = 20ms).
+	time.Sleep(150 * time.Millisecond)
+
+	elector.Stop(ctx)
+	require.False(t, elector.IsLeader(), "leadership must be released on Stop")
+
+	shutdown.PerformShutdown(ctx, cancel, nil)
+}
+
+// TestStartHouseKeeperJobsLocalModeShouldRunTasksWithoutElectionIntegration
+// exercises startHouseKeeperJobs' local (non-distributed) fallback path, used
+// when the cache backend does not support distributed execution (e.g. MEMORY).
+func TestStartHouseKeeperJobsLocalModeShouldRunTasksWithoutElectionIntegration(t *testing.T) {
+	shutdown.Reset()
+	ctx, cancel = context.WithCancel(context.Background())
+
+	config.Configure(true)
+	config.CacheType.Set("MEMORY")
+	config.StorageType.Set("MEMORY")
+	config.HousekeeperTaskUnlockDelay.Set("10ms")
+	config.HousekeeperTaskTimeoutDelay.Set("10ms")
+	config.HousekeeperTaskTTLDelay.Set("10ms")
+	config.HousekeeperTaskMaxElementsDelay.Set("10ms")
+	config.HousekeeperTaskMetricsDelay.Set("10ms")
+	config.HousekeeperTaskUpdateDelay.Set("10ms")
+
+	q := newTestQueue(t)
+
+	elector := startHouseKeeperJobs(q)
+	require.Nil(t, elector, "local mode (non-REDIS cache) must not return an elector")
+
+	// Let local task loops cycle at least once.
+	time.Sleep(50 * time.Millisecond)
+
+	shutdown.PerformShutdown(ctx, cancel, nil)
 }
 
 func dial() (*grpc.ClientConn, error) {

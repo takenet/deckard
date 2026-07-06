@@ -87,3 +87,55 @@ func TestRedisLockRenewNotHeldReturnsError(t *testing.T) {
 	err = owner2.Renew(ctx, name, ttl)
 	require.Error(t, err, "owner2 should not be able to renew a lock it does not hold")
 }
+
+func TestRedisLockTryAcquireShouldSucceedAfterPreviousLockExpires(t *testing.T) {
+	t.Parallel()
+
+	store := cache.NewMemoryCache()
+	owner1 := NewLocker(store, "owner-1")
+	owner2 := NewLocker(store, "owner-2")
+
+	ctx := context.Background()
+	name := "test-lock-expiration"
+	ttl := 20 * time.Millisecond
+
+	acquired, err := owner1.TryAcquire(ctx, name, ttl)
+	require.NoError(t, err)
+	require.True(t, acquired)
+
+	acquired, err = owner2.TryAcquire(ctx, name, ttl)
+	require.NoError(t, err)
+	require.False(t, acquired, "owner2 must not acquire the lock before it expires")
+
+	time.Sleep(40 * time.Millisecond)
+
+	acquired, err = owner2.TryAcquire(ctx, name, ttl)
+	require.NoError(t, err)
+	require.True(t, acquired, "owner2 must acquire the lock once owner1's lease has expired")
+}
+
+func TestRedisLockRenewShouldExtendLockPastOriginalTTL(t *testing.T) {
+	t.Parallel()
+
+	store := cache.NewMemoryCache()
+	owner1 := NewLocker(store, "owner-1")
+	owner2 := NewLocker(store, "owner-2")
+
+	ctx := context.Background()
+	name := "test-lock-renew-extends"
+	ttl := 30 * time.Millisecond
+
+	acquired, err := owner1.TryAcquire(ctx, name, ttl)
+	require.NoError(t, err)
+	require.True(t, acquired)
+
+	// Renew before the original TTL would have expired, extending the lease.
+	err = owner1.Renew(ctx, name, ttl)
+	require.NoError(t, err)
+
+	time.Sleep(20 * time.Millisecond)
+
+	acquired, err = owner2.TryAcquire(ctx, name, ttl)
+	require.NoError(t, err)
+	require.False(t, acquired, "owner1's renewed lock must still be held past the original TTL window")
+}
