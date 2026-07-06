@@ -112,28 +112,34 @@ func unlockMessagesParallel(ctx context.Context, pool *Queue, queues []string, l
 		parallelism = 5 // Default fallback
 	}
 
-	// Use buffered channel to limit concurrency
-	semaphore := make(chan struct{}, parallelism)
+	// Fixed-size worker pool consuming from a jobs channel, so the number of
+	// goroutines is capped at parallelism regardless of how many queues have
+	// locked messages.
+	jobs := make(chan string)
 	var wg sync.WaitGroup
 
+	for i := 0; i < parallelism; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for queueName := range jobs {
+				unlockSingleQueue(ctx, pool, queueName, lockType)
+			}
+		}()
+	}
+
+feed:
 	for i := range queues {
 		if shutdown.Ongoing() {
 			logger.S(ctx).Info("Shutdown started. Stopping unlock process.")
-			break
+			break feed
 		}
 
-		wg.Add(1)
-		go func(queueName string) {
-			defer wg.Done()
-
-			// Acquire semaphore
-			semaphore <- struct{}{}
-			defer func() { <-semaphore }()
-
-			unlockSingleQueue(ctx, pool, queueName, lockType)
-		}(queues[i])
+		jobs <- queues[i]
 	}
 
+	close(jobs)
 	wg.Wait()
 }
 
@@ -215,12 +221,13 @@ func RecoveryMessagesPool(ctx context.Context, pool *Queue) (metrify bool) {
 				InternalIdBreakpointLte: recoveryBreakpoint,
 			},
 			Projection: &map[string]int{
-				"id":         1,
-				"score":      1,
-				"queue":      1,
-				"last_score": 1,
-				"last_usage": 1,
-				"lock_ms":    1,
+				"id":           1,
+				"score":        1,
+				"queue":        1,
+				"last_score":   1,
+				"last_usage":   1,
+				"lock_ms":      1,
+				"locked_until": 1,
 			},
 			Sort:  sort,
 			Limit: int64(4000),
@@ -232,12 +239,21 @@ func RecoveryMessagesPool(ctx context.Context, pool *Queue) (metrify bool) {
 	}
 
 	if len(messages) > 0 {
+		now := dtime.Now()
+
 		addMessages := make([]*message.Message, len(messages))
 		for i := range messages {
 			addMessages[i] = &messages[i]
 
-			// TODO:
-			if messages[i].Score < score.Min {
+			// If the message may still be locked/in-flight (its persisted LockedUntil is in the
+			// future), avoid immediately redelivering it at the highest priority: instead, delay
+			// its availability until the original lock would have naturally expired. This can't
+			// guarantee correctness (we don't know for certain it's still being processed), but
+			// meaningfully reduces duplicate-processing risk compared to unconditionally
+			// clamping to score.Min, which is what happens for every other recovered message.
+			if messages[i].LockedUntil != nil && messages[i].LockedUntil.After(now) {
+				messages[i].Score = score.GetScoreFromTime(messages[i].LockedUntil)
+			} else if messages[i].Score < score.Min {
 				messages[i].Score = score.Min
 			} else if messages[i].Score > score.Max {
 				messages[i].Score = score.Max

@@ -11,6 +11,7 @@ import (
 
 	"github.com/elliotchance/orderedmap/v2"
 	"github.com/takenet/deckard/internal/audit"
+	"github.com/takenet/deckard/internal/dtime"
 	"github.com/takenet/deckard/internal/logger"
 	"github.com/takenet/deckard/internal/metrics"
 	"github.com/takenet/deckard/internal/queue/cache"
@@ -158,6 +159,19 @@ func (pool *Queue) AddMessagesToCacheWithAuditReason(ctx context.Context, reason
 	return count, nil
 }
 
+// lockedUntil returns the timestamp until which msg is expected to remain locked given its
+// LockMs, or nil if the message isn't lock-based (LockMs <= 0). Persisted alongside the message
+// so the recovery task can tell a possibly-still-locked message apart from an available one.
+func lockedUntil(msg *message.Message) *time.Time {
+	if msg.LockMs <= 0 {
+		return nil
+	}
+
+	until := dtime.Now().Add(time.Duration(msg.LockMs) * time.Millisecond)
+
+	return &until
+}
+
 func (pool *Queue) Nack(ctx context.Context, msg *message.Message, timestamp time.Time, reason string) (bool, error) {
 	if msg == nil {
 		return false, nil
@@ -170,6 +184,8 @@ func (pool *Queue) Nack(ctx context.Context, msg *message.Message, timestamp tim
 	if msg.ID == "" {
 		return false, fmt.Errorf("message has a invalid ID")
 	}
+
+	msg.LockedUntil = lockedUntil(msg)
 
 	_, err := pool.storage.Nack(ctx, msg)
 
@@ -239,6 +255,8 @@ func (pool *Queue) Ack(ctx context.Context, msg *message.Message, reason string)
 	if msg.ID == "" {
 		return false, fmt.Errorf("message has a invalid ID")
 	}
+
+	msg.LockedUntil = lockedUntil(msg)
 
 	_, err := pool.storage.Ack(ctx, msg)
 

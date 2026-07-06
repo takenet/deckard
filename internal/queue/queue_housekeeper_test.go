@@ -235,12 +235,13 @@ func TestRecoveryMessagesCacheError(t *testing.T) {
 			InternalIdBreakpointLte: "65456",
 		},
 		Projection: &map[string]int{
-			"id":         1,
-			"score":      1,
-			"queue":      1,
-			"last_score": 1,
-			"last_usage": 1,
-			"lock_ms":    1,
+			"id":           1,
+			"score":        1,
+			"queue":        1,
+			"last_score":   1,
+			"last_usage":   1,
+			"lock_ms":      1,
+			"locked_until": 1,
 		},
 		Sort:  sort,
 		Limit: int64(4000),
@@ -349,12 +350,13 @@ func TestRecoveryMessagesPoolShouldAddMessagesAfterBreakpoint(t *testing.T) {
 			InternalIdBreakpointLte: "65456",
 		},
 		Projection: &map[string]int{
-			"id":         1,
-			"score":      1,
-			"queue":      1,
-			"last_score": 1,
-			"last_usage": 1,
-			"lock_ms":    1,
+			"id":           1,
+			"score":        1,
+			"queue":        1,
+			"last_score":   1,
+			"last_usage":   1,
+			"lock_ms":      1,
+			"locked_until": 1,
 		},
 		Sort:  sort,
 		Limit: int64(4000),
@@ -368,6 +370,104 @@ func TestRecoveryMessagesPoolShouldAddMessagesAfterBreakpoint(t *testing.T) {
 		LastUsage:         &now,
 		LastScoreSubtract: 23457,
 	}).Return("65456")
+
+	q := NewQueue(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
+
+	RecoveryMessagesPool(ctx, q)
+}
+
+// TestRecoveryMessagesPoolShouldDelayScoreForPossiblyLockedMessages verifies that a recovered
+// message whose persisted LockedUntil is still in the future is inserted with a score matching
+// that future timestamp (delaying its availability until the original lock would have naturally
+// expired) instead of being clamped to score.Min like a normal, non-locked recovered message.
+func TestRecoveryMessagesPoolShouldDelayScoreForPossiblyLockedMessages(t *testing.T) {
+	t.Parallel()
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	now := time.Now()
+	futureLockedUntil := now.Add(1 * time.Hour)
+	pastLockedUntil := now.Add(-1 * time.Hour)
+
+	cacheMessages := []*message.Message{{
+		ID:          "locked",
+		Queue:       "queue",
+		InternalId:  1,
+		LockMs:      5000,
+		LockedUntil: &futureLockedUntil,
+		Score:       score.GetScoreFromTime(&futureLockedUntil),
+	}, {
+		ID:          "expired-lock",
+		Queue:       "queue",
+		InternalId:  2,
+		LockMs:      5000,
+		LockedUntil: &pastLockedUntil,
+		Score:       score.Min,
+	}, {
+		ID:         "not-locked",
+		Queue:      "queue",
+		InternalId: 3,
+		Score:      score.Min,
+	}}
+
+	mockCache := mocks.NewMockCache(mockCtrl)
+	mockCache.EXPECT().Get(ctx, cache.RECOVERY_RUNNING).Return("true", nil)
+	mockCache.EXPECT().Get(ctx, cache.RECOVERY_STORAGE_BREAKPOINT_KEY).Return("", nil)
+	mockCache.EXPECT().Set(ctx, cache.RECOVERY_STORAGE_BREAKPOINT_KEY, "3")
+	mockCache.EXPECT().Set(ctx, cache.RECOVERY_STORAGE_BREAKPOINT_KEY, cache.RECOVERY_FINISHED)
+	mockCache.EXPECT().Get(ctx, cache.RECOVERY_BREAKPOINT_KEY).Return("3", nil)
+	mockCache.EXPECT().Set(ctx, cache.RECOVERY_RUNNING, "false")
+	mockCache.EXPECT().Insert(ctx, "queue", cacheMessages).Return([]string{"locked", "expired-lock", "not-locked"}, nil)
+
+	storageMessages := []message.Message{{
+		ID:          "locked",
+		Queue:       "queue",
+		InternalId:  1,
+		LockMs:      5000,
+		LockedUntil: &futureLockedUntil,
+		Score:       score.Min,
+	}, {
+		ID:          "expired-lock",
+		Queue:       "queue",
+		InternalId:  2,
+		LockMs:      5000,
+		LockedUntil: &pastLockedUntil,
+		Score:       score.Min,
+	}, {
+		ID:         "not-locked",
+		Queue:      "queue",
+		InternalId: 3,
+		Score:      score.Min,
+	}}
+
+	sort := orderedmap.NewOrderedMap[string, int]()
+	sort.Set("_id", 1)
+
+	mockStorage := mocks.NewMockStorage(mockCtrl)
+	mockStorage.EXPECT().Find(ctx, &storage.FindOptions{
+		InternalFilter: &storage.InternalFilter{
+			InternalIdBreakpointGt:  "",
+			InternalIdBreakpointLte: "3",
+		},
+		Projection: &map[string]int{
+			"id":           1,
+			"score":        1,
+			"queue":        1,
+			"last_score":   1,
+			"last_usage":   1,
+			"lock_ms":      1,
+			"locked_until": 1,
+		},
+		Sort:  sort,
+		Limit: int64(4000),
+	}).Return(storageMessages, nil)
+	mockStorage.EXPECT().GetStringInternalId(ctx, &message.Message{
+		ID:         "not-locked",
+		Queue:      "queue",
+		InternalId: 3,
+		Score:      score.Min,
+	}).Return("3")
 
 	q := NewQueue(&audit.AuditorImpl{}, mockStorage, nil, mockCache)
 
@@ -464,12 +564,13 @@ func TestRecoveryMessagesPoolInitNonEmptyStorageShouldStartRecovery(t *testing.T
 			InternalIdBreakpointLte: storageLast.Hex(),
 		},
 		Projection: &map[string]int{
-			"id":         1,
-			"score":      1,
-			"queue":      1,
-			"last_score": 1,
-			"last_usage": 1,
-			"lock_ms":    1,
+			"id":           1,
+			"score":        1,
+			"queue":        1,
+			"last_score":   1,
+			"last_usage":   1,
+			"lock_ms":      1,
+			"locked_until": 1,
 		},
 		Sort:  sort,
 		Limit: int64(4000),
@@ -547,12 +648,13 @@ func TestRecoveryMessagesPoolAlreadyRunning(t *testing.T) {
 			InternalIdBreakpointLte: "65456",
 		},
 		Projection: &map[string]int{
-			"id":         1,
-			"score":      1,
-			"queue":      1,
-			"last_score": 1,
-			"last_usage": 1,
-			"lock_ms":    1,
+			"id":           1,
+			"score":        1,
+			"queue":        1,
+			"last_score":   1,
+			"last_usage":   1,
+			"lock_ms":      1,
+			"locked_until": 1,
 		},
 		Sort:  sort,
 		Limit: int64(4000),
@@ -641,12 +743,13 @@ func TestRecoveryMessagesPoolStorageError(t *testing.T) {
 			InternalIdBreakpointLte: "654987",
 		},
 		Projection: &map[string]int{
-			"id":         1,
-			"score":      1,
-			"queue":      1,
-			"last_score": 1,
-			"last_usage": 1,
-			"lock_ms":    1,
+			"id":           1,
+			"score":        1,
+			"queue":        1,
+			"last_score":   1,
+			"last_usage":   1,
+			"lock_ms":      1,
+			"locked_until": 1,
 		},
 		Sort:  sort,
 		Limit: int64(4000),

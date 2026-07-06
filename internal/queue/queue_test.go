@@ -1060,10 +1060,16 @@ func TestAckWithLockShouldLock(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
+	testTime := time.UnixMilli(1688060713537)
+	defer dtime.SetNowProviderValues(testTime)()
+
+	lockedUntil := testTime.Add(10 * time.Millisecond)
+
 	msg := &message.Message{
-		ID:     "id",
-		Queue:  "queue",
-		LockMs: 10,
+		ID:          "id",
+		Queue:       "queue",
+		LockMs:      10,
+		LockedUntil: &lockedUntil,
 	}
 	mockStorage := mocks.NewMockStorage(mockCtrl)
 	mockStorage.EXPECT().Ack(gomock.Any(), msg).Return(int64(1), nil)
@@ -1100,11 +1106,17 @@ func TestAckWithLockAndScoreShouldLockWithScore(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
+	testTime := time.UnixMilli(1688060713537)
+	defer dtime.SetNowProviderValues(testTime)()
+
+	lockedUntil := testTime.Add(10 * time.Millisecond)
+
 	msg := &message.Message{
-		ID:     "id",
-		Queue:  "queue",
-		LockMs: 10,
-		Score:  1234,
+		ID:          "id",
+		Queue:       "queue",
+		LockMs:      10,
+		Score:       1234,
+		LockedUntil: &lockedUntil,
 	}
 	mockStorage := mocks.NewMockStorage(mockCtrl)
 	mockStorage.EXPECT().Ack(gomock.Any(), msg).Return(int64(1), nil)
@@ -1142,10 +1154,16 @@ func TestAckWithLockErrorShouldResultError(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
+	testTime := time.UnixMilli(1688060713537)
+	defer dtime.SetNowProviderValues(testTime)()
+
+	lockedUntil := testTime.Add(10 * time.Millisecond)
+
 	msg := &message.Message{
-		ID:     "id",
-		Queue:  "queue",
-		LockMs: 10,
+		ID:          "id",
+		Queue:       "queue",
+		LockMs:      10,
+		LockedUntil: &lockedUntil,
 	}
 	mockStorage := mocks.NewMockStorage(mockCtrl)
 	mockStorage.EXPECT().Ack(gomock.Any(), msg).Return(int64(1), nil)
@@ -1173,12 +1191,18 @@ func TestNackWithLockShouldLock(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
+	testTime := time.UnixMilli(1688060713537)
+	defer dtime.SetNowProviderValues(testTime)()
+
 	now := time.Now()
 
+	lockedUntil := testTime.Add(10 * time.Millisecond)
+
 	msg := &message.Message{
-		ID:     "id",
-		Queue:  "queue",
-		LockMs: 10,
+		ID:          "id",
+		Queue:       "queue",
+		LockMs:      10,
+		LockedUntil: &lockedUntil,
 	}
 
 	mockStorage := mocks.NewMockStorage(mockCtrl)
@@ -1216,12 +1240,18 @@ func TestNackWithLockErrorShouldResultError(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
+	testTime := time.UnixMilli(1688060713537)
+	defer dtime.SetNowProviderValues(testTime)()
+
 	now := time.Now()
 
+	lockedUntil := testTime.Add(10 * time.Millisecond)
+
 	msg := &message.Message{
-		ID:     "id",
-		Queue:  "queue",
-		LockMs: 10,
+		ID:          "id",
+		Queue:       "queue",
+		LockMs:      10,
+		LockedUntil: &lockedUntil,
 	}
 
 	mockStorage := mocks.NewMockStorage(mockCtrl)
@@ -1250,12 +1280,18 @@ func TestNackWithStorageErrorShouldResultError(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
+	testTime := time.UnixMilli(1688060713537)
+	defer dtime.SetNowProviderValues(testTime)()
+
 	now := time.Now()
 
+	lockedUntil := testTime.Add(10 * time.Millisecond)
+
 	msg := &message.Message{
-		ID:     "id",
-		Queue:  "queue",
-		LockMs: 10,
+		ID:          "id",
+		Queue:       "queue",
+		LockMs:      10,
+		LockedUntil: &lockedUntil,
 	}
 
 	mockStorage := mocks.NewMockStorage(mockCtrl)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"sync"
@@ -11,6 +12,8 @@ import (
 	"github.com/takenet/deckard/internal/audit"
 	"github.com/takenet/deckard/internal/config"
 	"github.com/takenet/deckard/internal/dtime"
+	"github.com/takenet/deckard/internal/election"
+	"github.com/takenet/deckard/internal/lock"
 	"github.com/takenet/deckard/internal/logger"
 	"github.com/takenet/deckard/internal/metrics"
 	"github.com/takenet/deckard/internal/queue"
@@ -34,9 +37,6 @@ const (
 	METRICS      = "metrics"
 )
 
-// Locker to execute only one task simultaneously
-var backgroundTaskLocker *sync.Mutex
-
 // Global context
 var ctx context.Context
 var cancel context.CancelFunc
@@ -44,8 +44,10 @@ var cancel context.CancelFunc
 // Package-visible for testing
 var server *grpc.Server
 
+// Package-visible for testing
+var housekeeperElector election.Elector
+
 func main() {
-	backgroundTaskLocker = &sync.Mutex{}
 	ctx, cancel = context.WithCancel(context.Background())
 
 	config.Configure()
@@ -97,7 +99,7 @@ func main() {
 	}
 
 	if config.HousekeeperEnabled.GetBool() {
-		startHouseKeeperJobs(queue)
+		housekeeperElector = startHouseKeeperJobs(queue)
 	}
 
 	// Handle sigterm and await termChan signal
@@ -105,6 +107,11 @@ func main() {
 
 	// Blocks here until interrupted
 	<-shutdown.CancelChan
+
+	if housekeeperElector != nil {
+		// Release leadership promptly instead of waiting for the election lease to expire.
+		housekeeperElector.Stop(ctx)
+	}
 
 	shutdown.PerformShutdown(ctx, cancel, server)
 }
@@ -125,20 +132,38 @@ func startGrpcServer(queue *queue.Queue, queueService queue.QueueConfigurationSe
 	return server
 }
 
-func startHouseKeeperJobs(pool *queue.Queue) {
-	// Create distributed lock if enabled
-	var distributedLock queue.DistributedLock
+// startHouseKeeperJobs wires the housekeeper task scheduler and, when
+// distributed execution is enabled, a Redis-backed leader election shared
+// across every housekeeper-enabled instance (whether embedded in the gRPC
+// pod or running as a dedicated housekeeper deployment - both read/write the
+// same Redis keys, so exactly one leader is elected fleet-wide).
+//
+// Tasks are split in two groups:
+//   - Atomic tasks (UNLOCK, TIMEOUT, TTL, MAX_ELEMENTS): safe to run on any
+//     instance, mutual exclusion is only needed to avoid wasted duplicate work.
+//   - Leader tasks (METRICS, RECOVERY): must run on a single instance fleet-wide
+//     to avoid duplicated metrics and conflicting cache reconstruction, so they
+//     also require holding housekeeper leadership.
+func startHouseKeeperJobs(pool *queue.Queue) election.Elector {
+	instanceID := config.GetHousekeeperInstanceID()
+
+	var locker lock.Locker
+	var elector election.Elector
+
 	if config.HousekeeperDistributedExecutionEnabled.GetBool() {
-		instanceID := config.GetHousekeeperInstanceID()
-		distributedLock = queue.NewRedisDistributedLock(pool.GetCache(), instanceID)
+		locker = lock.NewLocker(pool.GetCache(), instanceID)
+		elector = election.NewLeaseElector(locker, config.HousekeeperElectionLeaseTTL.GetDuration(), instanceID)
 	} else {
-		distributedLock = queue.NewNoOpDistributedLock()
+		locker = lock.NewNoopLocker()
+		elector = election.NewStaticElector(instanceID)
 	}
 
-	go scheduleTaskWithDistributedLock(
+	elector.Start(ctx)
+	metrics.SetLeaderStatusFunc(elector.IsLeader)
+
+	go scheduleAtomicTask(
 		UNLOCK,
-		nil, // No local lock needed with distributed locking
-		distributedLock,
+		locker,
 		shutdown.WaitGroup,
 		config.HousekeeperTaskUnlockDelay.GetDuration(),
 		func() bool {
@@ -148,10 +173,9 @@ func startHouseKeeperJobs(pool *queue.Queue) {
 		},
 	)
 
-	go scheduleTaskWithDistributedLock(
+	go scheduleAtomicTask(
 		TIMEOUT,
-		nil,
-		distributedLock,
+		locker,
 		shutdown.WaitGroup,
 		config.HousekeeperTaskTimeoutDelay.GetDuration(),
 		func() bool {
@@ -161,50 +185,9 @@ func startHouseKeeperJobs(pool *queue.Queue) {
 		},
 	)
 
-	go scheduleTaskWithDistributedLock(
-		METRICS,
-		nil,
-		distributedLock,
-		shutdown.WaitGroup,
-		config.HousekeeperTaskMetricsDelay.GetDuration(),
-		func() bool {
-			// Only compute metrics if we're the metrics leader or distributed execution is disabled
-			if !config.HousekeeperDistributedExecutionEnabled.GetBool() || isMetricsLeader(distributedLock) {
-				queue.ComputeMetrics(ctx, pool)
-			}
-
-			return true
-		},
-	)
-
-	go scheduleTaskWithDistributedLock(
-		RECOVERY,
-		backgroundTaskLocker, // Keep local lock for critical recovery task
-		distributedLock,
-		shutdown.CriticalWaitGroup,
-		config.HousekeeperTaskUpdateDelay.GetDuration(),
-		func() bool {
-			return queue.RecoveryMessagesPool(ctx, pool)
-		},
-	)
-
-	go scheduleTaskWithDistributedLock(
-		MAX_ELEMENTS,
-		backgroundTaskLocker, // Keep local lock for critical task
-		distributedLock,
-		shutdown.WaitGroup,
-		config.HousekeeperTaskMaxElementsDelay.GetDuration(),
-		func() bool {
-			metrify, _ := queue.RemoveExceedingMessages(ctx, pool)
-
-			return metrify
-		},
-	)
-
-	go scheduleTaskWithDistributedLock(
+	go scheduleAtomicTask(
 		TTL,
-		backgroundTaskLocker, // Keep local lock for critical task
-		distributedLock,
+		locker,
 		shutdown.WaitGroup,
 		config.HousekeeperTaskTTLDelay.GetDuration(),
 		func() bool {
@@ -215,47 +198,58 @@ func startHouseKeeperJobs(pool *queue.Queue) {
 			return metrify
 		},
 	)
+
+	go scheduleAtomicTask(
+		MAX_ELEMENTS,
+		locker,
+		shutdown.WaitGroup,
+		config.HousekeeperTaskMaxElementsDelay.GetDuration(),
+		func() bool {
+			metrify, _ := queue.RemoveExceedingMessages(ctx, pool)
+
+			return metrify
+		},
+	)
+
+	go scheduleLeaderTask(
+		METRICS,
+		elector,
+		locker,
+		shutdown.WaitGroup,
+		config.HousekeeperTaskMetricsDelay.GetDuration(),
+		func() bool {
+			queue.ComputeMetrics(ctx, pool)
+
+			return true
+		},
+	)
+
+	go scheduleLeaderTask(
+		RECOVERY,
+		elector,
+		locker,
+		shutdown.CriticalWaitGroup,
+		config.HousekeeperTaskUpdateDelay.GetDuration(),
+		func() bool {
+			return queue.RecoveryMessagesPool(ctx, pool)
+		},
+	)
+
+	return elector
 }
 
-func scheduleTaskWithDistributedLock(taskName string, localLock *sync.Mutex, distributedLock queue.DistributedLock, taskWaitGroup *sync.WaitGroup, duration time.Duration, fn func() bool) {
+// scheduleAtomicTask runs fn periodically, allowing any instance sharing
+// locker to execute it, but ensuring mutual exclusion via a per-task lock so
+// the same task never runs concurrently across instances.
+func scheduleAtomicTask(taskName string, locker lock.Locker, taskWaitGroup *sync.WaitGroup, duration time.Duration, fn func() bool) {
+	lockName := fmt.Sprintf("housekeeper:lock:%s", taskName)
+	lockTTL := config.HousekeeperDistributedExecutionLockTTL.GetDuration()
+
 	for {
 		select {
 		case <-time.After(duration):
 			taskWaitGroup.Add(1)
-
-			// Try to acquire distributed lock
-			lockTTL := config.HousekeeperDistributedExecutionLockTTL.GetDuration()
-			acquired, err := distributedLock.TryLock(ctx, taskName, lockTTL)
-			if err != nil {
-				logger.S(ctx).Errorf("Error acquiring distributed lock for task %s: %v", taskName, err)
-				taskWaitGroup.Done()
-				continue
-			}
-
-			if !acquired {
-				logger.S(ctx).Debugf("Skipping task %s - already running on another instance", taskName)
-				taskWaitGroup.Done()
-				continue
-			}
-
-			// Acquire local lock if needed
-			if localLock != nil {
-				localLock.Lock()
-			}
-
-			executeTask(taskName, fn)
-
-			// Release local lock if acquired
-			if localLock != nil {
-				localLock.Unlock()
-			}
-
-			// Release distributed lock
-			err = distributedLock.ReleaseLock(ctx, taskName)
-			if err != nil {
-				logger.S(ctx).Errorf("Error releasing distributed lock for task %s: %v", taskName, err)
-			}
-
+			runAtomicTask(taskName, lockName, locker, lockTTL, fn)
 			taskWaitGroup.Done()
 		case <-shutdown.Started:
 			logger.S(ctx).Debug("Stopping ", taskName, " scheduler.")
@@ -264,25 +258,52 @@ func scheduleTaskWithDistributedLock(taskName string, localLock *sync.Mutex, dis
 	}
 }
 
-func isMetricsLeader(distributedLock queue.DistributedLock) bool {
-	// Try to acquire metrics leader lock
-	leaderLockTTL := config.HousekeeperDistributedExecutionLockTTL.GetDuration() * 2 // Longer TTL for leader
-	acquired, err := distributedLock.TryLock(ctx, "metrics_leader", leaderLockTTL)
+func runAtomicTask(taskName string, lockName string, locker lock.Locker, lockTTL time.Duration, fn func() bool) {
+	acquired, err := locker.TryAcquire(ctx, lockName, lockTTL)
 	if err != nil {
-		logger.S(ctx).Errorf("Error checking metrics leader lock: %v", err)
-		return false
+		logger.S(ctx).Errorf("Error acquiring lock for task %s: %v", taskName, err)
+		return
 	}
 
-	if acquired {
-		// We are the leader, extend the lock
-		err = distributedLock.RefreshLock(ctx, "metrics_leader", leaderLockTTL)
-		if err != nil {
-			logger.S(ctx).Errorf("Error refreshing metrics leader lock: %v", err)
+	if !acquired {
+		logger.S(ctx).Debugf("Skipping task %s - already running on another instance", taskName)
+		return
+	}
+
+	defer func() {
+		if err := locker.Release(ctx, lockName); err != nil {
+			logger.S(ctx).Errorf("Error releasing lock for task %s: %v", taskName, err)
 		}
-		return true
-	}
+	}()
 
-	return false
+	executeTask(taskName, fn)
+}
+
+// scheduleLeaderTask runs fn periodically, but only on the instance currently
+// holding housekeeper leadership. The per-task lock is additionally acquired
+// as a defense-in-depth safety net against split-brain during leadership
+// transitions (e.g. a resigning leader and a newly-elected leader both
+// believing they're leader for a brief window).
+func scheduleLeaderTask(taskName string, elector election.Elector, locker lock.Locker, taskWaitGroup *sync.WaitGroup, duration time.Duration, fn func() bool) {
+	lockName := fmt.Sprintf("housekeeper:lock:%s", taskName)
+	lockTTL := config.HousekeeperDistributedExecutionLockTTL.GetDuration()
+
+	for {
+		select {
+		case <-time.After(duration):
+			if !elector.IsLeader() {
+				logger.S(ctx).Debugf("Skipping leader task %s - this instance is not the housekeeper leader", taskName)
+				continue
+			}
+
+			taskWaitGroup.Add(1)
+			runAtomicTask(taskName, lockName, locker, lockTTL, fn)
+			taskWaitGroup.Done()
+		case <-shutdown.Started:
+			logger.S(ctx).Debug("Stopping ", taskName, " scheduler.")
+			return
+		}
+	}
 }
 
 func executeTask(taskName string, fn func() bool) {

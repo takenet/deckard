@@ -94,4 +94,5 @@ func TestDefaultValues(t *testing.T) {
 	require.Equal(t, 1*time.Second, HousekeeperTaskTTLDelay.GetDuration())
 	require.Equal(t, 1*time.Second, HousekeeperTaskMaxElementsDelay.GetDuration())
 	require.Equal(t, 60*time.Second, HousekeeperTaskMetricsDelay.GetDuration())
+	require.Equal(t, 15*time.Second, HousekeeperElectionLeaseTTL.GetDuration())
 }

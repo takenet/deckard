@@ -56,6 +56,14 @@ var HousekeeperDistributedExecutionLockTTL = Create(&ViperConfigKey{
 	Default: "30s",
 })
 
+// HousekeeperElectionLeaseTTL controls the lease duration for the leader
+// election used to gate leader-only tasks (e.g. metrics, recovery). The
+// election's background renewal loop runs at ttl/3 intervals.
+var HousekeeperElectionLeaseTTL = Create(&ViperConfigKey{
+	Key:     "housekeeper.election.lease_ttl",
+	Default: "15s",
+})
+
 var HousekeeperUnlockParallelism = Create(&ViperConfigKey{
 	Key:     "housekeeper.unlock.parallelism",
 	Default: 5,
@@ -68,11 +76,11 @@ func GetHousekeeperInstanceID() string {
 	if configuredID != "" {
 		return configuredID
 	}
-	
+
 	hostname, err := os.Hostname()
 	if err != nil {
 		hostname = "unknown"
 	}
-	
+
 	return fmt.Sprintf("%s-%d", hostname, time.Now().Unix())
 }
