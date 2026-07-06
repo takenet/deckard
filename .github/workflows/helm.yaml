@@ -127,6 +127,10 @@ jobs:
           git -c user.name="github-actions[bot]" \
               -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
               commit -q -m "chore: sync published helm chart state" --allow-empty
-          git remote add origin "https://github.com/${{ github.repository }}.git"
-          git -c http.extraheader="AUTHORIZATION: bearer ${{ secrets.GITHUB_TOKEN }}" \
-              push -f origin HEAD:refs/heads/helm-repo-state
+          # Use token-in-URL auth (the same scheme actions/checkout itself relies on for basic
+          # auth) rather than a manual "AUTHORIZATION: bearer" extraheader: GitHub's git HTTP
+          # backend expects Basic auth here, not a bearer token, so the extraheader approach was
+          # silently rejected (401) and git fell back to an interactive username prompt, which
+          # fails non-interactively with "could not read Username ... No such device or address".
+          git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+          git push -f origin HEAD:refs/heads/helm-repo-state
