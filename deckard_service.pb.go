@@ -754,6 +754,8 @@ type AddMessage struct {
 	// Suggestion: to better observability, provide the name of the application using colon as the separator. Example: <application_name>:<queue_name>
 	//
 	// You may also add a queue prefix to the queue name using two colons as the separator. Example: <application_name>:<queue_prefix>::<queue_name>
+	//
+	// When the queue name contains two colons, Deckard uses the part before the separator as the queue prefix in metrics, audit records, and internal queue grouping. For example, messages in application_x:customers:id::123 and application_x:customers:id::456 are stored in separate queues, but their observability data is grouped under application_x:customers:id.
 	Queue string `protobuf:"bytes,4,opt,name=queue,proto3" json:"queue,omitempty"`
 	// Indicate this message will never expire and will only be deleted from the queue if explicitly removed.
 	Timeless bool `protobuf:"varint,6,opt,name=timeless,proto3" json:"timeless,omitempty"`

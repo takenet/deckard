@@ -8,10 +8,20 @@ on:
       # ignores pre-release chart versions by default unless --devel is explicitly passed.
       # See: https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#release
       - published
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git tag to (re)publish (e.g. v0.0.43). Leave empty to use the default branch. Use this to restore a previously published chart version that is missing from the live repo (e.g. https://takenet.github.io/deckard/).'
+        required: false
+        type: string
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages.
+# 'contents: write' is required so this workflow can persist the published chart state
+# (packages + index.yaml) to the 'chore/helm-repo-state' branch, which subsequent runs read
+# from directly via git instead of the public (CDN-cached) GitHub Pages URL. See the "Prepare
+# release directory" step below for why the public URL can't be trusted as a source of truth.
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -31,6 +41,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
       - name: Setup Pages
         uses: actions/configure-pages@v6
       - name: Setup Helm
@@ -46,10 +58,49 @@ jobs:
       - name: Package chart
         working-directory: helm
         run: helm package .
+      - name: Fetch previously published chart packages
+        run: |
+          # See the comment in "Prepare release directory" below for why this reads from a git
+          # branch instead of the public GitHub Pages URL. The branch is named
+          # 'chore/helm-repo-state' (rather than plain 'helm-repo-state') because this repo's
+          # branch protection rules require branch names to match a conventional-commit-style
+          # prefix pattern (e.g. chore/*, feat/*); a plain 'helm-repo-state' name is rejected on
+          # push with "GH013: Repository rule violations".
+          if git ls-remote --exit-code --heads origin chore/helm-repo-state >/dev/null 2>&1; then
+            git fetch --quiet --depth 1 origin chore/helm-repo-state
+            git worktree add --quiet --detach /tmp/helm-repo-state FETCH_HEAD
+          else
+            echo "No 'chore/helm-repo-state' branch yet; this will be the first publish."
+          fi
       - name: Prepare release directory
         run: |
           mkdir -p helm-release
           cp helm/deckard-*.tgz helm-release/
+
+          # actions/deploy-pages replaces the ENTIRE site on every run (it's a one-shot artifact
+          # upload, not an incremental commit to a gh-pages branch). If we only ever put the
+          # chart version being released right now into helm-release/, every previously
+          # published version disappears from https://takenet.github.io/deckard/ as soon as this
+          # workflow runs again, breaking any consumer still pinned to an older chart version.
+          #
+          # To keep releases additive, carry every previously published package forward into
+          # this deploy, then rebuild the index from the full (old + new) set of packages
+          # actually present on disk.
+          #
+          # IMPORTANT: previously published packages are read from the 'chore/helm-repo-state'
+          # branch (git, via the step above), NOT from the public
+          # https://takenet.github.io/deckard/ URL. That URL is served through a Fastly CDN with
+          # a 10-minute cache
+          # (Cache-Control: max-age=600), and a cache-busting query string does not reliably
+          # bypass it (verified: repeated requests kept returning cache HITs regardless). When
+          # releases are published back-to-back (e.g. while replaying release history), fetching
+          # the public URL can return a stale copy that doesn't yet include the version
+          # published moments earlier by this very workflow, silently dropping it from every
+          # subsequent deploy. Reading from git avoids that entirely.
+          if [[ -d /tmp/helm-repo-state ]]; then
+            find /tmp/helm-repo-state -maxdepth 1 -name '*.tgz' -exec cp -n {} helm-release/ \;
+          fi
+
           helm repo index helm-release --url https://takenet.github.io/deckard/
           touch helm-release/.nojekyll
       - name: Upload artifact
@@ -67,3 +118,24 @@ jobs:
         uses: actions/deploy-pages@v5
         with:
           artifact_name: github-pages-${{ github.run_attempt }}
+      - name: Persist published state
+        working-directory: helm-release
+        run: |
+          # Record the exact set of packages + index.yaml just deployed to the
+          # 'chore/helm-repo-state' branch, so the next run of this workflow can read it back
+          # via git (always consistent) instead of the CDN-cached public URL. History isn't
+          # meaningful for this branch since it's fully derived from git tags, so each run
+          # force-pushes a fresh single commit rather than accumulating commit history.
+          git init -q
+          git checkout -q -B chore/helm-repo-state
+          git add -A
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "chore: sync published helm chart state" --allow-empty
+          # Use token-in-URL auth (the same scheme actions/checkout itself relies on for basic
+          # auth) rather than a manual "AUTHORIZATION: bearer" extraheader: GitHub's git HTTP
+          # backend expects Basic auth here, not a bearer token, so the extraheader approach was
+          # silently rejected (401) and git fell back to an interactive username prompt, which
+          # fails non-interactively with "could not read Username ... No such device or address".
+          git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+          git push -f origin HEAD:refs/heads/chore/helm-repo-state
