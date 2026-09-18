@@ -43,6 +43,7 @@ var (
 	HousekeeperTaskLatency             metric.Int64Histogram
 	HousekeeperOldestMessage           metric.Int64ObservableGauge
 	HousekeeperTotalElements           metric.Int64ObservableGauge
+	HousekeeperLeader                  metric.Int64ObservableGauge
 
 	// Message Pool
 	QueueTimeout           metric.Int64Counter
@@ -64,7 +65,23 @@ var (
 
 	exporter *prometheus.Exporter
 	registry *WrappedRegistry
+
+	// leaderStatusFunc reports whether this instance currently holds housekeeper
+	// leadership. Set via SetLeaderStatusFunc once an election.Elector is created,
+	// kept as a plain func hook (instead of importing internal/election) to avoid
+	// coupling this package to the election module.
+	leaderStatusFuncMu sync.RWMutex
+	leaderStatusFunc   func() bool
 )
+
+// SetLeaderStatusFunc registers the function used to report the current
+// housekeeper leadership status via the deckard_housekeeper_leader gauge.
+func SetLeaderStatusFunc(f func() bool) {
+	leaderStatusFuncMu.Lock()
+	defer leaderStatusFuncMu.Unlock()
+
+	leaderStatusFunc = f
+}
 
 func panicInstrumentationError(err error) {
 	if err != nil {
@@ -222,6 +239,14 @@ func createMetrics() {
 		}))
 	panicInstrumentationError(err)
 
+	HousekeeperLeader, err = meter.Int64ObservableGauge(
+		"deckard_housekeeper_leader",
+		metric.WithDescription("Whether this instance currently holds housekeeper leadership (1) or not (0)."),
+		metric.WithInt64Callback(func(_ context.Context, obs metric.Int64Observer) error {
+			return metrifyLeaderStatus(obs)
+		}))
+	panicInstrumentationError(err)
+
 	HousekeeperTTLStorageRemoved, err = meter.Int64Counter(
 		"deckard_ttl_messages_removed",
 		metric.WithDescription("Number of messages removed from storage for ttl"),
@@ -319,6 +344,25 @@ func metrifyOldestMessages(obs metric.Int64Observer) error {
 
 func metrifyTotalElements(obs metric.Int64Observer) error {
 	return metrify(obs, &MetricsMap.TotalElements)
+}
+
+func metrifyLeaderStatus(obs metric.Int64Observer) error {
+	leaderStatusFuncMu.RLock()
+	statusFunc := leaderStatusFunc
+	leaderStatusFuncMu.RUnlock()
+
+	if statusFunc == nil {
+		return nil
+	}
+
+	var value int64
+	if statusFunc() {
+		value = 1
+	}
+
+	obs.Observe(value)
+
+	return nil
 }
 
 func metrify(obs metric.Int64Observer, data *map[string]int64) error {

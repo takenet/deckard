@@ -538,6 +538,7 @@ func (storage *MongoStorage) Ack(ctx context.Context, message *message.Message) 
 			"breakpoint":                    message.Breakpoint,
 			"score":                         message.Score,
 			"lock_ms":                       message.LockMs,
+			"locked_until":                  message.LockedUntil,
 			"diagnostics.consecutive_nacks": 0,
 		},
 		"$inc": bson.M{
@@ -575,6 +576,7 @@ func (storage *MongoStorage) Nack(ctx context.Context, message *message.Message)
 		"$set": bson.M{
 			"score":                        message.Score,
 			"lock_ms":                      message.LockMs,
+			"locked_until":                 message.LockedUntil,
 			"diagnostics.consecutive_acks": 0,
 		},
 		"$inc": bson.M{
