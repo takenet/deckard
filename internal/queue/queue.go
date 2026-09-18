@@ -15,7 +15,6 @@ import (
 	"github.com/takenet/deckard/internal/metrics"
 	"github.com/takenet/deckard/internal/queue/cache"
 	"github.com/takenet/deckard/internal/queue/message"
-	"github.com/takenet/deckard/internal/queue/score"
 	"github.com/takenet/deckard/internal/queue/storage"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
@@ -204,8 +203,6 @@ func (pool *Queue) Nack(ctx context.Context, msg *message.Message, timestamp tim
 
 		return result, nil
 	}
-
-	msg.Score = score.Min
 
 	result, err := pool.cache.MakeAvailable(ctx, msg)
 
