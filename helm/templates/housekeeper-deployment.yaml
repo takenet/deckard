@@ -29,7 +29,7 @@ spec:
         - name: {{ .Chart.Name }}-housekeeper
           securityContext:
             {{- toYaml .Values.housekeeper.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          image: "{{ .Values.housekeeper.image.repository | default .Values.image.repository }}:{{ .Values.housekeeper.image.tag | default .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.housekeeper.image.pullPolicy }}
           env:
             {{- range $name, $item := .Values.housekeeper.env }}
